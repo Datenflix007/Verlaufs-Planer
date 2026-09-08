@@ -1,0 +1,2 @@
+- jeder Benutzer soll sich auf dem jweilien System registrieren könen (wenn lokal, dann nur lokal, wenn abre im netzwerk oder später über webseite dann auf der webseite)
+- wichtig: sensible Daten hashen und sichern
