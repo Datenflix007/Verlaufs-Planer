@@ -12,6 +12,7 @@ Das Datenmodell beschreibt die zentralen Entitaeten des Verlaufs-Planers. Es ist
 - Fachliche Vorlagen werden versioniert.
 - Quellenbezuege bleiben erhalten.
 - Gueltigkeit von Fachlehrplaenen wird strukturiert nach Schuljahr und Klassenstufe modelliert.
+- Klassen- und Lerngruppenplanung verbindet Fach, Wochenstunden, Lehrplanfassung, Reihen, Stunden und Kompetenzabdeckung.
 - Loeschen sollte bevorzugt als Archivierung umgesetzt werden, wenn Daten historisch relevant sind.
 
 ## Kernentitaeten
@@ -42,6 +43,40 @@ Wichtige Felder:
 - `default_school_type`
 - `default_subject`
 - `enabled_frameworks`
+
+### `class_groups`
+
+Speichert Klassen, Kurse oder Lerngruppen.
+
+Wichtige Felder:
+
+- `id`
+- `owner_user_id`
+- `name`
+- `school_year`
+- `state`
+- `school_type`
+- `grade_level`
+- `description`
+- `created_at`
+- `updated_at`
+
+### `class_subject_allocations`
+
+Speichert, welches Fach in einer Klasse mit wie vielen Wochenstunden geplant ist.
+
+Wichtige Felder:
+
+- `id`
+- `class_group_id`
+- `subject`
+- `school_year`
+- `weekly_lessons_count`
+- `lesson_duration_minutes`
+- `valid_from_date`
+- `valid_until_date`
+- `curriculum_source_id`
+- `notes`
 
 ### `plan_models`
 
@@ -90,6 +125,7 @@ Wichtige Felder:
 
 - `id`
 - `owner_user_id`
+- `class_group_id`
 - `title`
 - `description`
 - `context_type`
@@ -109,6 +145,7 @@ Wichtige Felder:
 - `id`
 - `series_id`
 - `owner_user_id`
+- `class_group_id`
 - `model_version_id`
 - `title`
 - `planned_date`
@@ -210,6 +247,32 @@ Wichtige Felder:
 - `relevance`
 - `note`
 
+### `class_curriculum_coverage_marks`
+
+Speichert Markierungen in der Klassenuebersicht. Eine Markierung sagt, wann eine Kompetenz, ein Kompetenzschwerpunkt oder ein Lernziel fuer eine Klasse geplant, begonnen, behandelt, gesichert oder reflektiert wurde.
+
+Wichtige Felder:
+
+- `id`
+- `class_group_id`
+- `subject_allocation_id`
+- `curriculum_source_id`
+- `competency_id`
+- `series_id`
+- `lesson_id`
+- `lesson_phase_id`
+- `learning_goal`
+- `coverage_status`
+- `school_week`
+- `planned_date`
+- `taught_date`
+- `planned_minutes`
+- `actual_minutes`
+- `weekly_lessons_count`
+- `source_note`
+- `created_at`
+- `updated_at`
+
 ### `materials`
 
 Speichert Materialien oder Verweise.
@@ -287,13 +350,22 @@ Wichtige Felder:
 ```text
 users 1--n series
 users 1--n lessons
+users 1--n class_groups
+class_groups 1--n class_subject_allocations
+class_groups 1--n series
+class_groups 1--n lessons
+class_groups 1--n class_curriculum_coverage_marks
+class_subject_allocations 1--n class_curriculum_coverage_marks
 series 1--n lessons
 plan_models 1--n plan_model_versions
 plan_model_versions 1--n lessons
 lessons 1--n lesson_phases
 lessons n--m competencies ueber lesson_competencies
+lessons 1--n class_curriculum_coverage_marks
+lesson_phases 1--n class_curriculum_coverage_marks
 curriculum_sources 1--n competencies
 curriculum_sources 1--n curriculum_validity_rules
+curriculum_sources 1--n class_curriculum_coverage_marks
 lessons 1--n run_sessions
 run_sessions 1--n run_events
 lessons 1--n reflection_notes
@@ -321,6 +393,9 @@ Kernfelder wie Zeit, Titel, Ziel und Kompetenzbezug duerfen nicht nur in JSON ve
 - Importierte Kompetenzdaten behalten Quellenstatus und Reviewstatus.
 - Wenn fuer eine Quelle Gueltigkeitsregeln existieren, soll die App bei Unterrichtsplanung gegen Schuljahr und Klassenstufe validieren.
 - Bei fehlenden Gueltigkeitsregeln darf die App keine falsche Sicherheit anzeigen; der Status muss als unbekannt sichtbar bleiben.
+- Jede Klassenuebersichts-Markierung muss mindestens auf Klasse, Fachbelegung, Status und einen nachvollziehbaren Planungs- oder Kompetenzbezug verweisen.
+- Wochenstunden in `class_subject_allocations` muessen groesser als 0 sein.
+- Wenn eine Markierung als `covered`, `secured` oder `reflected` gespeichert wird, soll sie nach Moeglichkeit auf eine durchgefuehrte Stunde oder Phase verweisen.
 
 ## Offene Entscheidungen
 
@@ -329,3 +404,4 @@ Kernfelder wie Zeit, Titel, Ziel und Kompetenzbezug duerfen nicht nur in JSON ve
 - Welche Felder muessen im MVP direkt relationale Spalten sein?
 - Welche Archivierungsregeln gelten fuer geloeschte Reihen und Stunden?
 - Wie fein muessen Gueltigkeitsregeln Klassenstufen, Kurshalbjahre, Einfuehrungsphase und Qualifikationsphase unterscheiden?
+- Sollen Klassenuebersichts-Markierungen automatisch aus Stundenkompetenzen entstehen oder erst nach Nutzerbestaetigung?

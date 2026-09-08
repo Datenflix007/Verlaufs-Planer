@@ -36,6 +36,7 @@ Lehrkraefte planen Unterrichtsreihen und Einzelstunden fuer Klassen, Kurse oder 
 Wichtige Anforderungen:
 
 - Reihenplanung ueber ein Schuljahr oder Unterrichtsvorhaben
+- Klassenuebersicht pro Fach mit Wochenstunden, Fachlehrplan-Hintergrund und Lehrplanabdeckung
 - Einzelstunden aus einer Reihe ableiten
 - Kompetenzschwerpunkte aus Fachlehrplaenen zuordnen
 - Gueltigkeit und Inkraftsetzung von Fachlehrplaenen nach Schuljahr und Klassenstufe beruecksichtigen
@@ -76,7 +77,15 @@ Ein Verlaufsplan besteht aus Metadaten, Zielen, Kompetenzen und Phasen. Phasen e
 
 Eine Reihenplanung buendelt mehrere Stunden oder Workshopmodule. Kompetenzschwerpunkte koennen auf Reihenebene geplant und auf Einzelstunden verteilt werden.
 
-### 3. Eigene Verlaufsplan-Modelle
+### 3. Klassenuebersicht und Lehrplanabdeckung
+
+Nutzende sollen pro Klasse oder Lerngruppe sehen, welcher Fachlehrplan fuer Fach, Klassenstufe und Schuljahr im Hintergrund gilt. Darauf aufbauend zeigt die App, wann mit wie vielen Wochenstunden welche Kompetenzschwerpunkte und Lernziele geplant, unterrichtet, gesichert oder reflektiert wurden.
+
+Die Uebersicht muss interaktiv sein: Beim Hover ueber eine Markierung erscheinen Kurzinfos zu Kompetenz, Lernziel, Woche, Stundenumfang und Quelle. Beim Klick oeffnet sich ein Detailpanel mit den verknuepften Reihen, Stunden, Phasen, Reflexionsnotizen und der Fachlehrplanquelle.
+
+Details: [`Klassenuebersicht.md`](Klassenuebersicht.md)
+
+### 4. Eigene Verlaufsplan-Modelle
 
 Nutzende koennen eigene Modelle anlegen. Ein Modell legt fest, welche Spalten, Phasenarten, Pflichtfelder und Auswertungslogiken ein Verlaufsplan verwendet. Standardmaessig sollen mindestens diese Modelle vorhanden sein:
 
@@ -85,7 +94,7 @@ Nutzende koennen eigene Modelle anlegen. Ein Modell legt fest, welche Spalten, P
 
 Details: [`MultipleVerlaufsplanModelle.md`](MultipleVerlaufsplanModelle.md)
 
-### 4. Kompetenz-, Lehrplan- und Gueltigkeitsbezug
+### 5. Kompetenz-, Lehrplan- und Gueltigkeitsbezug
 
 Rohdaten aus `rawData/` werden in eine normalisierte, annotierte Form ueberfuehrt. Dabei entstehen Kompetenzen, Inhaltsfelder, Jahrgangs-/Stufenbezuege, Faecher, Bundeslaender und Quellenverweise.
 
@@ -93,17 +102,17 @@ Wenn Fachlehrplaene auf der Quellseite Angaben zu Gueltigkeit oder Inkraftsetzun
 
 Details: [`AnnotierteFLP.md`](AnnotierteFLP.md)
 
-### 5. Durchfuehrungsmodus
+### 6. Durchfuehrungsmodus
 
 Ein geplanter Verlauf kann live genutzt werden. Die Anwendung zeigt die aktuelle Phase, Zeit, Ziel, Methode, Material und Hinweise. Der Wechsel erfolgt wahlweise automatisch ueber Zeit oder manuell per Weiter-Aktion.
 
 Im manuellen Modus sollen direkt Beobachtungen, Abweichungen und Reflexionsnotizen erfasst werden koennen.
 
-### 6. Export
+### 7. Export
 
 Verlaufsplaene sollen als PDF exportiert werden. Spaetere Exportziele koennen HTML, H5P, Arbeitsblaetter oder Materialpakete sein.
 
-### 7. Lokale LLM-Unterstuetzung
+### 8. Lokale LLM-Unterstuetzung
 
 Spaeter soll ein lokales LLM bei Planung und Reflexion helfen. Die Anwendung darf dabei keine sensiblen Daten ungefragt an externe Dienste senden.
 
@@ -146,11 +155,13 @@ Ein erster ernstzunehmender MVP ist erreicht, wenn eine Lehrkraft oder ein Refer
 
 1. ein Profil und einen Arbeitskontext anlegt,
 2. ein Verlaufsplan-Modell auswaehlt,
-3. eine Reihe oder Einzelstunde mit Lernzielen und Kompetenzen plant,
-4. Phasen mit Zeiten, Methoden und Materialien erfasst,
-5. den Plan als PDF exportiert,
-6. den Plan im Durchfuehrungsmodus nutzt,
-7. danach Reflexionsnotizen am Plan speichert.
+3. eine Klasse oder Lerngruppe mit Fach, Klassenstufe und Wochenstunden anlegt,
+4. eine Reihe oder Einzelstunde mit Lernzielen und Kompetenzen plant,
+5. in der Klassenuebersicht sieht, welche Kompetenzschwerpunkte wann abgedeckt wurden,
+6. Phasen mit Zeiten, Methoden und Materialien erfasst,
+7. den Plan als PDF exportiert,
+8. den Plan im Durchfuehrungsmodus nutzt,
+9. danach Reflexionsnotizen am Plan speichert.
 
 ## Leitprinzipien
 

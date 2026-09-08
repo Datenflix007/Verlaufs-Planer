@@ -8,22 +8,25 @@ Dieses Verzeichnis ist die fachliche und technische Quelle fuer den Verlaufs-Pla
 
 1. [`_Gesamt.md`](_Gesamt.md): Produktziel, Zielgruppen, Kernfunktionen
 2. [`UI_UX_Konzept.md`](UI_UX_Konzept.md): wichtige Arbeitsablaeufe und Screens
-3. [`Roadmap_MVP.md`](Roadmap_MVP.md): realistische Umsetzungsphasen
+3. [`Klassenuebersicht.md`](Klassenuebersicht.md): Klassenansicht, Wochenstunden und Lehrplanabdeckung
+4. [`Roadmap_MVP.md`](Roadmap_MVP.md): realistische Umsetzungsphasen
 
 ### Fuer Entwickler
 
 1. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Stack, Module, Laufzeitmodell
 2. [`Datenmodell.md`](Datenmodell.md): zentrale Entitaeten und Tabellen
-3. [`AnnotierteFLP.md`](AnnotierteFLP.md): Import- und Annotationspipeline fuer Fachlehrplaene
-4. [`BenutzerDatenManagement.md`](BenutzerDatenManagement.md): Auth, Rollen, Datenschutz, Backup
-5. [`Justfile.md`](Justfile.md): erwartete Entwicklungs- und Betriebsbefehle
+3. [`Klassenuebersicht.md`](Klassenuebersicht.md): Klassen-, Wochenstunden- und Coverage-Logik
+4. [`AnnotierteFLP.md`](AnnotierteFLP.md): Import- und Annotationspipeline fuer Fachlehrplaene
+5. [`BenutzerDatenManagement.md`](BenutzerDatenManagement.md): Auth, Rollen, Datenschutz, Backup
+6. [`Justfile.md`](Justfile.md): erwartete Entwicklungs- und Betriebsbefehle
 
 ### Fuer LLM-Agenten
 
 1. [`AgentenBriefing.md`](AgentenBriefing.md): Arbeitsregeln fuer Implementierungsagenten
 2. [`Roadmap_MVP.md`](Roadmap_MVP.md): Aufgabenreihenfolge
 3. [`Datenmodell.md`](Datenmodell.md): stabile Begriffe und IDs
-4. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Grenzen zwischen Frontend, Backend und Datenbank
+4. [`Klassenuebersicht.md`](Klassenuebersicht.md): Anforderungen an Klassenuebersicht und Lehrplanmarkierungen
+5. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Grenzen zwischen Frontend, Backend und Datenbank
 
 ## Projektstruktur
 
@@ -36,6 +39,7 @@ Verlaufs-Planer/
     TechnischeArchitektur.md
     Datenmodell.md
     UI_UX_Konzept.md
+    Klassenuebersicht.md
     MultipleVerlaufsplanModelle.md
     AnnotierteFLP.md
     BenutzerDatenManagement.md
@@ -62,6 +66,14 @@ Ein zeitlich und didaktisch abgegrenzter Abschnitt innerhalb eines Verlaufsplans
 ### Reihenplanung
 
 Eine zusammenhaengende Sequenz aus mehreren Stunden oder Modulen. Eine Reihe hat eigene Ziele, Kompetenzschwerpunkte und eine geplante Progression.
+
+### Klassenuebersicht
+
+Eine fachbezogene Uebersicht fuer eine Klasse oder Lerngruppe. Sie verbindet Wochenstunden, Schuljahr, Fachlehrplan-Gueltigkeit, Reihen, Stunden, Kompetenzschwerpunkte und Lernziele.
+
+### Lehrplanabdeckung
+
+Die nachvollziehbare Markierung, wann eine Kompetenz oder ein Kompetenzschwerpunkt geplant, begonnen, behandelt, gesichert oder reflektiert wurde.
 
 ### Verlaufsplan-Modell
 

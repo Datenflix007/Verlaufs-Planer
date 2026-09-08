@@ -2,7 +2,7 @@
 
 ## Ziel
 
-Die technische Architektur soll einen lokalen MVP ermoeglichen und trotzdem spaeter Netzwerk- und Webbetrieb zulassen. Der Kern ist eine TypeScript-Anwendung mit SvelteKit, SQLite und klar getrennten Modulen fuer Planung, Modelle, Kompetenzdaten, Export, Benutzerverwaltung und optionale LLM-Unterstuetzung.
+Die technische Architektur soll einen lokalen MVP ermoeglichen und trotzdem spaeter Netzwerk- und Webbetrieb zulassen. Der Kern ist eine TypeScript-Anwendung mit SvelteKit, SQLite und klar getrennten Modulen fuer Planung, Klassenuebersichten, Modelle, Kompetenzdaten, Export, Benutzerverwaltung und optionale LLM-Unterstuetzung.
 
 ## Stack-Empfehlung
 
@@ -48,6 +48,10 @@ Browser/Svelte UI
 
 Verantwortlich fuer Reihen, Stunden, Phasen, Lernziele, Materialien und Durchfuehrungsnotizen.
 
+### `classes`
+
+Verantwortlich fuer Klassen und Lerngruppen, Fachbelegungen, Wochenstunden, Klassenuebersichten und Lehrplanabdeckung.
+
 ### `models`
 
 Verantwortlich fuer frei definierbare Verlaufsplan-Modelle, Modellversionen, Spalten, Felder, Phasentypen und Validierungen.
@@ -80,6 +84,7 @@ src/
     +layout.svelte
     +page.svelte
     setup/
+    classes/
     planner/
     models/
     curriculum/
@@ -109,15 +114,16 @@ scripts/
 
 ## Datenfluss fuer Planung
 
-1. Nutzer waehlt Kontext: Bundesland, Fach, Lerngruppe, Modell.
+1. Nutzer waehlt Kontext: Bundesland, Fach, Klasse oder Lerngruppe, Schuljahr, Klassenstufe und Modell.
 2. App laedt passende Kompetenzdaten.
-3. Nutzer erstellt Reihe oder Einzelstunde.
-4. Nutzer legt Lernziele und Kompetenzbezuege fest.
-5. Nutzer plant Phasen.
-6. Validierung prueft Modellregeln und Zeitlogik.
-7. Plan wird gespeichert.
-8. Plan kann exportiert oder im Durchfuehrungsmodus gestartet werden.
-9. Beobachtungen werden als Reflexionsdaten gespeichert.
+3. App bestimmt die passende Fachlehrplanfassung und Wochenstundenlogik aus der Klassenuebersicht.
+4. Nutzer erstellt Reihe oder Einzelstunde.
+5. Nutzer legt Lernziele und Kompetenzbezuege fest.
+6. Nutzer plant Phasen.
+7. Validierung prueft Modellregeln, Zeitlogik und Lehrplan-Gueltigkeit.
+8. Plan wird gespeichert und aktualisiert die Klassenuebersicht.
+9. Plan kann exportiert oder im Durchfuehrungsmodus gestartet werden.
+10. Beobachtungen werden als Reflexionsdaten gespeichert und koennen Abdeckungsmarkierungen aktualisieren.
 
 ## Datenfluss fuer Lehrplanimport
 
@@ -158,6 +164,7 @@ Die Druckansicht ist schneller umzusetzen. Serverseitiges Rendering ist reproduz
 - Service-Logik nicht direkt in UI-Komponenten verstecken.
 - Tests fuer Modellvalidierung, Zeitberechnung, Kompetenzzuordnung und Exportlogik.
 - Tests fuer Lehrplan-Gueltigkeitsfilter nach Schuljahr und Klassenstufe.
+- Tests fuer Klassenuebersicht, Wochenstundenberechnung und Abdeckungsmarkierungen.
 - Keine sensiblen Daten im Log ausgeben.
 - App muss ohne Internet starten koennen, wenn alle lokalen Daten vorhanden sind.
 

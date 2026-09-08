@@ -6,7 +6,7 @@ Die Roadmap priorisiert eine Version, die real nutzbar ist. Der erste MVP soll n
 
 ## MVP-Leitsatz
 
-Eine Person kann lokal eine Stunde planen, Kompetenzen zuordnen, Phasen strukturieren, als PDF exportieren, live durchfuehren und danach reflektieren.
+Eine Person kann lokal eine Klasse mit Fach und Wochenstunden anlegen, eine Stunde planen, Kompetenzen zuordnen, Phasen strukturieren, Lehrplanabdeckung sichtbar machen, als PDF exportieren, live durchfuehren und danach reflektieren.
 
 ## Phase 0: Projektgrundlage
 
@@ -32,13 +32,15 @@ Ergebnis:
 - lokales Benutzerkonto
 - Login und Logout
 - erste Setup-UI
-- Auswahl von Bundesland, Fach, Schulform und Standardmodell
+- Auswahl von Bundesland, Fach, Schulform, Klassenstufe, Schuljahr und Standardmodell
+- erste Klasse oder Lerngruppe mit Wochenstunden anlegen
 
 Akzeptanzkriterien:
 
 - erster Benutzer wird als `owner` angelegt
 - Login schuetzt die Planungsbereiche
 - Einstellungen werden gespeichert
+- Klasse oder Lerngruppe wird gespeichert und ist in der Planung auswaehlbar
 
 ## Phase 2: Verlaufsplan-Modelle
 
@@ -93,16 +95,21 @@ Akzeptanzkriterien:
 
 Ergebnis:
 
+- Klassenuebersicht fuer ein Fach
 - Reihe anlegen
 - Stunden einer Reihe zuordnen
 - Kompetenzschwerpunkte auf Reihenebene
 - einfache Reihenuebersicht
+- Abdeckungsmarkierungen fuer Kompetenzschwerpunkte und Lernziele
 
 Akzeptanzkriterien:
 
+- Klasse zeigt Fach, Schuljahr, Klassenstufe, Wochenstunden und passende Fachlehrplanfassung
 - Reihe kann mehrere Stunden enthalten
 - Stundenreihenfolge ist bearbeitbar
 - Fortschritt der Reihe ist sichtbar
+- Hover ueber eine Markierung zeigt Kompetenzschwerpunkt, Lernziel, Woche und Stundenumfang
+- Klick auf eine Markierung zeigt verknuepfte Reihen, Stunden, Phasen und Quelle
 
 ## Phase 6: Export
 
@@ -165,5 +172,6 @@ Wenn Zeit knapp ist, gilt diese Reihenfolge:
 4. PDF-Export
 5. Durchfuehrungsmodus
 6. Reihenplanung
-7. Kompetenzbrowser
-8. LLM-Unterstuetzung
+7. Klassenuebersicht mit Lehrplanabdeckung
+8. Kompetenzbrowser
+9. LLM-Unterstuetzung

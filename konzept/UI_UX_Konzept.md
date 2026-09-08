@@ -17,6 +17,7 @@ Die Anwendung soll sich wie ein Arbeitswerkzeug fuer Planung anfuehlen: klar, di
 Empfohlene Bereiche:
 
 - Dashboard
+- Klassen
 - Reihen
 - Stunden
 - Modelle
@@ -36,6 +37,7 @@ Elemente:
 - naechste geplante Durchfuehrungen
 - offene Reflexionsnotizen
 - aktive Reihen
+- Klassen mit offenen Kompetenzluecken oder unklarer Lehrplanabdeckung
 - Schnellaktion: neue Stunde
 - Schnellaktion: neue Reihe
 - Schnellaktion: Durchfuehrungsmodus starten
@@ -72,6 +74,35 @@ Nutzeraktionen:
 - Kompetenzschwerpunkt zuordnen
 - Reihenfolge aendern
 - PDF fuer Reihe exportieren
+
+## Klassenuebersicht
+
+Die Klassenuebersicht ist eine fachbezogene Planungs- und Kontrollansicht fuer eine Klasse oder Lerngruppe.
+
+Kopfbereich:
+
+- Klasse oder Lerngruppe
+- Schuljahr
+- Schulform
+- Klassenstufe
+- Fach
+- Wochenstunden
+- gueltige Fachlehrplanfassung
+- Gueltigkeitsstatus der Fachlehrplanfassung
+
+Hauptbereich:
+
+- links oder oben: Fachlehrplanstruktur mit Kompetenzbereichen und Kompetenzschwerpunkten
+- rechts oder unten: Zeitachse nach Wochen, Monaten, Reihen oder Stunden
+- Markierungen zeigen, wann Kompetenzschwerpunkte und Lernziele geplant, begonnen, behandelt, gesichert oder reflektiert wurden
+
+Interaktion:
+
+- Hover ueber eine Markierung zeigt Kompetenzschwerpunkt, Lernziel, Woche, Wochenstunden, Reihe/Stunde und Quelle.
+- Klick auf eine Markierung oeffnet ein Detailpanel mit Fachlehrplantext, verknuepften Reihen, Stunden, Phasen und Reflexionsnotizen.
+- Klick auf einen offenen Kompetenzschwerpunkt kann eine neue Reihe oder Stunde mit diesem Bezug vorbereiten.
+
+Die Ansicht soll Warnungen zeigen, wenn Wochenstunden, geplante Dauer und Lehrplanabdeckung nicht zusammenpassen oder wenn ein Fachlehrplan fuer Schuljahr und Klassenstufe nicht eindeutig gueltig ist.
 
 ## Stundeneditor
 

@@ -14,6 +14,7 @@ Wichtige Dateien:
 - `_Gesamt.md`: Produktziel und Funktionsumfang
 - `TechnischeArchitektur.md`: Stack und Module
 - `Datenmodell.md`: Entitaeten und Beziehungen
+- `Klassenuebersicht.md`: Klassen-, Wochenstunden- und Lehrplanabdeckungslogik
 - `Roadmap_MVP.md`: Umsetzungsreihenfolge
 
 ## Technische Leitentscheidung
@@ -40,6 +41,7 @@ Agenten duerfen diese Grundentscheidung nicht ohne ausdruecklichen Auftrag erset
 - LLM-Funktionen muessen optional bleiben.
 - Externe Dienste nicht ungefragt voraussetzen.
 - Gueltigkeit und Inkraftsetzung von Fachlehrplaenen duerfen bei Kompetenzsuche und Planung nicht ignoriert werden.
+- Klassenuebersichten muessen Wochenstunden, Fachlehrplanfassung, Kompetenzschwerpunkte, Lernziele und Planungsbelege nachvollziehbar verbinden.
 
 ## MVP-Fokus
 
@@ -47,13 +49,15 @@ Agenten sollen den End-to-End-Workflow priorisieren:
 
 1. lokaler Start
 2. Benutzer und Setup
-3. Modell auswaehlen
-4. Stunde planen
-5. Kompetenzen zuordnen
-6. Phasen bearbeiten
-7. PDF exportieren
-8. Durchfuehrung starten
-9. Reflexion speichern
+3. Klasse oder Lerngruppe mit Fach und Wochenstunden anlegen
+4. Modell auswaehlen
+5. Stunde planen
+6. Kompetenzen zuordnen
+7. Klassenuebersicht und Lehrplanabdeckung aktualisieren
+8. Phasen bearbeiten
+9. PDF exportieren
+10. Durchfuehrung starten
+11. Reflexion speichern
 
 ## Naming
 
@@ -62,6 +66,9 @@ Empfohlene englische Codebegriffe:
 - `Lesson`
 - `LessonPhase`
 - `Series`
+- `ClassGroup`
+- `ClassSubjectAllocation`
+- `CurriculumCoverageMark`
 - `PlanModel`
 - `PlanModelVersion`
 - `Competency`
@@ -90,6 +97,7 @@ Bei diesen Punkten muessen Agenten Rueckfragen stellen oder eine offene Entschei
 - Entfernen der Modellversionierung
 - rechtliche Bewertung von Lehrplandaten
 - Annahmen zur Gueltigkeit eines Fachlehrplans, wenn Quelle oder Reviewstatus unklar sind
+- automatische Markierung einer Kompetenz als behandelt, wenn kein Planungs- oder Durchfuehrungsbeleg existiert
 
 ## Erwartete Ergebnisqualitaet
 
