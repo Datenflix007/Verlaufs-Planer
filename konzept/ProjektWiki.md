@@ -16,9 +16,10 @@ Dieses Verzeichnis ist die fachliche und technische Quelle fuer den Verlaufs-Pla
 1. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Stack, Module, Laufzeitmodell
 2. [`Datenmodell.md`](Datenmodell.md): zentrale Entitaeten und Tabellen
 3. [`Klassenuebersicht.md`](Klassenuebersicht.md): Klassen-, Wochenstunden- und Coverage-Logik
-4. [`AnnotierteFLP.md`](AnnotierteFLP.md): Import- und Annotationspipeline fuer Fachlehrplaene
-5. [`BenutzerDatenManagement.md`](BenutzerDatenManagement.md): Auth, Rollen, Datenschutz, Backup
-6. [`Justfile.md`](Justfile.md): erwartete Entwicklungs- und Betriebsbefehle
+4. [`AnnotationsDatenvertrag.md`](AnnotationsDatenvertrag.md): wiederverwendbare Annotationstypen fuer Lehrplaene, Gueltigkeit, Kompetenzen und Klassenabdeckung
+5. [`AnnotierteFLP.md`](AnnotierteFLP.md): Import- und Annotationspipeline fuer Fachlehrplaene
+6. [`BenutzerDatenManagement.md`](BenutzerDatenManagement.md): Auth, Rollen, Datenschutz, Backup
+7. [`Justfile.md`](Justfile.md): Entwicklungs- und Betriebsbefehle
 
 ### Fuer LLM-Agenten
 
@@ -26,7 +27,8 @@ Dieses Verzeichnis ist die fachliche und technische Quelle fuer den Verlaufs-Pla
 2. [`Roadmap_MVP.md`](Roadmap_MVP.md): Aufgabenreihenfolge
 3. [`Datenmodell.md`](Datenmodell.md): stabile Begriffe und IDs
 4. [`Klassenuebersicht.md`](Klassenuebersicht.md): Anforderungen an Klassenuebersicht und Lehrplanmarkierungen
-5. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Grenzen zwischen Frontend, Backend und Datenbank
+5. [`AnnotationsDatenvertrag.md`](AnnotationsDatenvertrag.md): verbindliche Felder und Statuswerte fuer Annotationen
+6. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Grenzen zwischen Frontend, Backend und Datenbank
 
 ## Projektstruktur
 
@@ -42,10 +44,22 @@ Verlaufs-Planer/
     Klassenuebersicht.md
     MultipleVerlaufsplanModelle.md
     AnnotierteFLP.md
+    AnnotationsDatenvertrag.md
     BenutzerDatenManagement.md
     Justfile.md
     Roadmap_MVP.md
     AgentenBriefing.md
+  src/
+    lib/
+      shared/
+        annotation/
+      server/
+        db/
+    routes/
+  scripts/
+    preprocess/
+  data/
+    preprocessed/
   rawData/
     euDigi/
     flp_bw/
