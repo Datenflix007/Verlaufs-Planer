@@ -46,6 +46,7 @@ Minimal benoetigte Informationen:
 - Inhaltsbezug
 - Originaltext oder Textauszug
 - Fundstelle im Quelldokument
+- Gueltigkeit, Inkraftsetzung oder Auslaufstatus nach Schuljahr und Klassenstufe
 - Importdatum
 - Lizenz- oder Nutzungshinweis, soweit bekannt
 
@@ -57,11 +58,34 @@ Der Befehl `just preprocess` soll diese Schritte ausfuehren:
 2. Dateien erkennen
 3. Text extrahieren
 4. Metadaten erfassen
-5. Inhalte normalisieren
-6. Kompetenzen und Inhaltsfelder segmentieren
-7. Quellenstellen speichern
-8. Validierungsbericht erzeugen
-9. Daten in SQLite schreiben oder als reproduzierbaren Zwischenstand ablegen
+5. Gueltigkeits- und Inkraftsetzungsangaben aus Tabellen oder Begleittext erfassen
+6. Inhalte normalisieren
+7. Kompetenzen und Inhaltsfelder segmentieren
+8. Quellenstellen speichern
+9. Validierungsbericht erzeugen
+10. Daten in SQLite schreiben oder als reproduzierbaren Zwischenstand ablegen
+
+## Gueltigkeit und Inkraftsetzung
+
+Fachlehrplaene koennen parallel gelistet sein, zum Beispiel ein bestehender Lehrplan und eine neue Erprobungsfassung. Die Quellseite kann pro Fach ausweisen, fuer welches Schuljahr und welche Klassenstufen eine Fassung gueltig ist oder neu in Kraft gesetzt wird.
+
+Diese Informationen muessen strukturiert gespeichert werden, damit die Anwendung bei der Planung den passenden Stand vorschlagen kann.
+
+Zu erfassen sind mindestens:
+
+- Art der Angabe: `gueltigkeit`, `inkraftsetzung`, `entwurf`, `erprobung`, `auslaufend`, `unbekannt`
+- Schuljahr, zum Beispiel `2026/27`
+- betroffene Klassenstufen, zum Beispiel `5`, `6`, `11`, `12`
+- Originaltext der Gueltigkeitsangabe
+- Quelle der Angabe, zum Beispiel Tabellenzeile auf der Lehrplanseite
+- Reviewstatus, wenn die Angabe automatisch extrahiert wurde
+
+Planungslogik:
+
+- Bei Auswahl von Bundesland, Schulform, Fach, Schuljahr und Klassenstufe soll die App gueltige Lehrplaene bevorzugt anzeigen.
+- Wenn ein alter und ein neuer Lehrplan parallel relevant sind, zeigt die App beide mit Status und Begruendung.
+- Entwurfs- und Erprobungsfassungen werden sichtbar gekennzeichnet.
+- Wenn keine Gueltigkeitsdaten vorliegen, wird das als Unsicherheit angezeigt und nicht stillschweigend als gueltig behandelt.
 
 ## Annotationsebenen
 
@@ -74,6 +98,7 @@ Der Befehl `just preprocess` soll diese Schritte ausfuehren:
 - Erscheinungsjahr
 - URL oder lokaler Pfad
 - Lizenzstatus
+- Gueltigkeits- und Inkraftsetzungshinweise
 
 ### Abschnittsebene
 
@@ -113,11 +138,13 @@ Nutzende sollen Kompetenzen filtern koennen nach:
 - Fach
 - Schulform
 - Jahrgang
+- Schuljahr
+- Gueltigkeitsstatus
 - Kompetenzbereich
 - Stichwort
 - Quelle
 
-Beim Auswaehlen wird die Kompetenz mit Quelle in den Plan uebernommen.
+Beim Auswaehlen wird die Kompetenz mit Quelle und Gueltigkeitskontext in den Plan uebernommen. Wenn der Plan ein Schuljahr oder eine Klassenstufe besitzt, muss die App anzeigen, ob die Kompetenz aus einem fuer diesen Kontext passenden Lehrplan stammt.
 
 ## LLM-Unterstuetzung
 
@@ -140,3 +167,4 @@ Empfohlen ist eine Preprocessing-Schicht, die getrennt von der UI laeuft. Sie ka
 - Welche Quellen muessen Nutzende selbst lokal importieren?
 - Soll der MVP zuerst nur ein Bundesland und ein Fach sauber abbilden?
 - Welche Felder sind fuer die erste Kompetenzsuche zwingend?
+- Wie werden widerspruechliche oder mehrdeutige Gueltigkeitsangaben aus Quellseiten menschlich geprueft?

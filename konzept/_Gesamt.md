@@ -38,6 +38,7 @@ Wichtige Anforderungen:
 - Reihenplanung ueber ein Schuljahr oder Unterrichtsvorhaben
 - Einzelstunden aus einer Reihe ableiten
 - Kompetenzschwerpunkte aus Fachlehrplaenen zuordnen
+- Gueltigkeit und Inkraftsetzung von Fachlehrplaenen nach Schuljahr und Klassenstufe beruecksichtigen
 - Phasen, Methoden, Lernziele und Materialien strukturiert planen
 - PDF fuer Vorbereitung, Abgabe oder Archiv exportieren
 - Notizen zur Durchfuehrung direkt am Plan erfassen
@@ -84,9 +85,11 @@ Nutzende koennen eigene Modelle anlegen. Ein Modell legt fest, welche Spalten, P
 
 Details: [`MultipleVerlaufsplanModelle.md`](MultipleVerlaufsplanModelle.md)
 
-### 4. Kompetenz- und Lehrplanbezug
+### 4. Kompetenz-, Lehrplan- und Gueltigkeitsbezug
 
 Rohdaten aus `rawData/` werden in eine normalisierte, annotierte Form ueberfuehrt. Dabei entstehen Kompetenzen, Inhaltsfelder, Jahrgangs-/Stufenbezuege, Faecher, Bundeslaender und Quellenverweise.
+
+Wenn Fachlehrplaene auf der Quellseite Angaben zu Gueltigkeit oder Inkraftsetzung enthalten, muss die Anwendung diese Informationen erfassen. Nutzende sollen fuer ein konkretes Schuljahr und eine konkrete Klassenstufe erkennen koennen, welcher Lehrplan gueltig, neu in Kraft, auslaufend oder nur als Entwurfs-/Erprobungsfassung relevant ist.
 
 Details: [`AnnotierteFLP.md`](AnnotierteFLP.md)
 
@@ -155,6 +158,7 @@ Ein erster ernstzunehmender MVP ist erreicht, wenn eine Lehrkraft oder ein Refer
 - Offline-faehiger lokaler Start, spaeter erweiterbar fuer Netzwerk und Web.
 - Jede automatische Empfehlung bleibt nachvollziehbar und bearbeitbar.
 - Lehrplan- und Kompetenzdaten behalten Quellenangaben.
+- Lehrplan-Gueltigkeit wird nicht geraten, sondern aus Quellmetadaten oder menschlich geprueften Angaben abgeleitet.
 - Datenmodelle muessen stabile IDs, Migrationsfaehigkeit und Exportierbarkeit haben.
 - UI muss Arbeitswerkzeug sein, keine Marketingoberflaeche.
 

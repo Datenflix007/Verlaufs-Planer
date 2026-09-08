@@ -54,7 +54,7 @@ Verantwortlich fuer frei definierbare Verlaufsplan-Modelle, Modellversionen, Spa
 
 ### `curriculum`
 
-Verantwortlich fuer Fachlehrplaene, Kompetenzrahmen, Quellen, Annotationen und Suche.
+Verantwortlich fuer Fachlehrplaene, Kompetenzrahmen, Quellen, Annotationen, Gueltigkeitsregeln und Suche.
 
 ### `users`
 
@@ -123,9 +123,10 @@ scripts/
 
 1. Rohdateien liegen in `rawData/`.
 2. `just preprocess` extrahiert Text und Metadaten.
-3. Annotationen werden erzeugt.
-4. Unsichere Stellen erhalten `review_needed`.
-5. Gepruefte Daten stehen im Kompetenzbrowser zur Verfuegung.
+3. Gueltigkeits- und Inkraftsetzungshinweise werden aus Quellseiten, Tabellen oder Begleittexten uebernommen.
+4. Annotationen werden erzeugt.
+5. Unsichere Stellen erhalten `review_needed`.
+6. Gepruefte Daten stehen im Kompetenzbrowser zur Verfuegung.
 
 ## LLM-Architektur
 
@@ -156,6 +157,7 @@ Die Druckansicht ist schneller umzusetzen. Serverseitiges Rendering ist reproduz
 - Zentrale Entitaeten mit stabilen IDs speichern.
 - Service-Logik nicht direkt in UI-Komponenten verstecken.
 - Tests fuer Modellvalidierung, Zeitberechnung, Kompetenzzuordnung und Exportlogik.
+- Tests fuer Lehrplan-Gueltigkeitsfilter nach Schuljahr und Klassenstufe.
 - Keine sensiblen Daten im Log ausgeben.
 - App muss ohne Internet starten koennen, wenn alle lokalen Daten vorhanden sind.
 

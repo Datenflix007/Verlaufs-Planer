@@ -39,6 +39,7 @@ Agenten duerfen diese Grundentscheidung nicht ohne ausdruecklichen Auftrag erset
 - Keine sensiblen Daten in Logs schreiben.
 - LLM-Funktionen muessen optional bleiben.
 - Externe Dienste nicht ungefragt voraussetzen.
+- Gueltigkeit und Inkraftsetzung von Fachlehrplaenen duerfen bei Kompetenzsuche und Planung nicht ignoriert werden.
 
 ## MVP-Fokus
 
@@ -88,6 +89,7 @@ Bei diesen Punkten muessen Agenten Rueckfragen stellen oder eine offene Entschei
 - Speicherung personenbezogener Daten ausserhalb der lokalen Instanz
 - Entfernen der Modellversionierung
 - rechtliche Bewertung von Lehrplandaten
+- Annahmen zur Gueltigkeit eines Fachlehrplans, wenn Quelle oder Reviewstatus unklar sind
 
 ## Erwartete Ergebnisqualitaet
 

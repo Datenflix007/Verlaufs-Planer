@@ -17,6 +17,10 @@ Der aktuelle Projektstand ist eine Konzept- und Planungsbasis. Die fachlichen un
 - spaetere Netzwerk- und Web-Ausrollung
 - optionale lokale LLM-Unterstuetzung fuer Vorschlaege, Reflexion und Materialideen
 
+## Datenquellen
+
+Die Fachlehrplaene fuer Thueringen folgen dem Thueringer Schulportal: <https://schulportal-thueringen.de/lehrplaene>.
+
 ## Empfohlener Einstieg
 
 1. [`konzept/ProjektWiki.md`](konzept/ProjektWiki.md) lesen.

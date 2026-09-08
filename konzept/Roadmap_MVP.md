@@ -77,13 +77,16 @@ Ergebnis:
 
 - einfache Kompetenzdatenstruktur
 - manuell gepflegte oder vorbereitete Beispielkompetenzen
+- Gueltigkeitsdaten fuer Fachlehrplaene nach Schuljahr und Klassenstufe
 - Kompetenzbrowser
 - Zuordnung zur Stunde
 
 Akzeptanzkriterien:
 
 - Kompetenzen koennen gesucht und gefiltert werden
+- Kompetenzen und Lehrplaene koennen nach Schuljahr, Klassenstufe und Gueltigkeitsstatus gefiltert werden
 - Kompetenz wird mit Quelle am Plan gespeichert
+- Plan zeigt Warnung, wenn die gewaehlte Lehrplanfassung fuer Schuljahr oder Klassenstufe nicht eindeutig passt
 - Stunde zeigt zugeordnete Kompetenzen
 
 ## Phase 5: Reihenplanung
@@ -147,6 +150,7 @@ Moegliche Erweiterungen:
 ## Risiken
 
 - Lehrplandaten koennen rechtlich oder strukturell schwierig sein.
+- Gueltigkeitsangaben koennen je Fach, Schuljahr und Klassenstufe unterschiedlich sein und brauchen Reviewstatus.
 - Modellflexibilitaet kann UI und Datenmodell ueberfrachten.
 - PDF-Export ist oft aufwendiger als geplant.
 - Lokale LLMs sind optional und duerfen den MVP nicht blockieren.

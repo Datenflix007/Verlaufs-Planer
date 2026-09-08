@@ -107,11 +107,23 @@ Filter:
 - Fach
 - Schulform
 - Jahrgang
+- Schuljahr
+- Gueltigkeitsstatus
 - Kompetenzbereich
 - Stichwort
 - Quelle
 
 Beim Auswaehlen wird die Kompetenz mit Quelle in den Plan uebernommen.
+
+Gueltigkeitsanzeige:
+
+- gueltig fuer den aktuellen Planungskontext
+- neu in Kraft ab einem bestimmten Schuljahr
+- auslaufend fuer bestimmte Klassenstufen
+- Entwurfs- oder Erprobungsfassung
+- Gueltigkeit unbekannt
+
+Wenn Schuljahr, Klassenstufe und Lehrplanfassung nicht zusammenpassen, muss die UI warnen, aber die Auswahl nicht hart blockieren. Nutzende sollen fachlich begruendet trotzdem mit abweichenden Quellen planen koennen.
 
 ## Durchfuehrungsmodus
 
