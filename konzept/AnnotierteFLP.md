@@ -34,6 +34,8 @@ Die Ordner sind als Quellenbereiche zu verstehen. Die konkrete Dateibefuellung k
 
 Jede importierte Kompetenz soll maschinenlesbar und quellenkritisch gespeichert werden.
 
+Der verbindliche Feld- und Statusrahmen steht in [`AnnotationsDatenvertrag.md`](AnnotationsDatenvertrag.md). Preprocessing, SQLite-Schema, UI und spaetere LLM-Agenten muessen diesen Vertrag verwenden, statt eigene Feldnamen oder Statuswerte einzufuehren.
+
 Minimal benoetigte Informationen:
 
 - Quelle

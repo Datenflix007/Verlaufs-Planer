@@ -2,137 +2,112 @@
 
 ## Zweck
 
-Das Projekt soll fuer Menschen und LLM-Agenten mit wenigen konsistenten Befehlen bedienbar sein. Eine `justfile` dient als dokumentierter Einstieg fuer Installation, Entwicklung, Datenvorbereitung, Tests und Start.
+Das Projekt soll fuer Menschen und LLM-Agenten mit wenigen konsistenten Befehlen bedienbar sein. Die echte `justfile` liegt im Repository-Root und kapselt Installation, Entwicklung, Datenbank, Preprocessing, Tests und Build.
 
-Diese Datei beschreibt die erwarteten Befehle. Die echte `justfile` muss spaeter im Repository-Root angelegt werden.
+## Voraussetzungen
 
-## Erwartete Befehle
+- Node.js und npm
+- optional `just` fuer die Kurzbefehle
+- lokale SQLite-Datei unter `data/verlaufs-planer.sqlite`
+
+Falls `just` nicht installiert ist, koennen die darunterliegenden `npm`-Befehle direkt genutzt werden.
+
+## Aktuelle Befehle
 
 ```bash
 just install
 ```
 
-Installiert Projektabhaengigkeiten. In der geplanten SvelteKit-/TypeScript-Struktur bedeutet das mindestens `npm install`.
+Installiert Abhaengigkeiten mit `npm install --legacy-peer-deps`. Dieser Modus ist aktuell bewusst gesetzt, weil die lokale npm-Version bei der SvelteKit-Addon-Installation einen Peer-Dependency-Arborist-Fehler ausloesen kann.
+
+```bash
+just bootstrap
+```
+
+Fuehrt Installation, Datenbank-Setup, Seed-Daten und Thueringen-Preprocess aus.
 
 ```bash
 just dev
 ```
 
-Startet die Anwendung im Entwicklungsmodus.
+Startet SvelteKit lokal auf `127.0.0.1:5173`.
 
 ```bash
-just build
+just db-push
 ```
 
-Erstellt einen Produktionsbuild.
+Schreibt das Drizzle-Schema direkt in die lokale SQLite-Datenbank. Dieser Befehl kann interaktiv nach Bestaetigung fragen und ist deshalb nicht der Standardweg fuer Agenten oder CI.
 
 ```bash
-just preview
-```
-
-Startet den gebauten Produktionsstand lokal zur Kontrolle.
-
-```bash
-just test
-```
-
-Fuehrt Unit- und Integrationstests aus.
-
-```bash
-just lint
-```
-
-Prueft Formatierung, Typen und statische Regeln.
-
-```bash
-just format
-```
-
-Formatiert den Code automatisch.
-
-```bash
+just db-generate
 just db-migrate
 ```
 
-Fuehrt Datenbankmigrationen fuer SQLite aus.
+Erzeugt und spielt versionierte Drizzle-Migrationen ein. Das ist der bevorzugte Weg fuer reproduzierbare Schemaaenderungen.
 
 ```bash
 just db-seed
 ```
 
-Legt Standarddaten an, zum Beispiel Standardmodelle und Standardphasentypen.
+Legt Standard-Verlaufsplanmodelle und Phasentypen an.
 
 ```bash
-just preprocess
+just preprocess-th
 ```
 
-Liest Rohdaten aus `rawData/`, extrahiert Text und Metadaten und schreibt annotierte Lehrplan- und Kompetenzdaten in die lokale Datenbank oder in einen reproduzierbaren Zwischenstand.
+Liest `rawData/flp_th/download_manifest.json` und erzeugt normalisierte Lehrplan-Quellannotationen unter `data/preprocessed/`.
 
 ```bash
-just setup
+just db-import-th
+just db-import
 ```
 
-Startet die Setup-UI oder einen Setup-Assistenten. Nutzende waehlen dort Bundesland, Fach, Schulform, Kompetenzrahmen und lokale Einstellungen.
+Erzeugt den Thueringen-Zwischenstand und importiert Lehrplanquellen sowie Gueltigkeitsregeln idempotent in SQLite.
 
 ```bash
-just run
+just check
+just test
+just build
+just verify
 ```
 
-Startet die lokale Anwendung fuer normale Nutzung. Wenn Abhaengigkeiten oder Datenbank fehlen, soll der Befehl mit einer klaren Fehlermeldung abbrechen und den passenden naechsten Befehl nennen.
+Prueft Typen, Unit-Tests und Produktionsbuild. `just verify` kombiniert `check`, `test` und `build`.
 
-## Plattformen
+```bash
+just studio
+```
 
-Die Projektbefehle sollen unter Windows, macOS und Linux funktionieren. Da der aktuelle Nutzerkontext Windows/PowerShell ist, muessen Setup-Anweisungen PowerShell-kompatibel sein.
+Startet Drizzle Studio fuer die lokale Datenbank.
 
-## Installationshinweise fuer just
+```bash
+just format
+```
 
-Die konkrete Installationsanleitung wird spaeter im README ergaenzt. Ziel ist eine Copy-Paste-freundliche Sequenz fuer:
+Formatiert den Code.
 
-- Windows mit PowerShell
-- macOS mit Homebrew
-- Linux mit Paketmanager oder Cargo
+## Entsprechende npm-Befehle
 
-## Anforderungen an Befehle
+```bash
+npm install --legacy-peer-deps
+npm run db:seed
+npm run db:import:th
+npm run dev
+npm run check
+npm test
+npm run build
+```
+
+Bei Schemaaenderungen:
+
+```bash
+npm run db:generate
+npm run db:migrate
+```
+
+## Anforderungen an neue Befehle
 
 - Jeder Befehl muss idempotent sein, soweit sinnvoll.
 - Fehlermeldungen muessen naechste Schritte nennen.
 - Befehle duerfen keine Nutzerdaten loeschen.
 - Befehle fuer Datenmigration und Preprocessing muessen Backups respektieren.
 - LLM-Agenten sollen neue Automatisierungen zuerst hier dokumentieren und dann in der echten `justfile` umsetzen.
-
-## Beispiel fuer spaetere justfile
-
-```make
-install:
-    npm install
-
-dev:
-    npm run dev
-
-build:
-    npm run build
-
-test:
-    npm test
-
-lint:
-    npm run lint
-
-format:
-    npm run format
-
-db-migrate:
-    npm run db:migrate
-
-db-seed:
-    npm run db:seed
-
-preprocess:
-    npm run preprocess
-
-setup:
-    npm run setup
-
-run:
-    npm run start
-```
