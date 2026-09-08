@@ -42,6 +42,9 @@ Agenten duerfen diese Grundentscheidung nicht ohne ausdruecklichen Auftrag erset
 - Externe Dienste nicht ungefragt voraussetzen.
 - Gueltigkeit und Inkraftsetzung von Fachlehrplaenen duerfen bei Kompetenzsuche und Planung nicht ignoriert werden.
 - Klassenuebersichten muessen Wochenstunden, Fachlehrplanfassung, Kompetenzschwerpunkte, Lernziele und Planungsbelege nachvollziehbar verbinden.
+- Kompetenz- und Lernzielannotation aus `competencies` darf nur als geprueft behandelt werden, wenn `annotationStatus=human_reviewed` gesetzt ist.
+- Wenn eine Quelle keine Kompetenzannotation besitzt, muss das als offene Aufgabe sichtbar bleiben und darf nicht durch frei erfundene Kompetenzlisten ersetzt werden.
+- Der maschinenlesbare Review-Export enthaelt `workflow.complete` und `workflow.issues`. Agenten muessen diese Felder respektieren und duerfen eine Quelle nur dann als planungsbereit behandeln, wenn keine Workflow-Issues vorliegen.
 
 ## MVP-Fokus
 

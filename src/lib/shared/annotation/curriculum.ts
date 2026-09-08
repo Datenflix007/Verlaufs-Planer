@@ -6,14 +6,27 @@ export type CurriculumReviewStatus = 'unreviewed' | 'review_needed' | 'reviewed'
 
 export type ValidityRuleType = 'valid' | 'effective' | 'expired';
 
+export type ValidityConfidence = 'low' | 'medium' | 'high';
+
+export type ValidityRuleOrigin = 'imported' | 'manual';
+
+export type CompetencyAnnotationStatus = 'draft' | 'machine_prepared' | 'human_reviewed';
+
 export type CoverageLevel = 'introduced' | 'practiced' | 'secured' | 'assessed';
+
+export type CurriculumWorkflowIssueType =
+	| 'review_needed'
+	| 'missing_validity_rules'
+	| 'missing_context_validity'
+	| 'missing_competencies'
+	| 'competency_review_needed';
 
 export interface CurriculumValidityRuleDraft {
 	ruleType: ValidityRuleType;
 	schoolYear: string;
 	gradeLevels: number[];
 	sourceText: string;
-	confidence: 'low' | 'medium' | 'high';
+	confidence: ValidityConfidence;
 }
 
 export interface CurriculumSourceAnnotationDraft {
@@ -42,7 +55,7 @@ export interface CompetencyAnnotationDraft {
 	pageFrom: number | null;
 	pageTo: number | null;
 	sourceQuote: string | null;
-	annotationStatus: 'draft' | 'machine_prepared' | 'human_reviewed';
+	annotationStatus: CompetencyAnnotationStatus;
 	metadata: Record<string, unknown>;
 }
 
@@ -109,6 +122,68 @@ export function parseGradeLevels(value: string): number[] {
 	}
 
 	return [...grades].sort((a, b) => a - b);
+}
+
+export function parseSchoolYearStart(value: string | null | undefined): number | null {
+	const match = value?.trim().match(/^(20\d{2})\/\d{2}$/);
+
+	return match ? Number(match[1]) : null;
+}
+
+export function schoolYearIsWithinRange(
+	schoolYear: string,
+	validFromSchoolYear: string | null,
+	validToSchoolYear: string | null
+) {
+	const targetYear = parseSchoolYearStart(schoolYear);
+	const fromYear = parseSchoolYearStart(validFromSchoolYear);
+
+	if (targetYear === null || fromYear === null) {
+		return false;
+	}
+
+	if (!validToSchoolYear) {
+		return targetYear === fromYear;
+	}
+
+	const toYear = parseSchoolYearStart(validToSchoolYear);
+
+	return toYear !== null && targetYear >= fromYear && targetYear <= toYear;
+}
+
+export function summarizeCurriculumWorkflow(input: {
+	reviewStatus: CurriculumReviewStatus;
+	validityRuleCount: number;
+	matchingValidityRuleCount: number;
+	contextRequested: boolean;
+	competencyCount: number;
+	humanReviewedCompetencyCount: number;
+}) {
+	const issues: CurriculumWorkflowIssueType[] = [];
+	const hasMatchingValidity = input.contextRequested
+		? input.matchingValidityRuleCount > 0
+		: input.validityRuleCount > 0;
+
+	if (input.reviewStatus !== 'reviewed') {
+		issues.push('review_needed');
+	}
+
+	if (input.validityRuleCount === 0) {
+		issues.push('missing_validity_rules');
+	} else if (!hasMatchingValidity) {
+		issues.push('missing_context_validity');
+	}
+
+	if (input.competencyCount === 0) {
+		issues.push('missing_competencies');
+	} else if (input.humanReviewedCompetencyCount === 0) {
+		issues.push('competency_review_needed');
+	}
+
+	return {
+		complete: issues.length === 0,
+		issues
+	};
 }
 
 export function extractValidityRulesFromText(sourceText: string): CurriculumValidityRuleDraft[] {

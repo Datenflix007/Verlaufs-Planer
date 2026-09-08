@@ -5,7 +5,10 @@ import {
 	detectVersionStatus,
 	extractValidityRulesFromText,
 	parseGradeLevels,
-	parseYearFromLabel
+	parseSchoolYearStart,
+	parseYearFromLabel,
+	schoolYearIsWithinRange,
+	summarizeCurriculumWorkflow
 } from './curriculum';
 
 describe('curriculum annotation helpers', () => {
@@ -25,6 +28,15 @@ describe('curriculum annotation helpers', () => {
 		expect(parseGradeLevels('fuer die Klassenstufen 5, 7, 11 und 12')).toEqual([5, 7, 11, 12]);
 		expect(parseGradeLevels('fuer die Klassenstufe 10')).toEqual([10]);
 		expect(parseGradeLevels('fuer die Klassenstufen 12/13')).toEqual([12, 13]);
+	});
+
+	it('matches school years conservatively against validity ranges', () => {
+		expect(parseSchoolYearStart('2026/27')).toBe(2026);
+		expect(parseSchoolYearStart('Schuljahr 2026/27')).toBeNull();
+		expect(schoolYearIsWithinRange('2027/28', '2026/27', '2028/29')).toBe(true);
+		expect(schoolYearIsWithinRange('2029/30', '2026/27', '2028/29')).toBe(false);
+		expect(schoolYearIsWithinRange('2026/27', '2026/27', null)).toBe(true);
+		expect(schoolYearIsWithinRange('2027/28', '2026/27', null)).toBe(false);
 	});
 
 	it('turns Schulportal validity notes into reusable rule drafts', () => {
@@ -53,5 +65,29 @@ describe('curriculum annotation helpers', () => {
 			reviewStatus: 'review_needed',
 			validityRules: []
 		});
+	});
+
+	it('summarizes curriculum review completeness conservatively', () => {
+		expect(
+			summarizeCurriculumWorkflow({
+				reviewStatus: 'reviewed',
+				validityRuleCount: 1,
+				matchingValidityRuleCount: 1,
+				contextRequested: true,
+				competencyCount: 2,
+				humanReviewedCompetencyCount: 1
+			})
+		).toEqual({ complete: true, issues: [] });
+
+		expect(
+			summarizeCurriculumWorkflow({
+				reviewStatus: 'unreviewed',
+				validityRuleCount: 1,
+				matchingValidityRuleCount: 0,
+				contextRequested: true,
+				competencyCount: 1,
+				humanReviewedCompetencyCount: 0
+			}).issues
+		).toEqual(['review_needed', 'missing_context_validity', 'competency_review_needed']);
 	});
 });

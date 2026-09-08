@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+
 	const coverageRows = [
 		{
 			competency: 'Sachtexte erschliessen',
@@ -46,7 +48,7 @@
 			<h1>Planung, Lehrplanbezug und Klassenabdeckung</h1>
 		</div>
 		<nav class="top-actions" aria-label="Hauptbereiche">
-			<a class="nav-link" href="/curriculum">Lehrplan-Review</a>
+			<a class="nav-link" href={resolve('/curriculum')}>Lehrplan-Review</a>
 			<div class="status-pill">Lokaler MVP</div>
 		</nav>
 	</header>
@@ -55,7 +57,7 @@
 		<div class="work-panel primary-panel">
 			<div class="panel-header">
 				<div>
-					<p class="eyebrow">Klasse 8a · Deutsch · Schuljahr 2026/27</p>
+					<p class="eyebrow">Klasse 8a - Deutsch - Schuljahr 2026/27</p>
 					<h2>Lehrplanabdeckung</h2>
 				</div>
 				<div class="metric">

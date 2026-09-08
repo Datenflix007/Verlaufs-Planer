@@ -35,6 +35,8 @@ Pflichtfelder:
 - `sourceUrl`: Original-URL
 - `localPath`: lokaler Pfad, falls heruntergeladen
 - `reviewStatus`: `unreviewed`, `review_needed` oder `reviewed`
+- `reviewNote`: menschliche Notiz zur Pruefung, Gueltigkeit oder offenen Frage
+- `reviewedAt`: Zeitstempel der letzten positiven Pruefung
 - `sourceMetadata`: technische Zusatzdaten aus Manifest oder Import
 
 ### Gueltigkeitsregel
@@ -47,7 +49,14 @@ Pflichtfelder:
 - `schoolYear`: Schuljahr wie `2026/27`
 - `gradeLevels`: Liste betroffener Klassenstufen
 - `sourceText`: Originalausschnitt der Regel
+- `origin`: `imported` fuer maschinell vorbereitete Regeln oder `manual` fuer menschlich erfasste Regeln
 - `confidence`: `low`, `medium` oder `high`
+
+Manuelle Regeln muessen beim erneuten Import erhalten bleiben. Der Import darf nur Regeln mit `origin=imported` ersetzen.
+
+Fuer den Review-Workflow muss eine Quelle nach Klassenstufe und Schuljahr filterbar sein. Eine Quelle gilt fuer einen konkreten Kontext als passend, wenn mindestens eine Gueltigkeitsregel die gewuenschte Klassenstufe trifft und das Schuljahr im Regelbereich liegt. Ohne `validToSchoolYear` wird konservativ nur das angegebene `schoolYear` als Treffer gewertet.
+
+Die Detailansicht muss die aktiven Filter aus der Review-Liste beibehalten. Dadurch entsteht eine stabile Review-Queue: vorherige Quelle, naechste Quelle und naechste offene Quelle beziehen sich immer auf dieselben Filterbedingungen.
 
 ### Kompetenz
 
@@ -65,6 +74,36 @@ Pflichtfelder:
 - `sourceQuote`
 - `annotationStatus`: `draft`, `machine_prepared` oder `human_reviewed`
 - `metadata`
+
+Der erste Review-Workflow speichert Kompetenz- und Lernzielannotation direkt an der Lehrplanquelle in `competencies`. Manuell erfasste Eintraege nutzen `metadata.origin=manual_review_form`. Ein Eintrag kann ein Kompetenzschwerpunkt, ein konkretes Lernziel oder ein strukturierter Inhaltsbezug sein, solange Titel, Fundstelle und Kontext nachvollziehbar bleiben.
+
+Statuslogik:
+
+- `draft`: menschlich oder technisch notiert, aber noch nicht belastbar
+- `machine_prepared`: automatisch vorbereitet und offen fuer Review
+- `human_reviewed`: von einem Menschen gegen Quelle und Fundstelle geprueft
+
+Eine Lehrplanquelle ohne Kompetenzannotation darf im Kompetenzbrowser spaeter nicht als voll verwendbar erscheinen. UI und Export muessen diesen Zustand als offene Annotation anzeigen.
+
+### Workflow-Vollstaendigkeit
+
+Der Review-Workflow berechnet pro Lehrplanquelle einen Arbeitsstatus. Eine Quelle ist erst vollstaendig, wenn:
+
+- `reviewStatus=reviewed` gesetzt ist
+- mindestens eine Gueltigkeitsregel vorhanden ist
+- bei gesetztem Schuljahr-/Klassenstufen-Kontext mindestens eine Gueltigkeitsregel diesen Kontext trifft
+- mindestens eine Kompetenz- oder Lernzielannotation vorhanden ist
+- mindestens eine Kompetenzannotation `annotationStatus=human_reviewed` besitzt
+
+Offene Punkte werden maschinenlesbar als `workflow.issues` gefuehrt:
+
+- `review_needed`
+- `missing_validity_rules`
+- `missing_context_validity`
+- `missing_competencies`
+- `competency_review_needed`
+
+Die Review-Liste darf nach diesen Zustaenden filtern. `nextOpen` in der Review-Queue meint nicht nur "Quelle nicht geprueft", sondern jede Quelle, deren Workflow noch nicht vollstaendig ist.
 
 ### Klassenabdeckung
 
@@ -116,6 +155,14 @@ Der Vertrag muss stabil genug sein fuer:
 - Klassenuebersicht mit Abdeckungsmarkierungen
 - LLM-Agenten, die keine eigene Feldlogik erfinden sollen
 - Export und Nachvollziehbarkeit gegenueber Stakeholdern
+
+Der maschinenlesbare Review-Export liegt standardmaessig unter:
+
+```text
+data/exports/curriculum-review.json
+```
+
+Der Export nutzt `schemaVersion=curriculum-review-export/v1` und enthaelt mindestens `stats`, `openIssues` und `sources`. Jede Quelle enthaelt ihre `validity.rules`, `competencySummary`, `competencies` und `workflow`. Agenten duerfen daraus Review-Luecken, Gueltigkeitsregeln und Kompetenzannotation ableiten, muessen aber `openIssues`, `workflow.issues`, `review.status` und `competencies[].annotationStatus` sichtbar lassen. Fehlende Gueltigkeit oder fehlende Kompetenzannotation darf nicht als bestaetigt behandelt werden.
 
 ## Offene Entscheidungen
 

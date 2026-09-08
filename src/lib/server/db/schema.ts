@@ -59,6 +59,8 @@ export const curriculumSources = sqliteTable(
 		})
 			.notNull()
 			.default('unreviewed'),
+		reviewNote: text('review_note'),
+		reviewedAt: text('reviewed_at'),
 		sourceMetadataJson: text('source_metadata_json', { mode: 'json' })
 			.notNull()
 			.$type<Record<string, unknown>>(),
@@ -86,6 +88,9 @@ export const curriculumValidityRules = sqliteTable('curriculum_validity_rules', 
 	ruleType: text('rule_type', { enum: ['valid', 'effective', 'expired'] }).notNull(),
 	note: text('note'),
 	sourceText: text('source_text').notNull(),
+	origin: text('origin', { enum: ['imported', 'manual'] })
+		.notNull()
+		.default('imported'),
 	confidence: text('confidence', { enum: ['low', 'medium', 'high'] })
 		.notNull()
 		.default('medium'),

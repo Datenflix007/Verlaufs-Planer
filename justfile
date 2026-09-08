@@ -29,6 +29,9 @@ db-import-th:
 
 db-import: db-import-th
 
+db-export-curriculum-review:
+    npm run db:export:curriculum-review
+
 bootstrap: install db-seed db-import-th
     Write-Host "Bootstrap abgeschlossen."
 

@@ -218,22 +218,25 @@ Wichtige Felder:
 
 ### `competencies`
 
-Speichert einzelne Kompetenzen.
+Speichert einzelne Kompetenzen, Kompetenzschwerpunkte, Lernzielbezuege oder Inhaltsfelder aus einer konkreten Lehrplanquelle. Im Review-MVP werden diese Eintraege manuell ueber `/curriculum/[id]` angelegt; spaetere Import- oder LLM-Pipelines duerfen dieselbe Tabelle nutzen, muessen aber den Annotationsstatus korrekt setzen.
 
 Wichtige Felder:
 
 - `id`
-- `source_id`
-- `framework`
-- `state`
-- `subject`
-- `school_type`
-- `grade_level`
-- `competency_area`
-- `content_area`
-- `text`
-- `source_reference`
-- `review_status`
+- `curriculum_source_id`
+- `parent_competency_id`
+- `code`
+- `title`
+- `description`
+- `grade_from`
+- `grade_to`
+- `page_from`
+- `page_to`
+- `source_quote`
+- `annotation_status`
+- `metadata_json`
+
+`annotation_status` unterscheidet `draft`, `machine_prepared` und `human_reviewed`. Nur `human_reviewed` bedeutet, dass ein Mensch die Aussage gegen Lehrplanquelle und Fundstelle geprueft hat.
 
 ### `lesson_competencies`
 

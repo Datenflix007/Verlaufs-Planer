@@ -134,6 +134,8 @@ scripts/
 5. Unsichere Stellen erhalten `review_needed`.
 6. Gepruefte Daten stehen im Kompetenzbrowser zur Verfuegung.
 
+Der aktuelle technische MVP startet konservativ: Lehrplanquellen und Gueltigkeitsregeln werden importiert, Kompetenz- und Lernzielannotation werden zunaechst manuell in der Review-Detailansicht erfasst. Dadurch entsteht ein belastbarer Datenpfad fuer `competencies`, bevor automatische PDF-Segmentierung oder LLM-Vorschlaege eingefuehrt werden.
+
 ## LLM-Architektur
 
 LLM-Funktionen laufen ueber eine Backend-Schicht. Der Browser soll nicht direkt mit einem lokalen Modellserver sprechen.

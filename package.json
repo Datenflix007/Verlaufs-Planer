@@ -23,7 +23,8 @@
 		"preprocess:th": "tsx scripts/preprocess/thuringia.ts",
 		"preprocess": "npm run preprocess:th",
 		"db:import:th": "npm run db:migrate && npm run preprocess:th && tsx scripts/import/thuringia-curriculum.ts",
-		"db:import": "npm run db:import:th"
+		"db:import": "npm run db:import:th",
+		"db:export:curriculum-review": "npm run db:migrate && tsx scripts/export/curriculum-review.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

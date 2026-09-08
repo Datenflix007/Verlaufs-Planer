@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { db } from '../../src/lib/server/db';
 import { curriculumSources, curriculumValidityRules } from '../../src/lib/server/db/schema';
@@ -10,7 +10,13 @@ import type { CurriculumSourceAnnotationDraft } from '../../src/lib/shared/annot
 const inputPath = 'data/preprocessed/thuringia-curriculum-sources.json';
 
 function stableId(prefix: string, parts: Array<string | number | null | undefined>) {
-	const value = parts.map((part) => String(part ?? '').trim().toLowerCase()).join('|');
+	const value = parts
+		.map((part) =>
+			String(part ?? '')
+				.trim()
+				.toLowerCase()
+		)
+		.join('|');
 	const digest = createHash('sha256').update(value).digest('hex').slice(0, 20);
 
 	return `${prefix}-${digest}`;
@@ -23,12 +29,12 @@ function readDrafts() {
 const drafts = readDrafts();
 const now = new Date().toISOString();
 
-const counters = db.transaction((sourceDrafts: CurriculumSourceAnnotationDraft[]) => {
+const counters = db.transaction((tx) => {
 	let sourceCount = 0;
 	let validityRuleCount = 0;
 	let reviewNeededCount = 0;
 
-	for (const draft of sourceDrafts) {
+	for (const draft of drafts) {
 		const sourceId = stableId('th-src', [
 			draft.jurisdiction,
 			draft.schoolType,
@@ -36,8 +42,13 @@ const counters = db.transaction((sourceDrafts: CurriculumSourceAnnotationDraft[]
 			draft.title,
 			draft.sourceUrl
 		]);
-		const existing = db
-			.select({ reviewStatus: curriculumSources.reviewStatus, createdAt: curriculumSources.createdAt })
+		const existing = tx
+			.select({
+				reviewStatus: curriculumSources.reviewStatus,
+				reviewNote: curriculumSources.reviewNote,
+				reviewedAt: curriculumSources.reviewedAt,
+				createdAt: curriculumSources.createdAt
+			})
 			.from(curriculumSources)
 			.where(eq(curriculumSources.id, sourceId))
 			.get();
@@ -45,7 +56,7 @@ const counters = db.transaction((sourceDrafts: CurriculumSourceAnnotationDraft[]
 		const contentHash =
 			typeof draft.sourceMetadata.sha256 === 'string' ? draft.sourceMetadata.sha256 : null;
 
-		db.insert(curriculumSources)
+		tx.insert(curriculumSources)
 			.values({
 				id: sourceId,
 				jurisdiction: draft.jurisdiction,
@@ -59,6 +70,8 @@ const counters = db.transaction((sourceDrafts: CurriculumSourceAnnotationDraft[]
 				localPath: draft.localPath,
 				contentHash,
 				reviewStatus,
+				reviewNote: existing?.reviewNote ?? null,
+				reviewedAt: existing?.reviewedAt ?? null,
 				sourceMetadataJson: draft.sourceMetadata,
 				createdAt: existing?.createdAt ?? now,
 				updatedAt: now
@@ -73,14 +86,21 @@ const counters = db.transaction((sourceDrafts: CurriculumSourceAnnotationDraft[]
 					localPath: draft.localPath,
 					contentHash,
 					reviewStatus,
+					reviewNote: existing?.reviewNote ?? null,
+					reviewedAt: existing?.reviewedAt ?? null,
 					sourceMetadataJson: draft.sourceMetadata,
 					updatedAt: now
 				}
 			})
 			.run();
 
-		db.delete(curriculumValidityRules)
-			.where(eq(curriculumValidityRules.curriculumSourceId, sourceId))
+		tx.delete(curriculumValidityRules)
+			.where(
+				and(
+					eq(curriculumValidityRules.curriculumSourceId, sourceId),
+					eq(curriculumValidityRules.origin, 'imported')
+				)
+			)
 			.run();
 
 		const validityRows = draft.validityRules.flatMap((rule) =>
@@ -99,6 +119,7 @@ const counters = db.transaction((sourceDrafts: CurriculumSourceAnnotationDraft[]
 				ruleType: rule.ruleType,
 				note: null,
 				sourceText: rule.sourceText,
+				origin: 'imported' as const,
 				confidence: rule.confidence,
 				createdAt: now,
 				updatedAt: now
@@ -106,7 +127,7 @@ const counters = db.transaction((sourceDrafts: CurriculumSourceAnnotationDraft[]
 		);
 
 		if (validityRows.length > 0) {
-			db.insert(curriculumValidityRules).values(validityRows).run();
+			tx.insert(curriculumValidityRules).values(validityRows).run();
 			validityRuleCount += validityRows.length;
 		}
 
@@ -118,7 +139,7 @@ const counters = db.transaction((sourceDrafts: CurriculumSourceAnnotationDraft[]
 	}
 
 	return { sourceCount, validityRuleCount, reviewNeededCount };
-})(drafts);
+});
 
 console.log(
 	`Imported ${counters.sourceCount} Thuringia curriculum sources and ${counters.validityRuleCount} validity rules (${counters.reviewNeededCount} sources need review).`
