@@ -1,1 +1,0 @@
-ALTER TABLE `curriculum_validity_rules` ADD `origin` text DEFAULT 'imported' NOT NULL;
