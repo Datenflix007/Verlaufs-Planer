@@ -37,6 +37,7 @@ Falls `just` nicht installiert ist, funktionieren die entsprechenden npm-Befehle
 npm install --legacy-peer-deps
 npm run db:seed
 npm run db:import:th
+npm run db:export:curriculum-review
 npm run dev
 npm run check
 npm test
@@ -51,7 +52,9 @@ npm run db:generate
 
 Die lokale Datenbank liegt standardmaessig unter `data/verlaufs-planer.sqlite`. `npm run db:import:th` erzeugt den Thueringen-Zwischenstand unter `data/preprocessed/` und importiert die Lehrplanquellen in SQLite.
 
-Die erste Review-Ansicht ist unter `/curriculum` erreichbar, sobald die App lokal laeuft.
+Die erste Review-Ansicht ist unter `/curriculum` erreichbar, sobald die App lokal laeuft. Dort koennen Lehrplanquellen nach Schulform, Fach, Fassung, Reviewstatus, Klassenstufe, Schuljahr, Gueltigkeitszustand, Kompetenzannotation und Arbeitsstatus gefiltert werden. Quellen koennen geoeffnet, mit Reviewstatus sowie Reviewnotiz gespeichert und mit manuellen Gueltigkeitsregeln fuer Schuljahr und Klassenstufe ergaenzt werden. Auf der Detailseite koennen ausserdem erste Kompetenz- und Lernzielannotationen mit Code, Klassenstufen, Fundseiten, Fundtext und Annotationsstatus erfasst werden. Detailseiten behalten die aktiven Filter als Review-Queue und koennen nach dem Speichern direkt zur naechsten offenen Quelle springen.
+
+Der maschinenlesbare Review-Export wird mit `just db-export-curriculum-review` oder `npm run db:export:curriculum-review` erzeugt und standardmaessig nach `data/exports/curriculum-review.json` geschrieben. Er enthaelt Quellen, Gueltigkeitsregeln, Kompetenzannotation, Reviewstatus, Workflow-Vollstaendigkeit, Statistiken und offene Issues wie fehlende Gueltigkeitsregeln oder fehlende Kompetenzannotation.
 
 ## Empfohlener Einstieg
 

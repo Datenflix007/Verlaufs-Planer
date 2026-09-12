@@ -65,6 +65,12 @@ just db-import
 Erzeugt den Thueringen-Zwischenstand und importiert Lehrplanquellen sowie Gueltigkeitsregeln idempotent in SQLite.
 
 ```bash
+just db-export-curriculum-review
+```
+
+Erzeugt einen maschinenlesbaren Review-Export unter `data/exports/curriculum-review.json`. Der Export enthaelt Quellen, Gueltigkeitsregeln, Kompetenzannotation, Workflow-Vollstaendigkeit, Reviewstatus, offene Issues und Statistiken fuer UI, Stakeholderpruefung und LLM-Agenten.
+
+```bash
 just check
 just test
 just build
@@ -91,6 +97,7 @@ Formatiert den Code.
 npm install --legacy-peer-deps
 npm run db:seed
 npm run db:import:th
+npm run db:export:curriculum-review
 npm run dev
 npm run check
 npm test

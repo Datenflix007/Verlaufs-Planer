@@ -119,6 +119,21 @@ Planungslogik:
 - digitale Bezuege
 - moegliche Lernprodukte
 
+### Manueller Review-MVP
+
+Der aktuelle MVP beginnt mit manueller Kompetenzannotation direkt in der Lehrplan-Detailansicht unter `/curriculum/[id]`. Reviewer koennen fuer eine Quelle Kompetenzschwerpunkte, Lernzielbezuege oder Inhaltsfelder erfassen und dabei Code, Klassenstufenbereich, Seitenbereich, Fundtext und Annotationsstatus speichern.
+
+Diese Eintraege sind keine Ersatzquelle. Sie sind strukturierte Arbeitsdaten, die immer auf die Lehrplanquelle und moeglichst auf eine konkrete Seite oder einen Originalausschnitt verweisen. Ohne `human_reviewed` duerfen sie spaeter im Kompetenzbrowser nur als Entwurf oder Reviewbedarf erscheinen.
+
+Die Review-Liste zeigt dafuer einen Arbeitsstatus. Eine Quelle bleibt offen, solange Quellenreview, Gueltigkeitsregeln, Kontextgueltigkeit oder menschlich gepruefte Kompetenzannotation fehlen. Dadurch kann die fachliche Pruefung als Queue abgearbeitet werden, ohne dass Luecken im Datenbestand unsichtbar werden.
+
+Fuer LLM-Agenten gilt:
+
+- keine Kompetenzen erfinden, wenn in `competencies` kein Eintrag vorliegt
+- maschinell vorbereitete Vorschlaege nur mit `annotationStatus=machine_prepared` schreiben
+- menschlich gepruefte Eintraege nicht ueberschreiben, sondern neue Vorschlaege als Entwurf danebenlegen
+- fehlende Kompetenzannotation als offene Aufgabe melden
+
 ## Quellenkritik
 
 Die Anwendung darf Lehrplandaten nicht so behandeln, als waeren sie automatisch korrekt. Importierte Daten brauchen Validierungsstatus.
