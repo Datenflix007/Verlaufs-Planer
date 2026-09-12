@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Seite-1" id="DNrHAJPIIFxzZAEYKtqZ">
+    <mxGraphModel dx="1853" dy="1153" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="VP-Editor einer Einzelstunde" vertex="1">
+          <mxGeometry height="80" width="200" x="320" y="880" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="VP-Editor einer Reihenplanung" vertex="1">
+          <mxGeometry height="80" width="200" x="320" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;b&gt;Dashboard&amp;nbsp;&lt;/b&gt;&lt;div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="240" width="200" x="320" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Kalender" vertex="1">
+          <mxGeometry height="80" width="200" x="40" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Materialdatenbank" vertex="1">
+          <mxGeometry height="80" width="200" x="600" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;b&gt;Login&lt;/b&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="200" x="320" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;" value="Formular:&lt;div&gt;- Benutzername: String&lt;/div&gt;&lt;div&gt;- Passwort: String&lt;/div&gt;&lt;div&gt;- Bestätigen: Submit&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="176" x="334" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-9" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;Verlaufs-Planer: Programmablaufsplan&lt;span style=&quot;font-weight: normal;&quot;&gt; (Stand 12.09.2026)&lt;/span&gt;&lt;/h1&gt;&lt;p&gt;Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.&lt;/p&gt;" vertex="1">
+          <mxGeometry height="120" width="760" x="40" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-11" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;exitX=0.25;exitY=0;exitDx=0;exitDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="360" as="sourcePoint" />
+            <mxPoint x="400" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-12" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="anmelden&lt;div&gt;Session-Aufbau&amp;nbsp;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="100" x="450" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-13" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;rounded=0;" value="abmelden&lt;div&gt;Session-Ende&amp;nbsp;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="100" x="290" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-14" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="440" y="680" as="sourcePoint" />
+            <mxPoint x="440" y="760" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-15" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="Entwicklungsabschnitte&lt;div&gt;- Core&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="160" x="40" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-16" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;exitX=0.25;exitY=0;exitDx=0;exitDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="760" as="sourcePoint" />
+            <mxPoint x="400" y="680" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-17" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="440" y="280" as="sourcePoint" />
+            <mxPoint x="440" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-21" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Benutzericon-Menü" vertex="1">
+          <mxGeometry height="80" width="200" x="880" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;" value="Header:&lt;div&gt;- Projektname&lt;/div&gt;&lt;div&gt;- Benutzericon&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="176" x="330" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;" value="Dashboard-Panel:&lt;div&gt;- bevorstehende Aufgaben (den&amp;nbsp;&lt;/div&gt;&lt;div&gt;&amp;nbsp; Zeitfilter (bis zum nächsten&amp;nbsp;&lt;/div&gt;&lt;div&gt;&amp;nbsp; Tag,&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;bis Ende der Woche,&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; oder&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;in den nächsten X&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; Tagen)&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="176" x="330" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-25" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="gemäß dem Kalender sollen für Lehrkräfte die nächsten anstehenden Stunden hier angezeigt werden, die in den Zeitraum fallen (unterrichtsstunden nach&amp;nbsp;" vertex="1">
+          <mxGeometry height="60" width="370" x="590" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="- Einstellungen&lt;div&gt;- Stundenplan&amp;nbsp;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="900" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="q5xM9qCrNPrnt6tcl15U-27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="80" width="160" x="60" y="840" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
