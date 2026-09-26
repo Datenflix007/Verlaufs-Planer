@@ -5,10 +5,10 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 ## Letzter verifizierter Stand
 
 - Branch: `implementationOFWorkshopMode`.
-- Letzter Feature-Commit: `a04e803 feat(patterns): persist markdown schedule layouts`.
-- Prüfungen nach dem Muster-Feature: `npm run check`, `npm test -- --run` (20 Tests) und `npm run build` erfolgreich.
-- SQLite-API-Smoke-Test: beide Standardmuster gelesen; ein zusätzliches Muster per `PUT` gespeichert, per `GET` gelesen und per `DELETE` entfernt.
-- Offene manuelle Prüfung: Kein Browser war in der Automationsumgebung verfügbar; Einstellungen, Tabellenansicht und Drucklayout wurden nicht visuell im Browser geprüft.
+- Letzter Feature-Commit vor diesem Ausbau: `a04e803 feat(patterns): persist markdown schedule layouts`; Dashboard-/Arbeitsbereichserweiterung wurde anschließend implementiert und verifiziert.
+- Prüfungen nach dem Dashboard-Feature: `npm run check`, `npm test -- --run` (21 Tests) und `npm run build` erfolgreich.
+- SQLite-API-Smoke-Tests: Standardmuster sowie Arbeitsbereich mit Gebäude, Raum, Raumbestand und Aufgabe gespeichert/gelesen; Testdaten anschließend wiederhergestellt.
+- Offene manuelle Prüfung: Kein Browser war in der Automationsumgebung verfügbar; Einstellungen, Dashboard, Tabellenansicht und Drucklayout wurden nicht visuell im Browser geprüft.
 
 ## Erledigt: Anwendung und Persistenz
 
@@ -20,6 +20,11 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 - [x] Verlaufsplantabelle mit mehreren Tagen, Pausen, Zeitlogik, Startzeit-/Daueransicht, Drag-and-drop von Zeilen und Materialzuordnung.
 - [x] JSON-, HTML- und LaTeX-Export sowie Browserdruck/PDF aus strukturierten Planungsdaten.
 - [x] Lokales JenaChat-Sample (git-ignoriert) mit Import über die Anwendung.
+- [x] Lokaler Arbeitsbereich in SQLite für Dashboard-Konfiguration, Gebäude, Räume, Materialbestand und Aufgaben.
+- [x] Gebäude- und Raumauswahl beim Anlegen einer Planung sowie in den allgemeinen Planungsangaben.
+- [x] Gebäude-, Raum- und Referenten-/Lehrerprivatbestand; Bestandsmaterial kann in eine Planung übernommen und dort Phasen zugeordnet werden.
+- [x] Dashboard-Widgets für Kalender (Tag/Woche/Monat), X nächste Verlaufspläne, X nächste Aufgaben und Gesamtmaterialliste für morgen.
+- [x] Dashboard-Widgets lassen sich unter Einstellungen → Arbeitsbereich ein-/ausblenden sowie per Drag-and-drop anordnen.
 
 ## Erledigt: Verlaufsplan-Muster in SQLite
 
@@ -44,6 +49,8 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 ## Offen: kurzfristig prüfen und nachziehen
 
 - [ ] Manuellen Browser-Sichttest durchführen: neues Muster anlegen, auswählen, Plan speichern/neu öffnen, Vorschau und HTML-/LaTeX-Export prüfen.
+- [ ] Manuellen Browser-Sichttest durchführen: Dashboard-Widgets verschieben, Kalenderansichten/Anzahl einstellen, Gebäude/Raum anlegen und Bestandsmaterial in einen Plan übernehmen.
+- [ ] Vorbereitungsansicht für morgen um Verfügbarkeits- bzw. Mengenabgleich gegen Raum-, Gebäude- und Privatbestand erweitern. Aktuell zeigt sie die über alle morgigen Planungen aggregierte Bedarfsliste.
 - [ ] Einstellungen für Verlaufsplan-Muster ergonomisch erweitern, falls benötigt: eigene Muster bearbeiten oder duplizieren; derzeit können sie angelegt und gelöscht werden.
 - [ ] Die Auswahl eigener Datenbank-Muster auch in der Verwaltung lokaler Planungsvorlagen vollständig anbieten. Aktuell validiert diese Ansicht nur die mitgelieferte Layout-Registry; ein bereits im Plan gewähltes Datenbank-Muster bleibt trotzdem erhalten und nutzbar.
 - [ ] `konzept/Planungsvorlagen.md` und ältere Konzeptdokumente auf den aktuellen Implementierungsstand prüfen: Teile beschreiben noch mitgelieferte Vorlagen bzw. frühere Annahmen und können vom aktuellen UI-Zustand abweichen.

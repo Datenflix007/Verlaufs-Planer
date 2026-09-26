@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { SqlitePlans, SqliteSchedulePatterns, readJenaChatSample } from './server/sqlitePlans'
+import { SqlitePlans, SqliteSchedulePatterns, SqliteWorkspaceSettings, readJenaChatSample } from './server/sqlitePlans'
 
 const json = (response: ServerResponse, status: number, body?: unknown): void => {
   response.statusCode = status
@@ -21,6 +21,7 @@ const sqliteApi = () => ({
   configureServer(server: { middlewares: { use: (path: string, handler: (request: IncomingMessage, response: ServerResponse, next: (error?: Error) => void) => void) => void } }) {
     const plans = new SqlitePlans()
     const schedulePatterns = new SqliteSchedulePatterns()
+    const workspace = new SqliteWorkspaceSettings()
     server.middlewares.use('/api/plans', (request, response, next) => {
       void (async () => {
         const path = new URL(request.url ?? '/', 'http://localhost').pathname
@@ -47,6 +48,16 @@ const sqliteApi = () => ({
       })().catch((error: unknown) => {
         if (error instanceof SyntaxError) return json(response, 400, { error: 'Ungültiges JSON.' })
         if (error instanceof Error && error.message.includes('mitgelieferten')) return json(response, 409, { error: error.message })
+        next(error instanceof Error ? error : new Error(String(error)))
+      })
+    })
+    server.middlewares.use('/api/workspace', (request, response, next) => {
+      void (async () => {
+        if (request.method === 'GET') return json(response, 200, workspace.get())
+        if (request.method === 'PUT') return json(response, 200, workspace.save(await readBody(request) as never))
+        return json(response, 405, { error: 'Methode nicht erlaubt.' })
+      })().catch((error: unknown) => {
+        if (error instanceof SyntaxError) return json(response, 400, { error: 'Ungültiges JSON.' })
         next(error instanceof Error ? error : new Error(String(error)))
       })
     })

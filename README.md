@@ -8,6 +8,7 @@ Der Verlaufsplaner ist ein lokales Werkzeug fuer Lehrkraefte, Lehramtsstudierend
 - Allgemeine Angaben, ein- oder mehrtaegige Termine, Lernziele und Kompetenzen aus einem austauschbaren Beispielkatalog.
 - Word-artige Tiptap-Editoren fuer Inhaltsanalyse und methodisch-didaktische Analyse: Formatierungen, Ueberschriften, Listen, Zitate, Links, Hoch-/Tiefstellung, Undo/Redo, einfache Tabellen sowie explizite Raw-LaTeX-Inline- und Block-Knoten.
 - Datengetriebene Verlaufsplanlayouts einschließlich der in SQLite gespeicherten Markdown-Muster „Lernstandsorientierter Verlaufsplan“ und „Kommunikationsorientierter Verlaufsplan“, Phasen/Pausen, pro Planung waehlbare Startzeit- oder Minutenansicht, Zeilenverschiebung und Materialzuordnung.
+- Konfigurierbares lokales Dashboard: verschiebbare Kalender-, nächste Planungen-, Aufgaben- und Materialvorbereitungs-Widgets; Gebäude, Räume sowie Gebäude-, Raum- und Privatbestände werden unter Arbeitsbereich verwaltet.
 - Zentrale Materialliste mit automatischer Verwendungsaggregation.
 - Vollstaendige HTML-, LaTeX- und JSON-Exporte sowie Browserdruck fuer PDF mit echtem Text und Print-CSS.
 - Fach- und Disziplinvorlagen als Startpunkt: mitgelieferte allgemeine und Digital-Humanities-Vorlage, referenzierte Kompetenzrahmen, Layout- und Methodenvorschläge sowie lokale JSON-Vorlagen.

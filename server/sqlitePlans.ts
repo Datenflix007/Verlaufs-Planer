@@ -2,7 +2,9 @@ import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { builtInSchedulePatternSeeds } from '../src/data/schedulePatterns'
+import { createWorkspaceSettings, normaliseWorkspaceSettings } from '../src/data/workspaceDefaults'
 import type { SchedulePattern } from '../src/domain/types'
+import type { WorkspaceSettings } from '../src/domain/types'
 
 export interface StoredPlanSummary { id: string; title: string; updatedAt: string; dateRange: string }
 type StoredPlan = { id: string; metadata: { title: string }; updatedAt: string; days: Array<{ date: string }> }
@@ -66,6 +68,26 @@ export class SqliteSchedulePatterns {
     const pattern = this.get(id)
     if (pattern?.isBuiltIn) throw new Error('Die mitgelieferten Verlaufsplan-Muster können nicht gelöscht werden.')
     return this.database.prepare('DELETE FROM schedule_patterns WHERE id = ?').run(id).changes > 0
+  }
+}
+
+/** One local workspace contains dashboard configuration, rooms, stock and tasks. */
+export class SqliteWorkspaceSettings {
+  private readonly database: DatabaseSync
+  constructor(path = databasePath) {
+    mkdirSync(dirname(path), { recursive: true })
+    this.database = new DatabaseSync(path)
+    this.database.exec('CREATE TABLE IF NOT EXISTS workspace_settings (id TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at TEXT NOT NULL) STRICT;')
+    if (!this.database.prepare("SELECT 1 FROM workspace_settings WHERE id = 'default'").get()) this.save(createWorkspaceSettings())
+  }
+  get(): WorkspaceSettings {
+    const row = this.database.prepare("SELECT payload FROM workspace_settings WHERE id = 'default'").get() as { payload: string } | undefined
+    return normaliseWorkspaceSettings(row ? JSON.parse(row.payload) : undefined)
+  }
+  save(input: WorkspaceSettings): WorkspaceSettings {
+    const settings = normaliseWorkspaceSettings(input)
+    this.database.prepare("INSERT INTO workspace_settings (id, payload, updated_at) VALUES ('default', ?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at").run(JSON.stringify(settings), new Date().toISOString())
+    return settings
   }
 }
 

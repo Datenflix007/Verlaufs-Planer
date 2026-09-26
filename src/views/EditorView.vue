@@ -14,12 +14,14 @@ import { registerLocalTemplate } from '../data/templates/registry'
 import { useEditorStore } from '../stores/editorStore'
 import { useProjectStore } from '../stores/projectStore'
 import { SchedulePatternRepository } from '../repositories/SchedulePatternRepository'
-import type { SchedulePattern } from '../domain/types'
+import { WorkspaceRepository } from '../repositories/WorkspaceRepository'
+import type { SchedulePattern, WorkspaceSettings } from '../domain/types'
 
 const route = useRoute(); const router = useRouter(); const project = useProjectStore(); const editor = useEditorStore(); const plan = computed(() => project.activePlan)
 const patterns = ref<SchedulePattern[]>([])
+const workspace = ref<WorkspaceSettings>()
 const patternRepository = new SchedulePatternRepository()
-onMounted(async () => { try { await Promise.all([project.open(String(route.params.id)), patternRepository.list().then((items) => { patterns.value = items })]) } catch { await router.replace({ name: 'home' }) } })
+onMounted(async () => { try { await Promise.all([project.open(String(route.params.id)), patternRepository.list().then((items) => { patterns.value = items }), new WorkspaceRepository().get().then((settings) => { workspace.value = settings })]) } catch { await router.replace({ name: 'home' }) } })
 let timer: number | undefined
 function changed(): void { window.clearTimeout(timer); timer = window.setTimeout(() => void project.save(), 350) }
 function saveAsTemplate(): void {
@@ -46,14 +48,14 @@ watch(() => route.params.id, async (id) => { if (id && id !== project.activePlan
       <button type="button" @click="editor.exportOpen = true">Export</button>
     </header>
     <div class="editor-body"><PlanSidebar :section="editor.section" :plan="plan" @select="editor.section = $event" /><div class="editor-content">
-      <GeneralSection v-if="editor.section === 'general'" :plan="plan" @changed="changed" />
+      <GeneralSection v-if="editor.section === 'general'" :plan="plan" :buildings="workspace?.buildings" :rooms="workspace?.rooms" @changed="changed" />
       <DatesSection v-else-if="editor.section === 'dates'" :plan="plan" @changed="changed" />
       <LearningObjectivesSection v-else-if="editor.section === 'objectives'" :plan="plan" @changed="changed" />
       <CompetenciesSection v-else-if="editor.section === 'competencies'" :plan="plan" @changed="changed" />
       <NarrativeSection v-else-if="editor.section === 'content'" :plan="plan" kind="content" @changed="changed" />
       <NarrativeSection v-else-if="editor.section === 'didactics'" :plan="plan" kind="didactics" @changed="changed" />
       <ScheduleSection v-else-if="editor.section === 'schedule'" :plan="plan" :patterns="patterns" @changed="changed" />
-      <MaterialsSection v-else :plan="plan" @changed="changed" />
+      <MaterialsSection v-else :plan="plan" :inventory="workspace?.inventoryMaterials" @changed="changed" />
     </div></div>
     <ExportDialog v-if="editor.exportOpen" :plan="plan" :layouts="patterns" @close="editor.exportOpen = false" />
   </main>

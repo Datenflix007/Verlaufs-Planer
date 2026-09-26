@@ -12,13 +12,13 @@ const IdSchema = z.string().uuid()
 
 export const WorkshopPlanSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION), id: IdSchema,
-  metadata: z.object({ title: z.string().min(1), subtitle: z.string().optional(), subject: z.string().optional(), targetGroup: z.string().optional(), institution: z.string().optional(), location: z.string().optional(), authors: z.array(z.string()), description: z.string().optional() }),
+  metadata: z.object({ title: z.string().min(1), subtitle: z.string().optional(), subject: z.string().optional(), targetGroup: z.string().optional(), institution: z.string().optional(), location: z.string().optional(), buildingId: z.string().uuid().optional(), roomId: z.string().uuid().optional(), authors: z.array(z.string()), description: z.string().optional() }),
   days: z.array(z.object({ id: IdSchema, date: z.string().date(), title: z.string().optional(), startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(), endTime: z.string().regex(/^\d{2}:\d{2}$/).optional() })).min(1),
   learningObjectives: z.array(z.object({ id: IdSchema, text: z.string(), level: z.string().optional(), competencyIds: z.array(z.string()) })),
   competencies: z.array(z.object({ id: IdSchema, catalogId: z.string(), competencyId: z.string(), note: z.string().optional() })),
   contentAnalysis: RichTextDocumentSchema, didacticAnalysis: RichTextDocumentSchema,
   schedule: z.array(z.object({ id: IdSchema, dayId: IdSchema, startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(), endTime: z.string().regex(/^\d{2}:\d{2}$/).optional(), durationMinutes: z.number().int().nonnegative().optional(), type: z.enum(['phase', 'break']), phase: z.string().optional(), title: z.string().optional(), content: RichTextDocumentSchema.optional(), objective: RichTextDocumentSchema.optional(), teacherActivity: RichTextDocumentSchema.optional(), participantActivity: RichTextDocumentSchema.optional(), method: z.string().optional(), socialForm: z.string().optional(), materialIds: z.array(IdSchema), notes: RichTextDocumentSchema.optional() })),
-  materials: z.array(z.object({ id: IdSchema, name: z.string().min(1), quantity: z.string().optional(), description: z.string().optional(), category: z.string().optional(), resourceType: z.enum(['physical', 'file', 'worksheet', 'link', 'interactive-html']) })),
+  materials: z.array(z.object({ id: IdSchema, name: z.string().min(1), quantity: z.string().optional(), description: z.string().optional(), category: z.string().optional(), resourceType: z.enum(['physical', 'file', 'worksheet', 'link', 'interactive-html']), inventoryMaterialId: z.string().uuid().optional() })),
   settings: z.object({ scheduleLayoutId: z.string().min(1), timeDisplay: z.enum(['start', 'duration']).default('start'), phaseModelId: z.string().optional(), templateId: z.string().min(1).optional(), enabledCompetencyFrameworkIds: z.array(z.string().min(1)).default([]) }), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
 })
 
