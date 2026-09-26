@@ -25,6 +25,7 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 - [x] Gebäude-, Raum- und Referenten-/Lehrerprivatbestand; Bestandsmaterial kann in eine Planung übernommen und dort Phasen zugeordnet werden.
 - [x] Dashboard-Widgets für Kalender (Tag/Woche/Monat), X nächste Verlaufspläne, X nächste Aufgaben und Gesamtmaterialliste für morgen.
 - [x] Dashboard-Widgets lassen sich unter Einstellungen → Arbeitsbereich ein-/ausblenden sowie per Drag-and-drop anordnen.
+- [x] Dashboard-Widgets besitzen persistente Rastermaße: Breite Halb/Breit/Volle Zeile und Höhe Kompakt/Normal/Hoch; die Einstellungen speichern die Maße und die Dashboardansicht wendet sie an.
 - [x] Zentrale Einstellungen: Zahnrad oben rechts im Dashboard, linke Untermenüleiste und eine gemeinsame Arbeitsfläche für Arbeitsbereich, Verlaufsplan-Muster und eigene Vorlagen.
 
 ## Erledigt: Verlaufsplan-Muster in SQLite
@@ -51,6 +52,7 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 
 - [ ] Manuellen Browser-Sichttest durchführen: neues Muster anlegen, auswählen, Plan speichern/neu öffnen, Vorschau und HTML-/LaTeX-Export prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Dashboard-Widgets verschieben, Kalenderansichten/Anzahl einstellen, Gebäude/Raum anlegen und Bestandsmaterial in einen Plan übernehmen.
+- [ ] Manuellen Browser-Sichttest durchführen: Widgetbreite/-höhe in den Einstellungen ändern, Drag-and-drop-Reihenfolge speichern und Darstellung im Desktop- und Mobilraster prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Zahnrad, seitliche Einstellungenavigation, direkte Links auf die drei Unterbereiche und schmale Ansicht prüfen.
 - [ ] Vorbereitungsansicht für morgen um Verfügbarkeits- bzw. Mengenabgleich gegen Raum-, Gebäude- und Privatbestand erweitern. Aktuell zeigt sie die über alle morgigen Planungen aggregierte Bedarfsliste.
 - [ ] Einstellungen für Verlaufsplan-Muster ergonomisch erweitern, falls benötigt: eigene Muster bearbeiten oder duplizieren; derzeit können sie angelegt und gelöscht werden.

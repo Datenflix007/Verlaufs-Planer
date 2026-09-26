@@ -68,5 +68,7 @@ export type InventoryScope = 'personal' | 'building' | 'room'
 export interface InventoryMaterial extends Material { scope: InventoryScope; buildingId?: string; roomId?: string }
 export interface PlannerTodo { id: string; title: string; dueDate?: string; planId?: string; completed: boolean; notes?: string }
 export type DashboardWidgetId = 'calendar' | 'upcoming-plans' | 'upcoming-todos' | 'next-day-materials'
-export interface DashboardWidget { id: DashboardWidgetId; enabled: boolean; order: number; calendarView?: 'day' | 'week' | 'month'; limit?: number }
+export type DashboardWidgetWidth = 'half' | 'wide' | 'full'
+export type DashboardWidgetHeight = 'compact' | 'standard' | 'tall'
+export interface DashboardWidget { id: DashboardWidgetId; enabled: boolean; order: number; width: DashboardWidgetWidth; height: DashboardWidgetHeight; calendarView?: 'day' | 'week' | 'month'; limit?: number }
 export interface WorkspaceSettings { schemaVersion: 1; buildings: Building[]; rooms: Room[]; inventoryMaterials: InventoryMaterial[]; todos: PlannerTodo[]; dashboard: DashboardWidget[] }
