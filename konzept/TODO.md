@@ -28,7 +28,7 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 - [x] Kalender-Widget besitzt direkte, persistente Umschalter für Tag, Woche und Monat; der frühere Ansichtsbutton wurde dadurch ersetzt.
 - [x] Dashboard-Widgets lassen sich unter Einstellungen → Arbeitsbereich ein-/ausblenden sowie per Drag-and-drop anordnen.
 - [x] Dashboard-Widgets besitzen persistente Rastermaße: Breite Halb/Breit/Volle Zeile und Höhe Kompakt/Normal/Hoch; die Einstellungen speichern die Maße und die Dashboardansicht wendet sie an.
-- [x] Dashboard-Widgets lassen sich direkt am Griff unten rechts mit Maus oder Touch stufenweise vergrößern bzw. verkleinern; das Raster rastet horizontal und vertikal auf die zulässigen Breiten- und Höhenstufen ein und speichert beim Loslassen.
+- [x] Dashboard-Widgets werden ausschließlich unter Einstellungen → Arbeitsbereich konfiguriert: Sichtbarkeit, Reihenfolge, Breite und Höhe. Das Dashboard selbst ist eine reine Arbeitsansicht ohne Skalierungsgriff.
 - [x] Zentrale Einstellungen: Zahnrad oben rechts im Dashboard, linke Untermenüleiste und eine gemeinsame Arbeitsfläche für Arbeitsbereich, Verlaufsplan-Muster und eigene Vorlagen.
 
 ## Erledigt: Verlaufsplan-Muster in SQLite
@@ -59,7 +59,7 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 - [ ] Manuellen Browser-Sichttest durchführen: Kalender als Tag, Woche und Monat mit Navigation, Überläufen sowie zeitlich und ganztägig eingetragenen Planungen prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Umschalter Tag/Woche/Monat im Kalender-Widget inklusive Hervorhebung und Speicherung nach Neuladen prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Widgetbreite/-höhe in den Einstellungen ändern, Drag-and-drop-Reihenfolge speichern und Darstellung im Desktop- und Mobilraster prüfen.
-- [ ] Manuellen Browser-Sichttest durchführen: Resize-Griff eines Dashboard-Widgets mit Maus und Touch ziehen, Einrasten auf jede Rasterstufe sowie Speicherung nach Neuladen prüfen.
+- [ ] Manuellen Browser-Sichttest durchführen: Breite und Höhe ausschließlich in Einstellungen → Arbeitsbereich ändern, Speicherung nach Neuladen und fehlenden Skalierungsgriff im Dashboard prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Zahnrad, seitliche Einstellungenavigation, direkte Links auf die drei Unterbereiche und schmale Ansicht prüfen.
 - [ ] Vorbereitungsansicht für morgen um Verfügbarkeits- bzw. Mengenabgleich gegen Raum-, Gebäude- und Privatbestand erweitern. Aktuell zeigt sie die über alle morgigen Planungen aggregierte Bedarfsliste.
 - [ ] Einstellungen für Verlaufsplan-Muster ergonomisch erweitern, falls benötigt: eigene Muster bearbeiten oder duplizieren; derzeit können sie angelegt und gelöscht werden.
