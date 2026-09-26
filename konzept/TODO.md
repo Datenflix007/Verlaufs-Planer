@@ -25,6 +25,7 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 - [x] Gebäude-, Raum- und Referenten-/Lehrerprivatbestand; Bestandsmaterial kann in eine Planung übernommen und dort Phasen zugeordnet werden.
 - [x] Dashboard-Widgets für Kalender (Tag/Woche/Monat), X nächste Verlaufspläne, X nächste Aufgaben und Gesamtmaterialliste für morgen.
 - [x] Kalender-Widget im Google-Calendar-Stil: Monatsraster mit Wochentagen, Tages-/Wochen-Zeitgitter, Vor-/Zurück- und Heute-Navigation sowie ganztägige und zeitlich positionierte Planungseinträge.
+- [x] Kalender-Widget besitzt direkte, persistente Umschalter für Tag, Woche und Monat; der frühere Ansichtsbutton wurde dadurch ersetzt.
 - [x] Dashboard-Widgets lassen sich unter Einstellungen → Arbeitsbereich ein-/ausblenden sowie per Drag-and-drop anordnen.
 - [x] Dashboard-Widgets besitzen persistente Rastermaße: Breite Halb/Breit/Volle Zeile und Höhe Kompakt/Normal/Hoch; die Einstellungen speichern die Maße und die Dashboardansicht wendet sie an.
 - [x] Dashboard-Widgets lassen sich direkt am Griff unten rechts mit Maus oder Touch stufenweise vergrößern bzw. verkleinern; das Raster rastet horizontal und vertikal auf die zulässigen Breiten- und Höhenstufen ein und speichert beim Loslassen.
@@ -56,6 +57,7 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 - [ ] Manuellen Browser-Sichttest durchführen: neues Muster anlegen, auswählen, Plan speichern/neu öffnen, Vorschau und HTML-/LaTeX-Export prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Dashboard-Widgets verschieben, Kalenderansichten/Anzahl einstellen, Gebäude/Raum anlegen und Bestandsmaterial in einen Plan übernehmen.
 - [ ] Manuellen Browser-Sichttest durchführen: Kalender als Tag, Woche und Monat mit Navigation, Überläufen sowie zeitlich und ganztägig eingetragenen Planungen prüfen.
+- [ ] Manuellen Browser-Sichttest durchführen: Umschalter Tag/Woche/Monat im Kalender-Widget inklusive Hervorhebung und Speicherung nach Neuladen prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Widgetbreite/-höhe in den Einstellungen ändern, Drag-and-drop-Reihenfolge speichern und Darstellung im Desktop- und Mobilraster prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Resize-Griff eines Dashboard-Widgets mit Maus und Touch ziehen, Einrasten auf jede Rasterstufe sowie Speicherung nach Neuladen prüfen.
 - [ ] Manuellen Browser-Sichttest durchführen: Zahnrad, seitliche Einstellungenavigation, direkte Links auf die drei Unterbereiche und schmale Ansicht prüfen.
