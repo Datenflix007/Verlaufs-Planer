@@ -8,6 +8,12 @@ import { escapeLatex } from './render'
 describe('Exporte', () => {
   it('escaped normalen LaTeX-Text und erhaelt Raw-LaTeX', async () => { expect(escapeLatex('50 % der Schueler & Schuelerinnen')).toBe('50 \\% der Schueler \\& Schuelerinnen'); const result = await new LatexExporter().export(demoPlan); expect(result.content).toContain('\\frac{a}{b}'); expect(result.content).toContain('Workshop: Der Wald und wir') })
   it('erzeugt vollstaendiges, eigenstaendiges HTML', async () => { const result = await new HtmlExporter().export(demoPlan); expect(result.content).toContain('<!doctype html>'); expect(result.content).toContain('Einfuehrung und Erkundung'); expect(result.content).toContain('class="break"') })
+  it('verwendet ein lokal gespeichertes Verlaufsplan-Muster beim Export', async () => {
+    const plan = structuredClone(demoPlan); plan.settings.scheduleLayoutId = 'local-pattern'
+    const layout = { id: 'local-pattern', name: 'Lokales Muster', columns: [{ id: 'time', label: 'Zeit', field: 'time' as const }, { id: 'notes', label: 'Anmerkung', field: 'notes' as const }] }
+    expect((await new HtmlExporter([layout]).export(plan)).content).toContain('<th>Anmerkung</th>')
+    expect((await new LatexExporter([layout]).export(plan)).content).toContain('\\textbf{Anmerkung}')
+  })
   it('exportiert Block-LaTeX und einfache Rich-Text-Tabellen strukturiert', async () => {
     const plan = structuredClone(demoPlan)
     plan.contentAnalysis = { type: 'doc', content: [

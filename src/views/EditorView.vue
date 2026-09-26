@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ExportDialog from '../components/export/ExportDialog.vue'
 import MaterialsSection from '../components/materials/MaterialsSection.vue'
@@ -13,9 +13,13 @@ import ScheduleSection from '../components/schedule/ScheduleSection.vue'
 import { registerLocalTemplate } from '../data/templates/registry'
 import { useEditorStore } from '../stores/editorStore'
 import { useProjectStore } from '../stores/projectStore'
+import { SchedulePatternRepository } from '../repositories/SchedulePatternRepository'
+import type { SchedulePattern } from '../domain/types'
 
 const route = useRoute(); const router = useRouter(); const project = useProjectStore(); const editor = useEditorStore(); const plan = computed(() => project.activePlan)
-onMounted(async () => { try { await project.open(String(route.params.id)) } catch { await router.replace({ name: 'home' }) } })
+const patterns = ref<SchedulePattern[]>([])
+const patternRepository = new SchedulePatternRepository()
+onMounted(async () => { try { await Promise.all([project.open(String(route.params.id)), patternRepository.list().then((items) => { patterns.value = items })]) } catch { await router.replace({ name: 'home' }) } })
 let timer: number | undefined
 function changed(): void { window.clearTimeout(timer); timer = window.setTimeout(() => void project.save(), 350) }
 function saveAsTemplate(): void {
@@ -48,10 +52,10 @@ watch(() => route.params.id, async (id) => { if (id && id !== project.activePlan
       <CompetenciesSection v-else-if="editor.section === 'competencies'" :plan="plan" @changed="changed" />
       <NarrativeSection v-else-if="editor.section === 'content'" :plan="plan" kind="content" @changed="changed" />
       <NarrativeSection v-else-if="editor.section === 'didactics'" :plan="plan" kind="didactics" @changed="changed" />
-      <ScheduleSection v-else-if="editor.section === 'schedule'" :plan="plan" @changed="changed" />
+      <ScheduleSection v-else-if="editor.section === 'schedule'" :plan="plan" :patterns="patterns" @changed="changed" />
       <MaterialsSection v-else :plan="plan" @changed="changed" />
     </div></div>
-    <ExportDialog v-if="editor.exportOpen" :plan="plan" @close="editor.exportOpen = false" />
+    <ExportDialog v-if="editor.exportOpen" :plan="plan" :layouts="patterns" @close="editor.exportOpen = false" />
   </main>
   <main v-else class="loading">Planung wird geöffnet ...</main>
 </template>

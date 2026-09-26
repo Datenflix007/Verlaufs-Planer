@@ -7,7 +7,7 @@ Der Verlaufsplaner ist ein lokales Werkzeug fuer Lehrkraefte, Lehramtsstudierend
 - Mehrere lokale Planungen mit Neu, Oeffnen, Duplizieren, Loeschen sowie JSON-Import und -Backup.
 - Allgemeine Angaben, ein- oder mehrtaegige Termine, Lernziele und Kompetenzen aus einem austauschbaren Beispielkatalog.
 - Word-artige Tiptap-Editoren fuer Inhaltsanalyse und methodisch-didaktische Analyse: Formatierungen, Ueberschriften, Listen, Zitate, Links, Hoch-/Tiefstellung, Undo/Redo, einfache Tabellen sowie explizite Raw-LaTeX-Inline- und Block-Knoten.
-- Datengetriebene Verlaufsplanlayouts (Kompakt, Unterricht, Didaktisch ausfuehrlich, Workshop), Phasen/Pausen, pro Planung waehlbare Startzeit- oder Minutenansicht, Zeilenverschiebung und Materialzuordnung.
+- Datengetriebene Verlaufsplanlayouts einschließlich der in SQLite gespeicherten Markdown-Muster „Lernstandsorientierter Verlaufsplan“ und „Kommunikationsorientierter Verlaufsplan“, Phasen/Pausen, pro Planung waehlbare Startzeit- oder Minutenansicht, Zeilenverschiebung und Materialzuordnung.
 - Zentrale Materialliste mit automatischer Verwendungsaggregation.
 - Vollstaendige HTML-, LaTeX- und JSON-Exporte sowie Browserdruck fuer PDF mit echtem Text und Print-CSS.
 - Fach- und Disziplinvorlagen als Startpunkt: mitgelieferte allgemeine und Digital-Humanities-Vorlage, referenzierte Kompetenzrahmen, Layout- und Methodenvorschläge sowie lokale JSON-Vorlagen.
@@ -45,7 +45,7 @@ Die Tests pruefen Zeitlogik, Materialaggregation, Versionsmigration und JSON-Val
 
 Texte werden UTF-8-kodiert gespeichert. Umlaute bleiben in SQLite sowie in JSON- und HTML-Exporten erhalten.
 
-Projekte liegen lokal in `data/verlaufsplaner.sqlite`. Dieser Ordner ist absichtlich git-ignoriert; ebenso `data/samples/jenachat.json`, das lokale, aus dem bereitgestellten Lehrkonzept abgeleitete JenaChat-Sample. Beim ersten Öffnen überträgt die Anwendung vorhandene Browser-Planungen einmalig und nicht destruktiv in SQLite. Exportieren Sie JSON-Backups regelmaessig.
+Projekte und Verlaufsplan-Muster liegen lokal in `data/verlaufsplaner.sqlite`. Dieser Ordner ist absichtlich git-ignoriert; ebenso `data/samples/jenachat.json`, das lokale, aus dem bereitgestellten Lehrkonzept abgeleitete JenaChat-Sample. Beim ersten Öffnen überträgt die Anwendung vorhandene Browser-Planungen einmalig und nicht destruktiv in SQLite. Exportieren Sie JSON-Backups regelmaessig.
 
 Normale Texte werden im LaTeX-Export escaped. Nur der bewusst ueber **LaTeX** im Rich-Text-Editor eingefuegte Knoten wird unveraendert in die `.tex`-Datei uebernommen.
 

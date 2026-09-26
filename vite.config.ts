@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { SqlitePlans, readJenaChatSample } from './server/sqlitePlans'
+import { SqlitePlans, SqliteSchedulePatterns, readJenaChatSample } from './server/sqlitePlans'
 
 const json = (response: ServerResponse, status: number, body?: unknown): void => {
   response.statusCode = status
@@ -20,6 +20,7 @@ const sqliteApi = () => ({
   name: 'verlaufsplaner-sqlite-api',
   configureServer(server: { middlewares: { use: (path: string, handler: (request: IncomingMessage, response: ServerResponse, next: (error?: Error) => void) => void) => void } }) {
     const plans = new SqlitePlans()
+    const schedulePatterns = new SqliteSchedulePatterns()
     server.middlewares.use('/api/plans', (request, response, next) => {
       void (async () => {
         const path = new URL(request.url ?? '/', 'http://localhost').pathname
@@ -31,6 +32,21 @@ const sqliteApi = () => ({
         return json(response, 405, { error: 'Methode nicht erlaubt.' })
       })().catch((error: unknown) => {
         if (error instanceof SyntaxError) return json(response, 400, { error: 'Ungueltiges JSON.' })
+        next(error instanceof Error ? error : new Error(String(error)))
+      })
+    })
+    server.middlewares.use('/api/schedule-patterns', (request, response, next) => {
+      void (async () => {
+        const path = new URL(request.url ?? '/', 'http://localhost').pathname
+        const id = path === '/' ? undefined : decodeURIComponent(path.slice(1))
+        if (request.method === 'GET' && !id) return json(response, 200, schedulePatterns.list())
+        if (request.method === 'GET' && id) { const pattern = schedulePatterns.get(id); return pattern ? json(response, 200, pattern) : json(response, 404, { error: 'Verlaufsplan-Muster nicht gefunden.' }) }
+        if (request.method === 'PUT' && id) { const body = await readBody(request) as { id?: string }; if (body.id !== id) return json(response, 400, { error: 'Muster-ID stimmt nicht mit der Adresse überein.' }); schedulePatterns.save(body as never); return json(response, 204) }
+        if (request.method === 'DELETE' && id) return json(response, schedulePatterns.remove(id) ? 204 : 404)
+        return json(response, 405, { error: 'Methode nicht erlaubt.' })
+      })().catch((error: unknown) => {
+        if (error instanceof SyntaxError) return json(response, 400, { error: 'Ungültiges JSON.' })
+        if (error instanceof Error && error.message.includes('mitgelieferten')) return json(response, 409, { error: error.message })
         next(error instanceof Error ? error : new Error(String(error)))
       })
     })

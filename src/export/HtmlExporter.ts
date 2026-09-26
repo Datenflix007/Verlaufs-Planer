@@ -1,4 +1,4 @@
-import type { DocumentExporter, ExportResult, ScheduleEntry, WorkshopPlan } from '../domain/types'
+import type { DocumentExporter, ExportResult, ScheduleEntry, ScheduleLayout, WorkshopPlan } from '../domain/types'
 import { scheduleLayouts } from '../data/layouts'
 import { aggregateMaterials } from '../domain/materials'
 import { safeName } from './JsonExporter'
@@ -11,8 +11,9 @@ const value = (entry: ScheduleEntry, field: string, materialNames: Map<string, s
   return typeof raw === 'string' ? escapeHtml(raw) : typeof raw === 'object' && raw ? renderRichTextHtml(raw as never) : ''
 }
 export class HtmlExporter implements DocumentExporter {
+  constructor(private readonly layouts: ScheduleLayout[] = scheduleLayouts) {}
   async export(plan: WorkshopPlan): Promise<ExportResult> {
-    const layout = scheduleLayouts.find((item) => item.id === plan.settings.scheduleLayoutId) ?? scheduleLayouts[0]
+    const layout = this.layouts.find((item) => item.id === plan.settings.scheduleLayoutId) ?? scheduleLayouts.find((item) => item.id === plan.settings.scheduleLayoutId) ?? scheduleLayouts[0]
     const materialNames = new Map(plan.materials.map((material) => [material.id, material.name]))
     const schedule = plan.days.map((day) => `<section><h3>${escapeHtml(day.title || day.date)}</h3><table><thead><tr>${layout.columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead><tbody>${plan.schedule.filter((entry) => entry.dayId === day.id).map((entry) => `<tr class="${entry.type === 'break' ? 'break' : ''}">${layout.columns.map((column) => `<td>${value(entry, column.field, materialNames)}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`).join('')
     const materials = aggregateMaterials(plan.materials, plan.schedule).map(({ material, entries }) => `<li><strong>${escapeHtml(material.name)}</strong>${material.quantity ? ` (${escapeHtml(material.quantity)})` : ''} – ${entries.length} Verwendung(en)</li>`).join('')

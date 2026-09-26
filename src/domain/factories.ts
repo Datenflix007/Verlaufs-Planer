@@ -11,6 +11,6 @@ export function createPlan(title = 'Neue Planung', template?: PlanningTemplate):
     schemaVersion: CURRENT_SCHEMA_VERSION, id: createId(),
     metadata: { title, authors: [] }, days: [{ id: createId(), date: new Date().toISOString().slice(0, 10) }],
     learningObjectives: [], competencies: [], contentAnalysis: emptyRichText(), didacticAnalysis: emptyRichText(), schedule: [], materials: [],
-    settings: { scheduleLayoutId: template?.defaultScheduleLayoutId ?? 'teaching', timeDisplay: 'start', templateId: template?.id, enabledCompetencyFrameworkIds: template?.competencyFrameworkIds ?? [] }, createdAt: now, updatedAt: now,
+    settings: { scheduleLayoutId: template?.defaultScheduleLayoutId ?? 'learning-status-oriented', timeDisplay: 'start', templateId: template?.id, enabledCompetencyFrameworkIds: template?.competencyFrameworkIds ?? [] }, createdAt: now, updatedAt: now,
   }
 }

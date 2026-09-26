@@ -5,18 +5,23 @@ import { getPlanningTemplate } from '../../data/templates/registry'
 import { createId, richTextFromPlain } from '../../domain/factories'
 import { richTextPlain } from '../../export/render'
 import { nextStartTime, synchronizeTime, totalDayMinutes } from '../../domain/schedule'
-import type { RichTextDocument, ScheduleEntry, WorkshopDay, WorkshopPlan } from '../../domain/types'
+import type { RichTextDocument, ScheduleEntry, ScheduleLayout, SchedulePattern, WorkshopDay, WorkshopPlan } from '../../domain/types'
 
-const props = defineProps<{ plan: WorkshopPlan }>()
+const props = defineProps<{ plan: WorkshopPlan; patterns?: SchedulePattern[] }>()
 const emit = defineEmits<{ changed: [] }>()
 const template = computed(() => getPlanningTemplate(props.plan.settings.templateId))
+const layouts = computed<ScheduleLayout[]>(() => {
+  const persisted = props.patterns ?? []
+  const persistedIds = new Set(persisted.map((pattern) => pattern.id))
+  return [...persisted, ...scheduleLayouts.filter((item) => !persistedIds.has(item.id))]
+})
 const availableLayouts = computed(() => {
   const allowed = template.value?.scheduleLayoutIds
-  const layouts = allowed?.length ? scheduleLayouts.filter((layout) => allowed.includes(layout.id)) : scheduleLayouts
-  const current = scheduleLayouts.find((layout) => layout.id === props.plan.settings.scheduleLayoutId)
-  return current && !layouts.some((layout) => layout.id === current.id) ? [...layouts, current] : layouts
+  const selectable = allowed?.length ? layouts.value.filter((item) => allowed.includes(item.id)) : layouts.value
+  const current = layouts.value.find((item) => item.id === props.plan.settings.scheduleLayoutId)
+  return current && !selectable.some((item) => item.id === current.id) ? [...selectable, current] : selectable
 })
-const layout = computed(() => scheduleLayouts.find((item) => item.id === props.plan.settings.scheduleLayoutId) ?? availableLayouts.value[0] ?? scheduleLayouts[0])
+const layout = computed(() => layouts.value.find((item) => item.id === props.plan.settings.scheduleLayoutId) ?? availableLayouts.value[0] ?? scheduleLayouts[0])
 const phaseSuggestions = computed(() => [...new Set([...(template.value?.suggestedPhases ?? []), ...bundledPhaseSuggestions])])
 const methodSuggestions = computed(() => template.value?.suggestedMethods ?? [])
 const entriesForDay = (dayId: string): ScheduleEntry[] => props.plan.schedule.filter((item) => item.dayId === dayId)

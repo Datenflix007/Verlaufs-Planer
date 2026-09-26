@@ -37,6 +37,7 @@ async function importProject(event: Event): Promise<void> {
       <label class="file-label">JSON importieren<input type="file" accept="application/json,.json" @change="importProject"></label>
       <button type="button" class="secondary" @click="loadJenaChatSample">JenaChat-Sample laden</button>
       <button type="button" class="secondary" @click="router.push({ name: 'template-settings' })">Vorlagen verwalten</button>
+      <button type="button" class="secondary" @click="router.push({ name: 'schedule-pattern-settings' })">Verlaufsplan-Muster</button>
       <p v-if="store.migrationNotice" class="success-message">{{ store.migrationNotice }}</p>
       <p v-if="importError" class="error-message">{{ importError }}</p>
     </section>

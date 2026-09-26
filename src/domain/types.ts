@@ -18,6 +18,13 @@ export interface ScheduleEntry {
 export type ScheduleField = 'time' | 'phase' | 'title' | 'objective' | 'content' | 'teacherActivity' | 'participantActivity' | 'method' | 'socialForm' | 'materials' | 'notes'
 export interface ScheduleColumn { id: string; label: string; field: ScheduleField }
 export interface ScheduleLayout { id: string; name: string; columns: ScheduleColumn[] }
+/** A locally persisted, Markdown-described schedule layout. */
+export interface SchedulePattern extends ScheduleLayout {
+  markdown: string
+  createdAt: string
+  updatedAt: string
+  isBuiltIn: boolean
+}
 export type PlanningSectionId = 'general' | 'dates' | 'objectives' | 'competencies' | 'content' | 'didactics' | 'schedule' | 'materials'
 export interface LocalizedText { de: string; en?: string }
 export interface PlanningTemplate {

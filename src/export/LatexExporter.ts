@@ -1,4 +1,4 @@
-import type { DocumentExporter, ExportResult, ScheduleEntry, WorkshopPlan } from '../domain/types'
+import type { DocumentExporter, ExportResult, ScheduleEntry, ScheduleLayout, WorkshopPlan } from '../domain/types'
 import { scheduleLayouts } from '../data/layouts'
 import { aggregateMaterials } from '../domain/materials'
 import { safeName } from './JsonExporter'
@@ -11,8 +11,9 @@ const field = (entry: ScheduleEntry, fieldName: string, materialNames: Map<strin
   return typeof value === 'string' ? escapeLatex(value) : typeof value === 'object' && value ? renderRichTextLatex(value as never) : ''
 }
 export class LatexExporter implements DocumentExporter {
+  constructor(private readonly layouts: ScheduleLayout[] = scheduleLayouts) {}
   async export(plan: WorkshopPlan): Promise<ExportResult> {
-    const layout = scheduleLayouts.find((item) => item.id === plan.settings.scheduleLayoutId) ?? scheduleLayouts[0]
+    const layout = this.layouts.find((item) => item.id === plan.settings.scheduleLayoutId) ?? scheduleLayouts.find((item) => item.id === plan.settings.scheduleLayoutId) ?? scheduleLayouts[0]
     const materialNames = new Map(plan.materials.map((material) => [material.id, material.name]))
     const table = plan.days.map((day) => {
       const rows = plan.schedule.filter((entry) => entry.dayId === day.id).map((entry) => layout.columns.map((column) => field(entry, column.field, materialNames)).join(' & ') + ' \\\\ \\midrule').join('\n')

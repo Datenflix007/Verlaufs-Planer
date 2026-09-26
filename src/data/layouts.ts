@@ -1,6 +1,8 @@
 import type { ScheduleLayout } from '../domain/types'
+import { builtInSchedulePatternSeeds } from './schedulePatterns'
 
 export const scheduleLayouts: ScheduleLayout[] = [
+  ...builtInSchedulePatternSeeds.map(({ id, name, columns }) => ({ id, name, columns })),
   { id: 'jenachat', name: 'JenaChat (PDF-Verlaufsplan)', columns: [{ id: 'time', label: 'Zeit', field: 'time' }, { id: 'phase', label: 'Phase', field: 'phase' }, { id: 'content', label: 'Lerngegenstand / Lehrerhandeln / SuS-Handeln', field: 'content' }, { id: 'method', label: 'Material / Sozialform', field: 'method' }] },
   { id: 'compact', name: 'Kompakt', columns: [{ id: 'time', label: 'Zeit', field: 'time' }, { id: 'phase', label: 'Phase', field: 'phase' }, { id: 'content', label: 'Inhalt / Aktivitaet', field: 'content' }, { id: 'method', label: 'Methode', field: 'method' }, { id: 'materials', label: 'Material', field: 'materials' }] },
   { id: 'teaching', name: 'Unterricht (PDF-Vorbild)', columns: [{ id: 'time', label: 'Zeit', field: 'time' }, { id: 'phase', label: 'Phase', field: 'phase' }, { id: 'teacher', label: 'L-Handeln', field: 'teacherActivity' }, { id: 'participants', label: 'SuS-Handeln', field: 'participantActivity' }, { id: 'method', label: 'Material / Sozialform', field: 'method' }] },
