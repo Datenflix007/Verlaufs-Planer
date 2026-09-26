@@ -1,0 +1,12 @@
+[
+  { "id": "subject-history", "name": { "de": "Geschichte" }, "category": "social-science" },
+  { "id": "subject-informatics", "name": { "de": "Informatik" }, "category": "computer-science" },
+  { "id": "subject-media-informatics", "name": { "de": "Medienbildung und Informatik" }, "category": "computer-science" },
+  { "id": "subject-geography", "name": { "de": "Geografie" }, "category": "social-science" },
+  { "id": "subject-mathematics", "name": { "de": "Mathematik" }, "category": "mathematics" },
+  { "id": "subject-biology", "name": { "de": "Biologie" }, "category": "natural-science" },
+  { "id": "subject-chemistry", "name": { "de": "Chemie" }, "category": "natural-science" },
+  { "id": "subject-physics", "name": { "de": "Physik" }, "category": "natural-science" },
+  { "id": "subject-german", "name": { "de": "Deutsch" }, "category": "language" },
+  { "id": "subject-sport", "name": { "de": "Sport" }, "category": "sport" }
+]

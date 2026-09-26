@@ -15,20 +15,22 @@ Dieses Verzeichnis ist die fachliche und technische Quelle fuer den Verlaufs-Pla
 
 1. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Stack, Module, Laufzeitmodell
 2. [`Datenmodell.md`](Datenmodell.md): zentrale Entitaeten und Tabellen
-3. [`Klassenuebersicht.md`](Klassenuebersicht.md): Klassen-, Wochenstunden- und Coverage-Logik
-4. [`AnnotationsDatenvertrag.md`](AnnotationsDatenvertrag.md): wiederverwendbare Annotationstypen fuer Lehrplaene, Gueltigkeit, Kompetenzen und Klassenabdeckung
-5. [`AnnotierteFLP.md`](AnnotierteFLP.md): Import- und Annotationspipeline fuer Fachlehrplaene
-6. [`BenutzerDatenManagement.md`](BenutzerDatenManagement.md): Auth, Rollen, Datenschutz, Backup
-7. [`Justfile.md`](Justfile.md): Entwicklungs- und Betriebsbefehle
+3. [`Planungsvorlagen.md`](Planungsvorlagen.md): Fachdisziplinen, Vorlagen-Registry und Kompetenzrahmenreferenzen
+4. [`Klassenuebersicht.md`](Klassenuebersicht.md): Klassen-, Wochenstunden- und Coverage-Logik
+5. [`AnnotationsDatenvertrag.md`](AnnotationsDatenvertrag.md): wiederverwendbare Annotationstypen fuer Lehrplaene, Gueltigkeit, Kompetenzen und Klassenabdeckung
+6. [`AnnotierteFLP.md`](AnnotierteFLP.md): Import- und Annotationspipeline fuer Fachlehrplaene
+7. [`BenutzerDatenManagement.md`](BenutzerDatenManagement.md): Auth, Rollen, Datenschutz, Backup
+8. [`Justfile.md`](Justfile.md): Entwicklungs- und Betriebsbefehle
 
 ### Fuer LLM-Agenten
 
 1. [`AgentenBriefing.md`](AgentenBriefing.md): Arbeitsregeln fuer Implementierungsagenten
 2. [`Roadmap_MVP.md`](Roadmap_MVP.md): Aufgabenreihenfolge
 3. [`Datenmodell.md`](Datenmodell.md): stabile Begriffe und IDs
-4. [`Klassenuebersicht.md`](Klassenuebersicht.md): Anforderungen an Klassenuebersicht und Lehrplanmarkierungen
-5. [`AnnotationsDatenvertrag.md`](AnnotationsDatenvertrag.md): verbindliche Felder und Statuswerte fuer Annotationen
-6. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Grenzen zwischen Frontend, Backend und Datenbank
+4. [`Planungsvorlagen.md`](Planungsvorlagen.md): Trennung von Vorlage, Kompetenzrahmen und konkreter Planung
+5. [`Klassenuebersicht.md`](Klassenuebersicht.md): Anforderungen an Klassenuebersicht und Lehrplanmarkierungen
+6. [`AnnotationsDatenvertrag.md`](AnnotationsDatenvertrag.md): verbindliche Felder und Statuswerte fuer Annotationen
+7. [`TechnischeArchitektur.md`](TechnischeArchitektur.md): Grenzen zwischen Frontend, Backend und Datenbank
 
 ## Projektstruktur
 
@@ -40,6 +42,7 @@ Verlaufs-Planer/
     ProjektWiki.md
     TechnischeArchitektur.md
     Datenmodell.md
+    Planungsvorlagen.md
     UI_UX_Konzept.md
     Klassenuebersicht.md
     MultipleVerlaufsplanModelle.md
