@@ -5,8 +5,13 @@ import type { PlanningTemplate } from '../../domain/types'
 import { parsePlanningTemplate } from '../../schemas/planningTemplate'
 
 const STORAGE_KEY = 'verlaufsplaner.planning-templates.v1'
+export interface TemplateReferenceOption { id: string; name: string; kind: 'competency-framework' | 'curriculum' }
+export const getTemplateReferenceOptions = (): TemplateReferenceOption[] => [
+  ...bundledCompetencyCatalogs.map((catalog) => ({ id: catalog.id, name: catalog.name, kind: 'competency-framework' as const })),
+  ...committedCurricula.map((curriculum) => ({ id: curriculum.id, name: `Thueringen · Gymnasium · ${curriculum.subject.name.de} (${curriculum.version})`, kind: 'curriculum' as const })),
+]
 const localTemplates = (): PlanningTemplate[] => typeof localStorage === 'undefined' ? [] : JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as PlanningTemplate[]
-const saveLocalTemplates = (templates: PlanningTemplate[]): void => localStorage.setItem(STORAGE_KEY, JSON.stringify(templates))
+const saveLocalTemplates = (templates: PlanningTemplate[]): void => { if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(templates)) }
 const ensureReferences = (template: PlanningTemplate): PlanningTemplate => {
   const frameworkIds = new Set([...bundledCompetencyCatalogs.map((catalog) => catalog.id), ...committedCurricula.map((curriculum) => curriculum.id)])
   const layoutIds = new Set(scheduleLayouts.map((layout) => layout.id))
