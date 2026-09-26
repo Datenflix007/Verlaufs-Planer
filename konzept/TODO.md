@@ -1,54 +1,76 @@
-# Arbeitsstand
+# Arbeitsstand Verlaufsplaner
 
-Stand: 25. September 2026. Dieses Dokument beschreibt den Fortsetzungsstand ohne Chat-Kontext.
+Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-Kontext. Es beschreibt nur den tatsächlich vorhandenen Stand; lokale Benutzerinhalte gehören nicht ins Repository.
 
-## Erledigt
+## Letzter verifizierter Stand
 
-- [x] Aktuellen Branch komplett eingeordnet: nur Konzepte und Rohdaten, keine bestehende Anwendung oder Tests.
-- [x] Zielarchitektur und Abgrenzung zur alten Konzeptbasis dokumentiert (`ARCHITECTURE.md`).
+- Branch: `implementationOFWorkshopMode`.
+- Letzter Feature-Commit: `a04e803 feat(patterns): persist markdown schedule layouts`.
+- Prüfungen nach dem Muster-Feature: `npm run check`, `npm test -- --run` (20 Tests) und `npm run build` erfolgreich.
+- SQLite-API-Smoke-Test: beide Standardmuster gelesen; ein zusätzliches Muster per `PUT` gespeichert, per `GET` gelesen und per `DELETE` entfernt.
+- Offene manuelle Prüfung: Kein Browser war in der Automationsumgebung verfügbar; Einstellungen, Tabellenansicht und Drucklayout wurden nicht visuell im Browser geprüft.
 
-## Erledigt in Version 1
+## Erledigt: Anwendung und Persistenz
 
-- [x] Phase A: Vue/Vite/TypeScript-Grundprojekt, versioniertes Planmodell, Zod, Repository, Pinia und Routing.
-- [x] Phase B: Dokumentoberflaeche, Angaben, Termine, Ziele, Rich-Text-Kapitel und Autosave.
-- [x] Phase C: Beispielkatalog, Suche, Auswahl und Katalogimport.
-- [x] Phase D: konfigurierbarer Verlaufsplantabelleneditor, Pausen, Zeitlogik und Mehrtagesgruppen.
-- [x] Phase E: Materialverwaltung und automatische Verwendungsliste im Export.
-- [x] Phase F: JSON-, HTML-, LaTeX- und Druck/PDF-Export.
-- [x] Phase G: Unit-Tests, Demo-Plan, responsive/accessibility-Politur und Dokumentation.
-- [x] Phase H: Lokale SQLite-Persistenz, sichere einmalige Browserdaten-Uebernahme und git-ignoriertes JenaChat-Sample.
-- [x] Phase I: Vollstaendiger JenaChat-Verlaufsplan fuer den 30./31. Juli 2026 sowie Zeilensortierung per Drag-and-drop.
-- [x] Phase J: Pro Planung waehlbare Zeitangabe mit Startzeit oder Dauer in Minuten.
-- [x] Phase K: Generische Fach- und Disziplinvorlagen, DigComp-3.0-Beispiel, lokale Vorlagenbibliothek und referenzbasierte Kompetenzfilterung.
+- [x] Vue-3/Vite/TypeScript-Anwendung, Routing, Pinia, Zod-Planmigration und versioniertes `WorkshopPlan`-Format.
+- [x] Lokale SQLite-Persistenz für Planungen über `SqlitePlanRepository` und Vite-API (`data/verlaufsplaner.sqlite`).
+- [x] Nicht-destruktive einmalige Übernahme vorhandener Browser-Planungen.
+- [x] Angaben, Termine, Lernziele, Kompetenzreferenzen, Inhalts- und didaktische Analyse sowie Materialverwaltung.
+- [x] Rich-Text mit Tabellen sowie expliziten Inline- und Block-LaTeX-Knoten.
+- [x] Verlaufsplantabelle mit mehreren Tagen, Pausen, Zeitlogik, Startzeit-/Daueransicht, Drag-and-drop von Zeilen und Materialzuordnung.
+- [x] JSON-, HTML- und LaTeX-Export sowie Browserdruck/PDF aus strukturierten Planungsdaten.
+- [x] Lokales JenaChat-Sample (git-ignoriert) mit Import über die Anwendung.
 
-## Wichtige Entscheidungen
+## Erledigt: Verlaufsplan-Muster in SQLite
 
-- Der aktive Branch hat keine `package.json`; Version 1 wird als neue lokale Vue-3-SPA angelegt.
-- Persistenz bleibt lokal via `SqlitePlanRepository` und `data/verlaufsplaner.sqlite`; den UI-Code nicht direkt auf Speichertechnologien zugreifen lassen. `LocalPlanRepository` dient ausschliesslich der einmaligen, nicht destruktiven Datenuebernahme.
-- Das native Format ist validiertes, versioniertes JSON. Exporter lesen `WorkshopPlan`, nie Komponenten-DOM.
-- Raw-LaTeX ist ausschliesslich ein expliziter Editor-Knoten und wird nicht aus normalem Text erraten.
-- PDF ist Browserdruck einer eigenstaendigen Druckansicht; keine Raster-Screenshots.
+- [x] Tabelle `schedule_patterns` mit ID, Name, Markdown-String, strukturierten Spalten, Zeitstempeln und Kennzeichnung für Standardmuster.
+- [x] Bestehende Datenbanken werden bei Anwendungsstart nicht destruktiv ergänzt: `CREATE TABLE IF NOT EXISTS` plus `INSERT OR IGNORE` für die Standards.
+- [x] Standardmuster **Lernstandsorientierter Verlaufsplan** gespeichert als `|Zeit|Abschnitt|Lerngegenstand|Materialien|Anmerkung|`.
+- [x] Standardmuster **Kommunikationsorientierter Verlaufsplan** gespeichert als `|Zeit|Abschnitt|Lehrerhandeln|Schülerhandeln|Materialien|Gegenstand|`.
+- [x] Einstellungen → **Verlaufsplan-Muster**: eigene Muster aus einem Markdown-Tabellenkopf anlegen und wieder löschen; Standardmuster sind geschützt.
+- [x] Markdown-Parser ordnet Zeit, Abschnitt, Lerngegenstand/Gegenstand, Lehrerhandeln, Schülerhandeln, Materialien und Anmerkung strukturierten Eingabefeldern zu; die Schreibweise `Abschitt` wird toleriert.
+- [x] Musterwahl pro Planung wird mit der Planung gespeichert und in Editor, Vorschau, HTML- und LaTeX-Export verwendet.
+- [x] Unit-Tests für Markdown-Zuordnung, SQLite-Seeding und Export mit lokalem Muster.
 
-## Verifikation
+## Erledigt: Referenzdaten und Vorlagen
 
-- Vor Implementierungsbeginn waren keine TypeScript-, Build- oder Testbefehle vorhanden, weil keine Node-Anwendung eingecheckt war.
-- Nach jedem Paket ausgefuehrt: `npm run check`, `npm test -- --run`, `npm run build`.
-- `npm run check`, `npm test -- --run` und `npm run build` liefen nach der SQLite-Umstellung erfolgreich. Der lokale API-Smoke-Test hat das JenaChat-Sample mit 13 Verlaufszeilen in SQLite gespeichert und wieder ausgelesen. Ein visueller Browser-Sichttest bleibt offen, da in der aktuellen Automationsumgebung kein Browser verfuegbar ist.
+- [x] Offizielle Referenzdaten und lokale Benutzerinhalte sind getrennt: Curricula unter `src/data/`, Planungen und Muster in der ignorierten SQLite-Datenbank, lokale Planungsvorlagen im Browser.
+- [x] Generisches Curriculum-Modell mit Quellen, Geltung, Kompetenzbereichen, Lernbereichen, Inhaltspunkten, Relationen und Fortschrittstypen.
+- [x] Committete Thüringer Gymnasium-Datensätze: Geschichte 2021, Informatik 2012 und Medienbildung/Informatik 5/6 2024.
+- [x] Registry, Zod-Validierung, Curriculum-Baum und Coverage-Berechnung auf committed Referenzdaten.
+- [x] Importbericht: `reports/curriculum-import-report.md`.
+- [x] Eigene Planungsvorlagen lokal registrieren, importieren, exportieren und löschen; sie referenzieren nur stabile IDs.
 
-## Bekannte naechste Verbesserungen
+## Offen: kurzfristig prüfen und nachziehen
+
+- [ ] Manuellen Browser-Sichttest durchführen: neues Muster anlegen, auswählen, Plan speichern/neu öffnen, Vorschau und HTML-/LaTeX-Export prüfen.
+- [ ] Einstellungen für Verlaufsplan-Muster ergonomisch erweitern, falls benötigt: eigene Muster bearbeiten oder duplizieren; derzeit können sie angelegt und gelöscht werden.
+- [ ] Die Auswahl eigener Datenbank-Muster auch in der Verwaltung lokaler Planungsvorlagen vollständig anbieten. Aktuell validiert diese Ansicht nur die mitgelieferte Layout-Registry; ein bereits im Plan gewähltes Datenbank-Muster bleibt trotzdem erhalten und nutzbar.
+- [ ] `konzept/Planungsvorlagen.md` und ältere Konzeptdokumente auf den aktuellen Implementierungsstand prüfen: Teile beschreiben noch mitgelieferte Vorlagen bzw. frühere Annahmen und können vom aktuellen UI-Zustand abweichen.
+- [ ] Prüfen, ob die lokale Datei `konzept/TODO.md` künftig versioniert werden soll. Sie ist derzeit über `.gitignore` bewusst nicht Teil der Commits; der Nutzer hat jedoch ausdrücklich eine sessionübergreifende Fortschrittsdokumentation verlangt.
+
+## Offen: Anwendungsausbau
+
+- [ ] Drag-and-drop für Tage und Lernziele (Verlaufszeilen sind bereits ziehbar).
+- [ ] Persistente eigene Kompetenzkataloge und Erläuterungen je Kompetenzreferenz.
+- [ ] Automatische PDF-Dateierzeugung für Umgebungen ohne Browserdruck.
+- [ ] Reihenplanung, Materialanhänge und interaktiver Arbeitsblatt-Editor gemäß Roadmap.
+- [ ] Optionaler Tauri-/Electron- oder Cloud-Speicheradapter, ohne die lokale Datenhoheit zu verändern.
 
 ## Curriculum-Importmatrix
 
-| Fach / Fassung | Quelle erfasst | strukturiert | validiert | committed |
-| --- | --- | --- | --- | --- |
-| Geschichte Gymnasium 2021 | ja | Grundstruktur, Ausbau offen | ja | nach erstem Curriculum-Commit |
-| Informatik Gymnasium 2012 | ja | Grundstruktur, Ausbau offen | ja | nach erstem Curriculum-Commit |
-| Medienbildung und Informatik 5/6 2024 | ja | Grundstruktur, Ausbau offen | ja | nach erstem Curriculum-Commit |
-| Uebrige Gymnasialfaecher | Quellenliste vorhanden | nein | nein | nein |
+| Fach / Fassung | Quelle | strukturiert | validiert | committed | Nächster Schritt |
+| --- | --- | --- | --- | --- | --- |
+| Geschichte Gymnasium 2021 | erfasst | Grundstruktur mit 4 Kompetenzbereichen, 4 Kompetenzen, 3 Lernbereichen, 10 Inhaltspunkten | ja | ja | seitennahe Annotation weiterer Ziel- und Unterpunkte |
+| Informatik Gymnasium 2012 | erfasst | getrennte Bereiche mit 3 Kompetenzbereichen, 4 Kompetenzen, 3 Lernbereichen, 9 Inhaltspunkten | ja | ja | seitennahe Annotation weiterer Ziel- und Unterpunkte |
+| Medienbildung und Informatik 5/6 2024 | erfasst | getrennt von Informatik; 3 Kompetenzbereiche, 3 Kompetenzen, 1 Lernbereich, 6 Inhaltspunkte | ja | ja | seitennahe Annotation weiterer Ziel- und Unterpunkte |
+| Neue Erprobungsfassungen | teilweise als Original-PDF vorhanden | nein | nein | nein | Geltung, Fachstruktur und Nutzungsbedingungen gegen Schulportal prüfen; parallel importieren, nicht ersetzen |
+| Übrige Thüringer Gymnasialfächer | Quellenliste teilweise vorhanden | nein | nein | nein | gemäß Importreihenfolge Quellen prüfen, strukturiert annotieren, validieren und separat committen |
 
-Die drei Datensaetze sind keine Platzhalter: Sie enthalten Quellen, Geltung, Kompetenzbereiche, Lernbereiche und getrennte Inhaltspunkte. Die vollstaendige, seitennahe Annotation der einzelnen Kompetenz- und Inhaltspunkte wird fortgesetzt. Neue 2026er Erprobungsfassungen bleiben als parallele Importaufgabe offen, bis ihre Applicability und Struktur gegen die jeweiligen Original-PDFs geprueft sind.
+## Arbeitsregeln für die Fortsetzung
 
-- [x] Block-LaTeX-Dialog und einfache Tabellen im Rich-Text-Editor.
-- [ ] Drag-and-drop fuer Tage und Lernziele; Verlaufszeilen sind bereits direkt ziehbar.
-- [ ] Persistente eigene Kompetenzkataloge sowie Feld fuer Erlaeuterungen je Kompetenzreferenz.
-- [ ] Automatische PDF-Dateierzeugung fuer Umgebungen ohne Browserdruck.
+- Referenzdaten sind versioniert und werden mit stabilen IDs, Provenienz und Review-Status committed; keine fachlichen Daten nur zur Laufzeit herunterladen.
+- Planungen, Fortschritt, Muster und benutzererstellte Vorlagen bleiben lokale Benutzerinhalte. Keine davon nach `src/data/` verschieben oder committen.
+- Beim Wechsel von Mustern oder Vorlagen bestehende Zeilendaten, Inhalte und Kompetenzbezüge nicht löschen.
+- Für Änderungen an Datenmodell, Persistenz oder UI immer mindestens `npm run check`, `npm test -- --run` und `npm run build` ausführen.
+- Bei neuen Curricula erst Quelldatei und Geltung prüfen, dann strukturieren, mit Zod testen, Bericht aktualisieren und Daten separat committen.
