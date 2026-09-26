@@ -63,11 +63,6 @@ Verlaufs-Planer/
     preprocess/
   data/
     preprocessed/
-  rawData/
-    euDigi/
-    flp_bw/
-    flp_bay/
-    ...
 ```
 
 ## Begriffe

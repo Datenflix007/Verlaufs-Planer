@@ -129,7 +129,7 @@ scripts/
 
 ## Datenfluss fuer Lehrplanimport
 
-1. Rohdateien liegen in `rawData/`.
+1. Rohdateien werden außerhalb des Repositorys aus dokumentierten Primärquellen beschafft.
 2. `just preprocess` extrahiert Text und Metadaten.
 3. Gueltigkeits- und Inkraftsetzungshinweise werden aus Quellseiten, Tabellen oder Begleittexten uebernommen.
 4. Annotationen werden erzeugt.

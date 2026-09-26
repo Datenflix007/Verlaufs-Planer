@@ -55,7 +55,7 @@ Legt Standard-Verlaufsplanmodelle und Phasentypen an.
 just preprocess-th
 ```
 
-Liest `rawData/flp_th/download_manifest.json` und erzeugt normalisierte Lehrplan-Quellannotationen unter `data/preprocessed/`.
+Liest ein lokal bereitgestelltes, nicht versioniertes Quellenmanifest und erzeugt normalisierte Lehrplan-Quellannotationen unter `data/preprocessed/`.
 
 ```bash
 just db-import-th

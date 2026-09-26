@@ -2,33 +2,11 @@
 
 ## Zweck
 
-Annotierte Fachlehrplaene verbinden Unterrichtsplanung mit verbindlichen Kompetenz- und Inhaltsbezugen. Die Anwendung soll Rohdaten aus `rawData/` in eine strukturierte Form ueberfuehren, damit Nutzende Kompetenzen suchen, filtern und einem Verlaufsplan zuordnen koennen.
+Annotierte Fachlehrplaene verbinden Unterrichtsplanung mit verbindlichen Kompetenz- und Inhaltsbezugen. Die Anwendung ueberfuehrt nachvollziehbar beschaffte Primaerquellen in eine strukturierte Form, damit Nutzende Kompetenzen suchen, filtern und einem Verlaufsplan zuordnen koennen.
 
-## Aktuelle Rohdatenstruktur
+## Quellenbeschaffung
 
-Im Repository existiert `rawData/` mit Unterordnern fuer Bundeslaender und Kompetenzrahmen:
-
-```text
-rawData/
-  euDigi/
-  flp_bay/
-  flp_ber/
-  flp_bra/
-  flp_bre/
-  flp_bw/
-  flp_he/
-  flp_hh/
-  flp_mv/
-  flp_nrw/
-  flp_rlp/
-  flp_sa/
-  flp_sar/
-  flp_sh/
-  flp_st/
-  flp_th/
-```
-
-Die Ordner sind als Quellenbereiche zu verstehen. Die konkrete Dateibefuellung kann PDFs, HTML, Markdown, Textdateien oder strukturierte Daten enthalten.
+Originale PDFs und weitere Rohquellen werden nicht im Repository abgelegt. Jeder Import dokumentiert stattdessen Quelle, URL, Abrufzeitpunkt, Version und gegebenenfalls Prüfsumme in den committed Curriculummetadaten. Das reduziert Lizenzrisiken und hält den Runtime-Bestand auf die strukturierten, geprüften Referenzdaten beschränkt.
 
 ## Zielstruktur
 

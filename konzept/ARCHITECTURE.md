@@ -4,7 +4,7 @@ Stand: 25. September 2026
 
 ## Ausgangslage
 
-Der aktuelle Branch enthielt bei Arbeitsbeginn **keine lauffaehige Webanwendung**: kein `package.json`, kein `src/`, keine Stores, keine Routen und keine Persistenz. Er enthielt eine README, fachliche Konzeptdokumente unter `konzept/` und lokale Lehrplan-Rohdaten unter `rawData/`. Daher gibt es keine aktive Studienverlaufslogik oder alte UI-Komponenten, die migriert oder weiterverwendet werden koennen. Die Konzeptdokumente bleiben als historische und fachliche Referenz erhalten; sie sind nicht Laufzeitcode.
+Der aktuelle Branch enthielt bei Arbeitsbeginn **keine lauffaehige Webanwendung**: kein `package.json`, kein `src/`, keine Stores, keine Routen und keine Persistenz. Er enthielt eine README und fachliche Konzeptdokumente unter `konzept/`. Daher gibt es keine aktive Studienverlaufslogik oder alte UI-Komponenten, die migriert oder weiterverwendet werden koennen. Die Konzeptdokumente bleiben als historische und fachliche Referenz erhalten; sie sind nicht Laufzeitcode.
 
 ## Zielarchitektur Version 1
 

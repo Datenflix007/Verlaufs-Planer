@@ -44,6 +44,7 @@ Stand: 26. September 2026. Dieses Dokument ist die Fortsetzungshilfe ohne Chat-K
 - [x] Offizielle Referenzdaten und lokale Benutzerinhalte sind getrennt: Curricula unter `src/data/`, Planungen und Muster in der ignorierten SQLite-Datenbank, lokale Planungsvorlagen im Browser.
 - [x] Generisches Curriculum-Modell mit Quellen, Geltung, Kompetenzbereichen, Lernbereichen, Inhaltspunkten, Relationen und Fortschrittstypen.
 - [x] Committete Thüringer Gymnasium-Datensätze: Geschichte 2021, Informatik 2012 und Medienbildung/Informatik 5/6 2024.
+- [x] Historischen Ordner `rawData/` mit 523 getrackten Rohquellen entfernt. Originalquellen werden künftig außerhalb des Repositorys beschafft; committed bleiben nur strukturierte, quellenreferenzierte Referenzdaten.
 - [x] Registry, Zod-Validierung, Curriculum-Baum und Coverage-Berechnung auf committed Referenzdaten.
 - [x] Importbericht: `reports/curriculum-import-report.md`.
 - [x] Eigene Planungsvorlagen lokal registrieren, importieren, exportieren und löschen; sie referenzieren nur stabile IDs.
