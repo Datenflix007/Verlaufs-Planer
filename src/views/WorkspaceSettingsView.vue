@@ -2,8 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { createId } from '../domain/factories'
-import type { DashboardBreakpoint, DashboardWidget, InventoryScope, MaterialResourceType, WorkspaceSettings } from '../domain/types'
+import type { AppearanceColorKey, DashboardBreakpoint, DashboardWidget, InventoryScope, MaterialResourceType, WorkspaceSettings } from '../domain/types'
 import { useAppearanceStore } from '../stores/appearanceStore'
+import { appearanceColorPresets } from '../data/appearanceColors'
 import DashboardEditor from '../components/dashboard/DashboardEditor.vue'
 import { defaultDashboardGridColumns, defaultDashboardWidgets } from '../data/dashboardWidgets'
 import { WorkspaceRepository } from '../repositories/WorkspaceRepository'
@@ -12,6 +13,18 @@ import { useProjectStore } from '../stores/projectStore'
 const repository = new WorkspaceRepository(); const router = useRouter(); const projectStore = useProjectStore(); const appearanceStore = useAppearanceStore(); const workspace = ref<WorkspaceSettings>(); const message = ref(''); const error = ref('')
 const buildingName = ref(''); const roomName = ref(''); const roomBuildingId = ref(''); const inventoryName = ref(''); const inventoryQuantity = ref(''); const inventoryScope = ref<InventoryScope>('personal'); const inventoryBuildingId = ref(''); const inventoryRoomId = ref(''); const todoTitle = ref(''); const todoDate = ref(''); const dashboardSaving = ref(false); let dashboardSaveTimer: ReturnType<typeof setTimeout> | undefined
 const materialTypes: MaterialResourceType[] = ['physical', 'file', 'worksheet', 'link', 'interactive-html']; const inventoryType = ref<MaterialResourceType>('physical')
+const backgroundImageError = ref('')
+const appearancePalettes = [{ id: 'lagoon', label: 'Lagune' }, { id: 'forest', label: 'Wald' }, { id: 'berry', label: 'Beere' }, { id: 'citrus', label: 'Zitrus' }] as const
+const appearanceColorRoles: Array<{ key: AppearanceColorKey; label: string }> = [
+  { key: 'pageBackground', label: 'Seitenhintergrund' },
+  { key: 'surface', label: 'Panels und Karten' },
+  { key: 'raisedSurface', label: 'Eingaben und erhöhte Flächen' },
+  { key: 'text', label: 'Haupttext' },
+  { key: 'mutedText', label: 'Sekundärtext' },
+  { key: 'border', label: 'Rahmen und Trennlinien' },
+  { key: 'action', label: 'Aktionsflächen' },
+  { key: 'actionText', label: 'Text auf Aktionsflächen' },
+]
 const roomsForInventory = computed(() => (workspace.value?.rooms ?? []).filter((room) => !inventoryBuildingId.value || room.buildingId === inventoryBuildingId.value))
 async function load(): Promise<void> { try { workspace.value = await repository.get(); appearanceStore.apply(workspace.value.appearance) } catch (cause) { error.value = cause instanceof Error ? cause.message : 'Arbeitsbereich konnte nicht geladen werden.' } }
 onMounted(() => void load())
@@ -25,6 +38,34 @@ async function remove(kind: 'buildings' | 'rooms' | 'inventoryMaterials' | 'todo
 async function toggleTodo(id: string): Promise<void> { if (!workspace.value) return; const todo = workspace.value.todos.find((item) => item.id === id); if (todo) { todo.completed = !todo.completed; await save('Aufgabe aktualisiert.') } }
 async function saveDashboard(note = 'Dashboard gespeichert.'): Promise<void> { if (dashboardSaveTimer) clearTimeout(dashboardSaveTimer); dashboardSaving.value = true; await save(note); dashboardSaving.value = false }
 async function saveAppearance(): Promise<void> { if (!workspace.value) return; appearanceStore.apply(workspace.value.appearance); await save('Erscheinungsbild gespeichert.') }
+function updateAppearanceColor(key: AppearanceColorKey, event: Event): void {
+  if (!workspace.value) return
+  const value = (event.target as HTMLInputElement).value
+  workspace.value.appearance.colorOverrides = { ...workspace.value.appearance.colorOverrides, [key]: value }
+  appearanceStore.apply(workspace.value.appearance)
+}
+async function resetAppearanceColors(): Promise<void> {
+  if (!workspace.value) return
+  workspace.value.appearance.colorOverrides = undefined
+  await saveAppearance()
+}
+function loadBackgroundImage(event: Event): void {
+  if (!workspace.value) return
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) { backgroundImageError.value = 'Bitte eine Bilddatei auswählen.'; return }
+  if (file.size > 2_000_000) { backgroundImageError.value = 'Das Bild darf höchstens 2 MB groß sein.'; return }
+  const reader = new FileReader()
+  reader.onload = () => {
+    if (typeof reader.result !== 'string') return
+    workspace.value!.appearance.backgroundImageData = reader.result
+    workspace.value!.appearance.background = 'image'
+    backgroundImageError.value = ''
+    void saveAppearance()
+  }
+  reader.readAsDataURL(file)
+  ;(event.target as HTMLInputElement).value = ''
+}
 function updateDashboard(widgets: DashboardWidget[]): void { if (!workspace.value) return; workspace.value.dashboard = widgets; if (dashboardSaveTimer) clearTimeout(dashboardSaveTimer); dashboardSaveTimer = setTimeout(() => { dashboardSaveTimer = undefined; void saveDashboard('Dashboard-Änderungen automatisch gespeichert.') }, 450) }
 function updateGridColumns(columns: Record<DashboardBreakpoint, number>): void { if (!workspace.value) return; workspace.value.dashboardGridColumns = columns; if (dashboardSaveTimer) clearTimeout(dashboardSaveTimer); dashboardSaveTimer = setTimeout(() => { dashboardSaveTimer = undefined; void saveDashboard('Dashboard-Änderungen automatisch gespeichert.') }, 450) }
 async function resetDashboard(): Promise<void> { if (!workspace.value) return; workspace.value.dashboard = defaultDashboardWidgets(); workspace.value.dashboardGridColumns = { ...defaultDashboardGridColumns }; await saveDashboard() }
@@ -45,16 +86,48 @@ async function importProject(event: Event): Promise<void> { const file = (event.
         <fieldset class="appearance-field">
           <legend>Farbset</legend>
           <div class="palette-picker" role="group" aria-label="Farbset">
-            <button v-for="palette in [{ id: 'lagoon', label: 'Lagune', color: '#1d777f' }, { id: 'forest', label: 'Wald', color: '#47734f' }, { id: 'berry', label: 'Beere', color: '#a54863' }, { id: 'citrus', label: 'Zitrus', color: '#b57522' }] as const" :key="palette.id" type="button" class="palette-swatch" :class="{ active: workspace.appearance.palette === palette.id }" :aria-label="palette.label" :aria-pressed="workspace.appearance.palette === palette.id" :title="palette.label" :style="{ '--swatch-color': palette.color }" @click="workspace.appearance.palette = palette.id; saveAppearance()"><span aria-hidden="true"></span><small>{{ palette.label }}</small></button>
+            <button v-for="palette in appearancePalettes" :key="palette.id" type="button" class="palette-swatch" :class="{ active: workspace.appearance.palette === palette.id }" :aria-label="palette.label" :aria-pressed="workspace.appearance.palette === palette.id" :title="palette.label" :style="{ '--swatch-bg': appearanceColorPresets[palette.id].light.pageBackground, '--swatch-surface': appearanceColorPresets[palette.id].light.surface, '--swatch-action': appearanceColorPresets[palette.id].light.action, '--swatch-text': appearanceColorPresets[palette.id].light.text }" @click="workspace.appearance.palette = palette.id; workspace.appearance.colorOverrides = undefined; saveAppearance()"><span class="palette-preview" aria-hidden="true"><i></i><i></i><i></i><i></i></span><small>{{ palette.label }}</small></button>
           </div>
+        </fieldset>
+        <fieldset class="appearance-field appearance-color-field">
+          <legend>UI-Farben einzeln anpassen</legend>
+          <p class="appearance-help">Ändert gezielt Seitenfläche, Karten, Texte, Rahmen und Aktionsflächen. Die Vorschau aktualisiert sich sofort.</p>
+          <div class="appearance-role-grid">
+            <label v-for="role in appearanceColorRoles" :key="role.key" class="appearance-color-role">
+              <span>{{ role.label }}</span>
+              <span class="appearance-color-input"><input type="color" :aria-label="role.label" :value="appearanceStore.colors[role.key]" @input="updateAppearanceColor(role.key, $event)" @change="saveAppearance" /><code>{{ appearanceStore.colors[role.key] }}</code></span>
+            </label>
+          </div>
+          <button type="button" class="secondary appearance-reset-colors" :disabled="!workspace.appearance.colorOverrides || !Object.keys(workspace.appearance.colorOverrides).length" @click="resetAppearanceColors">Individuelle Farben zurücksetzen</button>
         </fieldset>
         <label class="appearance-field background-field">Hintergrund
           <select v-model="workspace.appearance.background" @change="saveAppearance">
             <option value="mist">Sanfter Farbton</option>
             <option value="plain">Einfarbig</option>
             <option value="grid">Feines Raster</option>
+            <option value="gradient">Eigener Farbverlauf</option>
+            <option value="image">Eigenes Hintergrundbild</option>
           </select>
         </label>
+        <label v-if="workspace.appearance.background === 'gradient'" class="appearance-field gradient-colors">Verlaufsfarben
+          <span class="gradient-color-pair">
+            <input v-model="workspace.appearance.gradientStart" type="color" aria-label="Erste Verlaufsfarbe" @input="appearanceStore.apply(workspace.appearance)" @change="saveAppearance" />
+            <input v-model="workspace.appearance.gradientEnd" type="color" aria-label="Zweite Verlaufsfarbe" @input="appearanceStore.apply(workspace.appearance)" @change="saveAppearance" />
+          </span>
+        </label>
+        <div v-if="workspace.appearance.background === 'image'" class="appearance-field background-image-control">
+          <label class="file-label">Hintergrundbild auswählen<input type="file" accept="image/*" @change="loadBackgroundImage"></label>
+          <button v-if="workspace.appearance.backgroundImageData" type="button" class="secondary" @click="workspace.appearance.backgroundImageData = undefined; workspace.appearance.background = 'mist'; saveAppearance()">Bild entfernen</button>
+          <small v-if="backgroundImageError" class="error-message">{{ backgroundImageError }}</small>
+        </div>
+      </div>
+      <div class="appearance-contrast-preview">
+        <div class="contrast-sample-card"><strong>Beispielkarte</strong><p>Lesbarer Oberflächentext</p><small>Sekundärer Hinweistext</small></div>
+        <button type="button" class="contrast-sample-action">Aktionsbutton</button>
+        <div class="contrast-results">
+          <span :class="{ pass: appearanceStore.textContrast >= 4.5, warning: appearanceStore.textContrast < 4.5 }">Textkontrast <strong>{{ appearanceStore.textContrast.toFixed(2) }}:1</strong><small>{{ appearanceStore.textContrast >= 4.5 ? 'Gut lesbar' : 'Zu niedrig (Ziel: 4,5:1)' }}</small></span>
+          <span :class="{ pass: appearanceStore.actionContrast >= 4.5, warning: appearanceStore.actionContrast < 4.5 }">Buttonkontrast <strong>{{ appearanceStore.actionContrast.toFixed(2) }}:1</strong><small>{{ appearanceStore.actionContrast >= 4.5 ? 'Gut lesbar' : 'Zu niedrig (Ziel: 4,5:1)' }}</small></span>
+        </div>
       </div>
     </section>
     <section class="settings-card"><div class="section-heading"><h2>Planung importieren</h2><p>Importieren Sie eine zuvor exportierte JSON-Planung. Nach der Prüfung wird sie direkt im Editor geöffnet.</p></div><label class="file-label">JSON importieren<input type="file" accept="application/json,.json" @change="importProject"></label></section>

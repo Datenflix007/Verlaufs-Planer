@@ -10,18 +10,24 @@ const responsiveDefaults: Record<DashboardBreakpoint, Record<DashboardWidgetId, 
     'upcoming-plans': { x: 0, y: 5, w: 4, h: 3 },
     'upcoming-todos': { x: 0, y: 8, w: 4, h: 3 },
     'next-day-materials': { x: 0, y: 11, w: 4, h: 3 },
+    'today-schedule': { x: 0, y: 14, w: 4, h: 3 },
+    'material-library': { x: 0, y: 17, w: 4, h: 3 },
   },
   tablet: {
     calendar: { x: 0, y: 0, w: 8, h: 5 },
     'upcoming-plans': { x: 0, y: 5, w: 4, h: 3 },
     'upcoming-todos': { x: 4, y: 5, w: 4, h: 3 },
     'next-day-materials': { x: 0, y: 8, w: 8, h: 3 },
+    'today-schedule': { x: 0, y: 11, w: 8, h: 3 },
+    'material-library': { x: 0, y: 14, w: 8, h: 3 },
   },
   laptop: {
     calendar: { x: 0, y: 0, w: 12, h: 5 },
     'upcoming-plans': { x: 0, y: 5, w: 6, h: 3 },
     'upcoming-todos': { x: 6, y: 5, w: 6, h: 3 },
     'next-day-materials': { x: 0, y: 8, w: 12, h: 3 },
+    'today-schedule': { x: 0, y: 11, w: 6, h: 3 },
+    'material-library': { x: 6, y: 11, w: 6, h: 3 },
   },
 }
 
@@ -35,6 +41,8 @@ export const dashboardWidgetRegistry: Record<DashboardWidgetId, DashboardWidgetD
   'upcoming-plans': { id: 'upcoming-plans', title: 'Verlaufspläne', icon: '☷', minW: 3, minH: 2, defaultLayout: { x: 0, y: 5, w: 6, h: 3 } },
   'upcoming-todos': { id: 'upcoming-todos', title: 'Aufgaben', icon: '☑', minW: 3, minH: 2, defaultLayout: { x: 6, y: 5, w: 6, h: 3 } },
   'next-day-materials': { id: 'next-day-materials', title: 'Materialien', icon: '◇', minW: 4, minH: 2, defaultLayout: { x: 0, y: 8, w: 12, h: 3 } },
+  'today-schedule': { id: 'today-schedule', title: 'Stundenablauf', icon: '◷', minW: 3, minH: 2, defaultLayout: { x: 0, y: 11, w: 6, h: 3 } },
+  'material-library': { id: 'material-library', title: 'Lernmaterialien', icon: '▧', minW: 3, minH: 2, defaultLayout: { x: 6, y: 11, w: 6, h: 3 } },
 }
 
 const widthToColumns: Record<DashboardWidgetWidth, number> = { half: 6, wide: 9, full: 12 }

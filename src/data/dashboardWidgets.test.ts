@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultDashboardGridColumns, defaultDashboardWidgets, findNextFreePosition, getWidgetLayout, normaliseResponsiveLayout, normaliseWidget, overlaps, resolveWidgetCollisions } from './dashboardWidgets'
+import { appearanceColorPresets, contrastRatio } from './appearanceColors'
 import { normaliseWorkspaceSettings } from './workspaceDefaults'
 
 describe('Dashboard grid layout', () => {
@@ -31,7 +32,8 @@ describe('Dashboard grid layout', () => {
 
   it('restores the stable standard layout', () => {
     expect(defaultDashboardWidgets().map((widget) => [widget.id, widget.x, widget.y, widget.w, widget.h])).toEqual([
-      ['calendar', 0, 0, 12, 5], ['upcoming-plans', 0, 5, 6, 3], ['upcoming-todos', 6, 5, 6, 3], ['next-day-materials', 0, 8, 12, 3],
+      ['calendar', 0, 0, 12, 5], ['upcoming-plans', 0, 5, 6, 3], ['upcoming-todos', 6, 5, 6, 3],
+      ['next-day-materials', 0, 8, 12, 3], ['today-schedule', 0, 11, 6, 3], ['material-library', 6, 11, 6, 3],
     ])
   })
 
@@ -61,8 +63,22 @@ describe('Dashboard grid layout', () => {
   })
 
   it('defaults old workspace data to the existing appearance and preserves custom preferences', () => {
-    expect(normaliseWorkspaceSettings(undefined).appearance).toEqual({ mode: 'light', palette: 'lagoon', background: 'mist' })
+    expect(normaliseWorkspaceSettings(undefined).appearance).toEqual({ mode: 'light', palette: 'lagoon', background: 'mist', gradientStart: '#e5eff0', gradientEnd: '#e8edef' })
     expect(normaliseWorkspaceSettings({ appearance: { mode: 'dark', palette: 'forest', background: 'grid' } }).appearance)
-      .toEqual({ mode: 'dark', palette: 'forest', background: 'grid' })
+      .toEqual({ mode: 'dark', palette: 'forest', background: 'grid', gradientStart: '#e5eff0', gradientEnd: '#e8edef' })
+    expect(normaliseWorkspaceSettings({ appearance: { mode: 'system', palette: 'berry', background: 'image', backgroundImageData: 'data:image/png;base64,abc' } }).appearance.backgroundImageData)
+      .toBe('data:image/png;base64,abc')
+  })
+
+  it('preserves independent UI color overrides and keeps preset text contrast accessible', () => {
+    const overrides = { pageBackground: '#112233', surface: '#223344', text: '#fefefe', action: '#145a32', actionText: '#ffffff' }
+    expect(normaliseWorkspaceSettings({ appearance: { mode: 'dark', palette: 'forest', background: 'plain', colorOverrides: overrides } }).appearance.colorOverrides)
+      .toEqual(overrides)
+    for (const preset of Object.values(appearanceColorPresets)) {
+      for (const colors of [preset.light, preset.dark]) {
+        expect(contrastRatio(colors.text, colors.surface)).toBeGreaterThanOrEqual(4.5)
+        expect(contrastRatio(colors.actionText, colors.action)).toBeGreaterThanOrEqual(4.5)
+      }
+    }
   })
 })

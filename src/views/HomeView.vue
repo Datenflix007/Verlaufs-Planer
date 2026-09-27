@@ -6,6 +6,8 @@ import { createId } from '../domain/factories'
 import { aggregateMaterials } from '../domain/materials'
 import type { DashboardBreakpoint, DashboardWidget, Room, WorkshopPlan, WorkspaceSettings } from '../domain/types'
 import { getWidgetLayout } from '../data/dashboardWidgets'
+import type { DigitalLearningMaterial } from '../domain/types'
+import { LearningMaterialRepository } from '../repositories/LearningMaterialRepository'
 import { SqlitePlanRepository } from '../repositories/SqlitePlanRepository'
 import { WorkspaceRepository } from '../repositories/WorkspaceRepository'
 import { useProjectStore } from '../stores/projectStore'
@@ -26,6 +28,7 @@ type CalendarEvent = {
 const store = useProjectStore()
 const router = useRouter()
 const plans = new SqlitePlanRepository()
+const learningMaterialRepository = new LearningMaterialRepository()
 const workspaceRepository = new WorkspaceRepository()
 const today = new Date().toISOString().slice(0, 10)
 const nextDay = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
@@ -37,6 +40,7 @@ const roomId = ref('')
 const importError = ref('')
 const workspace = ref<WorkspaceSettings>()
 const planDetails = ref<WorkshopPlan[]>([])
+const learningMaterials = ref<DigitalLearningMaterial[]>([])
 const newPlanningMenuOpen = ref(false)
 const planningStep = ref<'choice' | 'single'>('choice')
 const quickCreateOpen = ref(false)
@@ -110,6 +114,7 @@ const upcomingTodos = computed(() =>
     .filter((event) => event.type === 'todo' && !event.completed && event.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date)),
 )
+const todaySchedule = computed(() => allEvents.value.filter((event) => event.date === today).sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? '')))
 const nextDayMaterials = computed(() => {
   const grouped = new Map<string, { name: string; quantity: string[]; plans: string[] }>()
 
@@ -295,6 +300,7 @@ onMounted(async () => {
   try {
     await Promise.all([
       refresh(),
+      learningMaterialRepository.list().then((materials) => { learningMaterials.value = materials }),
       workspaceRepository.get().then((settings) => {
         workspace.value = settings
       }),
@@ -452,6 +458,33 @@ async function open(id: string): Promise<void> {
             </li>
             <li v-if="!upcomingTodos.length" class="empty-state">Keine offenen Aufgaben mit Termin.</li>
           </ol>
+        </template>
+
+        <template v-else-if="widget.id === 'today-schedule'">
+          <div class="widget-heading"><h2>Stundenablauf</h2><span>{{ formatDate(today) }}</span></div>
+          <ol class="dashboard-list agenda-list">
+            <li v-for="event in todaySchedule.slice(0, widget.limit ?? 5)" :key="event.id">
+              <button type="button" @click="openEvent(event)">
+                <strong>{{ event.title }}</strong>
+                <small>{{ eventTime(event) }}{{ event.detail ? ` · ${event.detail}` : '' }}</small>
+              </button>
+            </li>
+            <li v-if="!todaySchedule.length" class="empty-state">Heute sind keine Planungen eingetragen.</li>
+          </ol>
+        </template>
+
+        <template v-else-if="widget.id === 'material-library'">
+          <div class="widget-heading"><h2>Digitale Lernmaterialien</h2><span>{{ learningMaterials.length }}</span></div>
+          <ol class="dashboard-list">
+            <li v-for="material in learningMaterials.slice(0, widget.limit ?? 4)" :key="material.id">
+              <button type="button" @click="router.push({ name: 'learning-material-edit', params: { id: material.id } })">
+                <strong>{{ material.title }}</strong>
+                <small>{{ material.kind === 'presentation' ? 'Präsentation' : material.kind === 'worksheet' ? 'Arbeitsblatt' : material.kind === 'mindmap' ? 'Mindmap' : 'Stundenablauf' }}</small>
+              </button>
+            </li>
+            <li v-if="!learningMaterials.length" class="empty-state">Noch keine digitalen Lernmaterialien.</li>
+          </ol>
+          <RouterLink class="secondary link-button" :to="{ name: 'learning-materials' }">Baukasten öffnen</RouterLink>
         </template>
 
         <template v-else>

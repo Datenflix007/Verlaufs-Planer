@@ -2,7 +2,7 @@ import type { AppearanceSettings, DashboardBreakpoint, DashboardWidget, Workspac
 import { clampDashboardGridColumns, dashboardBreakpoints, defaultDashboardGridColumns, defaultDashboardWidgets, getWidgetLayout, normaliseResponsiveLayout, normaliseWidget, resolveWidgetCollisions } from './dashboardWidgets'
 import { defaultPriorities, normalisePriorities } from '../domain/priorities'
 
-export const defaultAppearanceSettings: AppearanceSettings = { mode: 'light', palette: 'lagoon', background: 'mist' }
+export const defaultAppearanceSettings: AppearanceSettings = { mode: 'light', palette: 'lagoon', background: 'mist', gradientStart: '#e5eff0', gradientEnd: '#e8edef' }
 
 export const createWorkspaceSettings = (): WorkspaceSettings => ({ schemaVersion: 1, buildings: [], rooms: [], inventoryMaterials: [], todos: [], priorities: defaultPriorities(), dashboard: defaultDashboardWidgets(), dashboardGridColumns: { ...defaultDashboardGridColumns }, appearance: { ...defaultAppearanceSettings } })
 

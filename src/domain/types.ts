@@ -68,15 +68,21 @@ export type InventoryScope = 'personal' | 'building' | 'room'
 export interface InventoryMaterial extends Material { scope: InventoryScope; buildingId?: string; roomId?: string }
 export interface PriorityDefinition { id: string; label: string; order: number; icon: '⚡' | '↑' | '●' | '○' }
 export interface PlannerTodo { id: string; title: string; dueDate?: string; planId?: string; priorityId?: string; completed: boolean; notes?: string }
-export type DashboardWidgetId = 'calendar' | 'upcoming-plans' | 'upcoming-todos' | 'next-day-materials'
+export type DashboardWidgetId = 'calendar' | 'upcoming-plans' | 'upcoming-todos' | 'next-day-materials' | 'today-schedule' | 'material-library'
 export type DashboardWidgetWidth = 'half' | 'wide' | 'full'
 export type DashboardWidgetHeight = 'compact' | 'standard' | 'tall'
 export type DashboardBreakpoint = 'phone' | 'tablet' | 'laptop'
 export interface DashboardWidgetLayout { x: number; y: number; w: number; h: number }
 export type AppearanceMode = 'light' | 'dark' | 'system'
 export type AppearancePalette = 'lagoon' | 'forest' | 'berry' | 'citrus'
-export type AppearanceBackground = 'mist' | 'plain' | 'grid'
-export interface AppearanceSettings { mode: AppearanceMode; palette: AppearancePalette; background: AppearanceBackground }
+export type AppearanceBackground = 'mist' | 'plain' | 'grid' | 'gradient' | 'image'
+export type AppearanceColorKey = 'pageBackground' | 'surface' | 'raisedSurface' | 'text' | 'mutedText' | 'border' | 'action' | 'actionText'
+export type AppearanceColorSet = Record<AppearanceColorKey, string>
+export interface AppearanceSettings {
+  mode: AppearanceMode; palette: AppearancePalette; background: AppearanceBackground
+  gradientStart?: string; gradientEnd?: string; backgroundImageData?: string
+  colorOverrides?: Partial<AppearanceColorSet>
+}
 /**
  * Grid units are the single persisted source of truth for both dashboard and editor.
  * The optional legacy fields are read only while migrating former list-based layouts.
@@ -88,3 +94,16 @@ export interface DashboardWidget {
   order?: number; width?: DashboardWidgetWidth; height?: DashboardWidgetHeight
 }
 export interface WorkspaceSettings { schemaVersion: 1; buildings: Building[]; rooms: Room[]; inventoryMaterials: InventoryMaterial[]; todos: PlannerTodo[]; priorities: PriorityDefinition[]; dashboard: DashboardWidget[]; dashboardGridColumns: Record<DashboardBreakpoint, number>; appearance: AppearanceSettings }
+
+export type LearningBlockType = 'text' | 'question' | 'mindmap' | 'media' | 'task'
+export interface LearningBlock {
+  id: string; type: LearningBlockType; title: string; content: string
+  x: number; y: number; width: number; height: number
+  ideas?: string[]; responses?: string[]
+}
+export interface LearningConnection { id: string; from: string; to: string; label?: string }
+export interface DigitalLearningMaterial {
+  id: string; title: string; description: string; kind: 'presentation' | 'worksheet' | 'mindmap' | 'lesson-flow'
+  planId?: string; blocks: LearningBlock[]; connections: LearningConnection[]
+  activeBlockId?: string; updatedAt: string; createdAt: string
+}

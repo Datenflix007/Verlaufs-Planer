@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { builtInSchedulePatternSeeds } from '../src/data/schedulePatterns'
 import { createWorkspaceSettings, normaliseWorkspaceSettings } from '../src/data/workspaceDefaults'
-import type { SchedulePattern } from '../src/domain/types'
+import type { DigitalLearningMaterial, SchedulePattern } from '../src/domain/types'
 import type { WorkspaceSettings } from '../src/domain/types'
 
 export interface StoredPlanSummary { id: string; title: string; updatedAt: string; dateRange: string }
@@ -26,6 +26,30 @@ export class SqlitePlans {
   }
   remove(id: string): boolean { return this.database.prepare('DELETE FROM plans WHERE id = ?').run(id).changes > 0 }
 }
+
+export class SqliteDigitalLearningMaterials {
+  private readonly database: DatabaseSync
+  constructor(path = databasePath) {
+    mkdirSync(dirname(path), { recursive: true })
+    this.database = new DatabaseSync(path)
+    this.database.exec('CREATE TABLE IF NOT EXISTS digital_learning_materials (id TEXT PRIMARY KEY, title TEXT NOT NULL, kind TEXT NOT NULL, updated_at TEXT NOT NULL, payload TEXT NOT NULL) STRICT;')
+  }
+  list(): DigitalLearningMaterial[] {
+    const rows = this.database.prepare('SELECT payload FROM digital_learning_materials ORDER BY updated_at DESC').all() as Array<{ payload: string }>
+    return rows.map((row) => JSON.parse(row.payload) as DigitalLearningMaterial)
+  }
+  get(id: string): DigitalLearningMaterial | undefined {
+    const row = this.database.prepare('SELECT payload FROM digital_learning_materials WHERE id = ?').get(id) as { payload: string } | undefined
+    return row ? JSON.parse(row.payload) as DigitalLearningMaterial : undefined
+  }
+  save(input: DigitalLearningMaterial): void {
+    const existing = this.get(input.id)
+    const material = { ...input, createdAt: existing?.createdAt ?? input.createdAt, updatedAt: new Date().toISOString() }
+    this.database.prepare('INSERT INTO digital_learning_materials (id, title, kind, updated_at, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET title = excluded.title, kind = excluded.kind, updated_at = excluded.updated_at, payload = excluded.payload').run(material.id, material.title, material.kind, material.updatedAt, JSON.stringify(material))
+  }
+  remove(id: string): boolean { return this.database.prepare('DELETE FROM digital_learning_materials WHERE id = ?').run(id).changes > 0 }
+}
+
 type StoredSchedulePattern = {
   id: string; name: string; markdown: string; columns_json: string
   createdAt: string; updatedAt: string; isBuiltIn: number

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { SqlitePlans, SqliteSchedulePatterns, SqliteWorkspaceSettings } from './server/sqlitePlans'
+import { SqliteDigitalLearningMaterials, SqlitePlans, SqliteSchedulePatterns, SqliteWorkspaceSettings } from './server/sqlitePlans'
 
 const json = (response: ServerResponse, status: number, body?: unknown): void => {
   response.statusCode = status
@@ -20,6 +20,7 @@ const sqliteApi = () => ({
   name: 'verlaufsplaner-sqlite-api',
   configureServer(server: { middlewares: { use: (path: string, handler: (request: IncomingMessage, response: ServerResponse, next: (error?: Error) => void) => void) => void } }) {
     const plans = new SqlitePlans()
+    const learningMaterials = new SqliteDigitalLearningMaterials()
     const schedulePatterns = new SqliteSchedulePatterns()
     const workspace = new SqliteWorkspaceSettings()
     server.middlewares.use('/api/plans', (request, response, next) => {
@@ -33,6 +34,20 @@ const sqliteApi = () => ({
         return json(response, 405, { error: 'Methode nicht erlaubt.' })
       })().catch((error: unknown) => {
         if (error instanceof SyntaxError) return json(response, 400, { error: 'Ungueltiges JSON.' })
+        next(error instanceof Error ? error : new Error(String(error)))
+      })
+    })
+    server.middlewares.use('/api/learning-materials', (request, response, next) => {
+      void (async () => {
+        const path = new URL(request.url ?? '/', 'http://localhost').pathname
+        const id = path === '/' ? undefined : decodeURIComponent(path.slice(1))
+        if (request.method === 'GET' && !id) return json(response, 200, learningMaterials.list())
+        if (request.method === 'GET' && id) { const material = learningMaterials.get(id); return material ? json(response, 200, material) : json(response, 404, { error: 'Lernmaterial nicht gefunden.' }) }
+        if (request.method === 'PUT' && id) { const body = await readBody(request) as { id?: string }; if (body.id !== id) return json(response, 400, { error: 'Material-ID stimmt nicht mit der Adresse überein.' }); learningMaterials.save(body as never); return json(response, 204) }
+        if (request.method === 'DELETE' && id) return json(response, learningMaterials.remove(id) ? 204 : 404)
+        return json(response, 405, { error: 'Methode nicht erlaubt.' })
+      })().catch((error: unknown) => {
+        if (error instanceof SyntaxError) return json(response, 400, { error: 'Ungültiges JSON.' })
         next(error instanceof Error ? error : new Error(String(error)))
       })
     })
