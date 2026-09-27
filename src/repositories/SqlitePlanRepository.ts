@@ -21,5 +21,4 @@ export class SqlitePlanRepository implements PlanRepository {
   }
   async save(plan: WorkshopPlan): Promise<void> { await api<void>(`/api/plans/${encodeURIComponent(plan.id)}`, { method: 'PUT', body: JSON.stringify(migratePlan(plan)) }) }
   async remove(id: string): Promise<void> { await api<void>(`/api/plans/${encodeURIComponent(id)}`, { method: 'DELETE' }) }
-  async loadSample(): Promise<WorkshopPlan> { return migratePlan(await api<unknown>('/api/samples/jena-chat')) }
 }

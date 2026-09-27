@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { SqlitePlans, SqliteSchedulePatterns, SqliteWorkspaceSettings, readJenaChatSample } from './server/sqlitePlans'
+import { SqlitePlans, SqliteSchedulePatterns, SqliteWorkspaceSettings } from './server/sqlitePlans'
 
 const json = (response: ServerResponse, status: number, body?: unknown): void => {
   response.statusCode = status
@@ -60,12 +60,6 @@ const sqliteApi = () => ({
         if (error instanceof SyntaxError) return json(response, 400, { error: 'Ungültiges JSON.' })
         next(error instanceof Error ? error : new Error(String(error)))
       })
-    })
-    server.middlewares.use('/api/samples/jena-chat', (request, response, next) => {
-      try {
-        if (request.method !== 'GET') return json(response, 405, { error: 'Methode nicht erlaubt.' })
-        return json(response, 200, readJenaChatSample())
-      } catch (error) { next(error instanceof Error ? error : new Error(String(error))) }
     })
   },
 })

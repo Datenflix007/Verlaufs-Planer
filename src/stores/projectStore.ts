@@ -27,6 +27,5 @@ export const useProjectStore = defineStore('projects', () => {
   async function remove(id: string): Promise<void> { await repository.remove(id); if (activePlan.value?.id === id) activePlan.value = undefined; await refresh() }
   async function duplicate(id: string): Promise<WorkshopPlan> { await open(id); const clone = structuredClone(activePlan.value!); clone.id = crypto.randomUUID(); clone.metadata.title = `${clone.metadata.title} (Kopie)`; clone.createdAt = new Date().toISOString(); clone.updatedAt = clone.createdAt; activePlan.value = clone; await save(); return clone }
   async function importProject(input: unknown): Promise<WorkshopPlan> { const plan = migratePlan(input); activePlan.value = plan; await save(); return plan }
-  async function loadJenaChatSample(): Promise<WorkshopPlan> { const plan = await repository.loadSample(); activePlan.value = plan; await save(); return plan }
-  return { plans, activePlan, activePlanId, saveStatus, error, migrationNotice, refresh, open, create, save, remove, duplicate, importProject, loadJenaChatSample }
+  return { plans, activePlan, activePlanId, saveStatus, error, migrationNotice, refresh, open, create, save, remove, duplicate, importProject }
 })

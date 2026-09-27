@@ -4,11 +4,12 @@ Der Verlaufsplaner ist ein lokales Werkzeug fuer Lehrkraefte, Lehramtsstudierend
 
 ## Funktionsumfang
 
-- Mehrere lokale Planungen mit Neu, Oeffnen, Duplizieren, Loeschen sowie JSON-Import und -Backup.
+- Mehrere lokale Planungen mit Neu, Oeffnen, Duplizieren, Loeschen sowie JSON-Import und -Backup. Neue Einzelplanungen beginnen über den Button **Neue Planung** im Dashboard; der JSON-Import liegt unter **Einstellungen → Arbeitsbereich**.
 - Allgemeine Angaben, ein- oder mehrtaegige Termine, Lernziele und Kompetenzen aus einem austauschbaren Beispielkatalog.
 - Word-artige Tiptap-Editoren fuer Inhaltsanalyse und methodisch-didaktische Analyse: Formatierungen, Ueberschriften, Listen, Zitate, Links, Hoch-/Tiefstellung, Undo/Redo, einfache Tabellen sowie explizite Raw-LaTeX-Inline- und Block-Knoten.
 - Datengetriebene Verlaufsplanlayouts einschließlich der in SQLite gespeicherten Markdown-Muster „Lernstandsorientierter Verlaufsplan“ und „Kommunikationsorientierter Verlaufsplan“, Phasen/Pausen, pro Planung waehlbare Startzeit- oder Minutenansicht, Zeilenverschiebung und Materialzuordnung.
 - Konfigurierbares lokales Dashboard: verschiebbare Kalender-, nächste Planungen-, Aufgaben- und Materialvorbereitungs-Widgets; Gebäude, Räume sowie Gebäude-, Raum- und Privatbestände werden unter Arbeitsbereich verwaltet.
+- Visueller Dashboard-Editor mit 12-Spalten-Raster, Widget-Palette, Drag-and-drop, Raster-Resize und lokaler SQLite-Persistenz. Technische Details: [konzept/Dashboard-Editor.md](konzept/Dashboard-Editor.md).
 - Zentrale Materialliste mit automatischer Verwendungsaggregation.
 - Vollstaendige HTML-, LaTeX- und JSON-Exporte sowie Browserdruck fuer PDF mit echtem Text und Print-CSS.
 - Fach- und Disziplinvorlagen als Startpunkt: mitgelieferte allgemeine und Digital-Humanities-Vorlage, referenzierte Kompetenzrahmen, Layout- und Methodenvorschläge sowie lokale JSON-Vorlagen.
@@ -26,7 +27,7 @@ npm run dev
 
 Alternativ starten `quickstart.bat` unter Windows und `bash quickstart.sh` unter macOS, Linux oder WSL die Anwendung direkt. Beide Skripte prüfen Node.js (mindestens 22.5), installieren fehlende Abhängigkeiten mit `npm ci` und starten den lokalen Server einschließlich SQLite-API.
 
-Danach die von Vite angezeigte lokale Adresse oeffnen. `npm run dev` startet zugleich die lokale SQLite-Schnittstelle und legt beim ersten Start `data/verlaufsplaner.sqlite` an. Auf der Startseite steht **JenaChat-Sample laden** bereit, sofern die lokale Sample-Datei vorhanden ist. Das Sample enthält Tag 1 am 30. Juli 2026 sowie beide Tag-2-Varianten vom 31. Juli 2026.
+Danach die von Vite angezeigte lokale Adresse oeffnen. `npm run dev` startet zugleich die lokale SQLite-Schnittstelle und legt beim ersten Start `data/verlaufsplaner.sqlite` an.
 
 ## Screenshots
 
@@ -46,7 +47,7 @@ Die Tests pruefen Zeitlogik, Materialaggregation, Versionsmigration und JSON-Val
 
 Texte werden UTF-8-kodiert gespeichert. Umlaute bleiben in SQLite sowie in JSON- und HTML-Exporten erhalten.
 
-Projekte und Verlaufsplan-Muster liegen lokal in `data/verlaufsplaner.sqlite`. Dieser Ordner ist absichtlich git-ignoriert; ebenso `data/samples/jenachat.json`, das lokale, aus dem bereitgestellten Lehrkonzept abgeleitete JenaChat-Sample. Beim ersten Öffnen überträgt die Anwendung vorhandene Browser-Planungen einmalig und nicht destruktiv in SQLite. Exportieren Sie JSON-Backups regelmaessig.
+Projekte und Verlaufsplan-Muster liegen lokal in `data/verlaufsplaner.sqlite`. Der gesamte Ordner `data/` ist absichtlich git-ignoriert und eignet sich damit auch für persönliche lokale Beispiele. Beim ersten Öffnen überträgt die Anwendung vorhandene Browser-Planungen einmalig und nicht destruktiv in SQLite. Exportieren Sie JSON-Backups regelmaessig.
 
 Normale Texte werden im LaTeX-Export escaped. Nur der bewusst ueber **LaTeX** im Rich-Text-Editor eingefuegte Knoten wird unveraendert in die `.tex`-Datei uebernommen.
 

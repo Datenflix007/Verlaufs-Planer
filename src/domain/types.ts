@@ -52,7 +52,7 @@ export interface TeachingContext { id: string; schoolYear: string; state: 'TH'; 
 export interface CurriculumProgressEntry { id: string; teachingContextId: string; curriculumNodeId: string; status: CurriculumProgressStatus; firstTaughtAt?: string; lastTaughtAt?: string; lessonPlanIds?: string[]; notes?: string }
 export interface WorkshopPlan {
   schemaVersion: number; id: string
-  metadata: { title: string; subtitle?: string; subject?: string; targetGroup?: string; institution?: string; location?: string; buildingId?: string; roomId?: string; authors: string[]; description?: string }
+  metadata: { title: string; subtitle?: string; subject?: string; targetGroup?: string; institution?: string; location?: string; buildingId?: string; roomId?: string; priorityId?: string; authors: string[]; description?: string }
   days: WorkshopDay[]; learningObjectives: LearningObjective[]; competencies: CompetencyReference[]
   contentAnalysis: RichTextDocument; didacticAnalysis: RichTextDocument; schedule: ScheduleEntry[]; materials: Material[]
   settings: { scheduleLayoutId: string; timeDisplay: 'start' | 'duration'; phaseModelId?: string; templateId?: string; enabledCompetencyFrameworkIds?: string[] }; createdAt: string; updatedAt: string
@@ -66,9 +66,18 @@ export interface Building { id: string; name: string }
 export interface Room { id: string; buildingId: string; name: string }
 export type InventoryScope = 'personal' | 'building' | 'room'
 export interface InventoryMaterial extends Material { scope: InventoryScope; buildingId?: string; roomId?: string }
-export interface PlannerTodo { id: string; title: string; dueDate?: string; planId?: string; completed: boolean; notes?: string }
+export interface PriorityDefinition { id: string; label: string; order: number; icon: '⚡' | '↑' | '●' | '○' }
+export interface PlannerTodo { id: string; title: string; dueDate?: string; planId?: string; priorityId?: string; completed: boolean; notes?: string }
 export type DashboardWidgetId = 'calendar' | 'upcoming-plans' | 'upcoming-todos' | 'next-day-materials'
 export type DashboardWidgetWidth = 'half' | 'wide' | 'full'
 export type DashboardWidgetHeight = 'compact' | 'standard' | 'tall'
-export interface DashboardWidget { id: DashboardWidgetId; enabled: boolean; order: number; width: DashboardWidgetWidth; height: DashboardWidgetHeight; calendarView?: 'day' | 'week' | 'month'; limit?: number }
-export interface WorkspaceSettings { schemaVersion: 1; buildings: Building[]; rooms: Room[]; inventoryMaterials: InventoryMaterial[]; todos: PlannerTodo[]; dashboard: DashboardWidget[] }
+/**
+ * Grid units are the single persisted source of truth for both dashboard and editor.
+ * The optional legacy fields are read only while migrating former list-based layouts.
+ */
+export interface DashboardWidget {
+  id: DashboardWidgetId; enabled: boolean; x: number; y: number; w: number; h: number
+  calendarView?: 'day' | 'week' | 'month'; limit?: number
+  order?: number; width?: DashboardWidgetWidth; height?: DashboardWidgetHeight
+}
+export interface WorkspaceSettings { schemaVersion: 1; buildings: Building[]; rooms: Room[]; inventoryMaterials: InventoryMaterial[]; todos: PlannerTodo[]; priorities: PriorityDefinition[]; dashboard: DashboardWidget[] }
