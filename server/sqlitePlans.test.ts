@@ -9,11 +9,12 @@ describe('SqliteDigitalLearningMaterials', () => {
     const repository = new SqliteDigitalLearningMaterials(join(mkdtempSync(join(tmpdir(), 'verlaufsplaner-materials-')), 'materials.sqlite'))
     const material = {
       id: 'material-1', title: 'Fotosynthese Mindmap', description: 'Gemeinsam ergänzen', kind: 'mindmap' as const,
-      blocks: [{ id: 'block-1', type: 'mindmap' as const, title: 'Begriffe', content: 'Chlorophyll', x: 80, y: 100, width: 250, height: 160 }],
+      blocks: [{ id: 'block-1', type: 'mindmap' as const, title: 'Begriffe', content: 'Chlorophyll', section: 'Einstieg', richContent: { type: 'doc' as const, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Chlorophyll' }] }] }, x: 80, y: 100, width: 250, height: 160 }],
       connections: [], createdAt: '2026-09-27T10:00:00.000Z', updatedAt: '2026-09-27T10:00:00.000Z',
     }
     repository.save(material)
     expect(repository.get(material.id)?.blocks[0]?.content).toBe('Chlorophyll')
+    expect(repository.get(material.id)?.blocks[0]?.richContent?.content[0]?.content?.[0]?.text).toBe('Chlorophyll')
     expect(repository.list().map((item) => item.title)).toEqual(['Fotosynthese Mindmap'])
     repository.save({ ...material, title: 'Fotosynthese Mindmap 2' })
     expect(repository.get(material.id)?.title).toBe('Fotosynthese Mindmap 2')

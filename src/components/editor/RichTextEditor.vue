@@ -67,28 +67,28 @@ onBeforeUnmount(() => editor.value?.destroy())
       <button type="button" title="Fett" :class="{ active: editor?.isActive('bold') }" @click="editor?.chain().focus().toggleBold().run()"><b>B</b></button>
       <button type="button" title="Kursiv" :class="{ active: editor?.isActive('italic') }" @click="editor?.chain().focus().toggleItalic().run()"><i>I</i></button>
       <button type="button" title="Unterstrichen" :class="{ active: editor?.isActive('underline') }" @click="editor?.chain().focus().toggleUnderline().run()"><u>U</u></button>
-      <button type="button" title="Ueberschrift" @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()">H2</button>
-      <button type="button" title="Aufzaehlung" @click="editor?.chain().focus().toggleBulletList().run()">Liste</button>
+      <button type="button" title="Überschrift" @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()">H2</button>
+      <button type="button" title="Aufzählung" @click="editor?.chain().focus().toggleBulletList().run()">Liste</button>
       <button type="button" title="Nummerierte Liste" @click="editor?.chain().focus().toggleOrderedList().run()">1. Liste</button>
       <button type="button" title="Zitat" @click="editor?.chain().focus().toggleBlockquote().run()">Zitat</button>
       <button type="button" title="Link" @click="link">Link</button>
       <button type="button" title="Hochgestellt" @click="editor?.chain().focus().toggleSuperscript().run()">x2</button>
       <button type="button" title="Tiefgestellt" @click="editor?.chain().focus().toggleSubscript().run()">x2</button>
-      <button type="button" title="Einfache Tabelle mit Kopfzeile einfuegen" @click="insertTable">Tabelle</button>
-      <button type="button" title="LaTeX innerhalb eines Satzes einfuegen" @click="openLatexDialog('inline')">Inline-TeX</button>
-      <button type="button" title="Eigenstaendigen LaTeX-Block einfuegen" @click="openLatexDialog('block')">Block-TeX</button>
+      <button type="button" title="Einfache Tabelle mit Kopfzeile einfügen" @click="insertTable">Tabelle</button>
+      <button type="button" title="LaTeX innerhalb eines Satzes einfügen" @click="openLatexDialog('inline')">Inline-TeX</button>
+      <button type="button" title="Eigenständigen LaTeX-Block einfügen" @click="openLatexDialog('block')">Block-TeX</button>
       <span class="toolbar-spacer" />
-      <button type="button" title="Rueckgaengig" @click="editor?.chain().focus().undo().run()">&#8630;</button>
+      <button type="button" title="Rückgängig" @click="editor?.chain().focus().undo().run()">&#8630;</button>
       <button type="button" title="Wiederholen" @click="editor?.chain().focus().redo().run()">&#8631;</button>
     </div>
     <EditorContent :editor="editor" class="editor-page" />
     <div v-if="latexDialogOpen" class="inline-dialog-backdrop" @click.self="latexDialogOpen = false">
       <section class="latex-dialog" role="dialog" aria-modal="true" aria-labelledby="latex-dialog-title">
-        <div class="dialog-title"><h2 id="latex-dialog-title">{{ latexKind === 'block' ? 'Block-LaTeX einfuegen' : 'Inline-LaTeX einfuegen' }}</h2><button type="button" aria-label="Dialog schliessen" @click="latexDialogOpen = false">&times;</button></div>
-        <p v-if="latexKind === 'block'">Der Inhalt wird im TeX-Export unveraendert als eigener Block uebernommen, etwa eine Gleichungs- oder Tabellenumgebung.</p>
-        <p v-else>Der Inhalt wird im TeX-Export unveraendert an der Cursorposition uebernommen.</p>
+        <div class="dialog-title"><h2 id="latex-dialog-title">{{ latexKind === 'block' ? 'Block-LaTeX einfügen' : 'Inline-LaTeX einfügen' }}</h2><button type="button" aria-label="Dialog schließen" @click="latexDialogOpen = false">&times;</button></div>
+        <p v-if="latexKind === 'block'">Der Inhalt wird im TeX-Export unverändert als eigener Block übernommen, etwa eine Gleichungs- oder Tabellenumgebung.</p>
+        <p v-else>Der Inhalt wird im TeX-Export unverändert an der Cursorposition übernommen.</p>
         <label>LaTeX-Quelltext<textarea v-model="latexSource" :rows="latexKind === 'block' ? 9 : 3" :placeholder="latexKind === 'block' ? '\\begin{equation}\nE = mc^2\n\\end{equation}' : '\\frac{a}{b}'" autofocus /></label>
-        <div class="dialog-actions"><button type="button" class="secondary" @click="latexDialogOpen = false">Abbrechen</button><button type="button" :disabled="!latexSource.trim()" @click="insertLatex">Einfuegen</button></div>
+        <div class="dialog-actions"><button type="button" class="secondary" @click="latexDialogOpen = false">Abbrechen</button><button type="button" :disabled="!latexSource.trim()" @click="insertLatex">Einfügen</button></div>
       </section>
     </div>
   </div>

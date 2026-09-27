@@ -99,7 +99,8 @@ export type LearningBlockType = 'text' | 'question' | 'mindmap' | 'media' | 'tas
 export interface LearningBlock {
   id: string; type: LearningBlockType; title: string; content: string
   x: number; y: number; width: number; height: number
-  ideas?: string[]; responses?: string[]
+  /** Presentation blocks use this as a slide section; other materials can leave it empty. */
+  section?: string; richContent?: RichTextDocument; ideas?: string[]; responses?: string[]
 }
 export interface LearningConnection { id: string; from: string; to: string; label?: string }
 export interface DigitalLearningMaterial {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { createId } from '../domain/factories'
-import type { DigitalLearningMaterial, LearningBlock, LearningBlockType, LearningConnection, WorkshopPlan } from '../domain/types'
+import { createId, richTextFromPlain } from '../domain/factories'
+import type { DigitalLearningMaterial, LearningBlock, LearningBlockType, LearningConnection, RichTextDocument, RichTextNode, WorkshopPlan } from '../domain/types'
+import RichTextEditor from '../components/editor/RichTextEditor.vue'
 import { LearningMaterialRepository } from '../repositories/LearningMaterialRepository'
 import { SqlitePlanRepository } from '../repositories/SqlitePlanRepository'
 import type { PlanSummary } from '../repositories/PlanRepository'
@@ -27,6 +28,9 @@ const remoteConflict = ref(false)
 const dirty = ref(false)
 const connectionFrom = ref<string>()
 const presentationAnswer = ref('')
+const composerOpen = ref(false)
+const composerBlockId = ref('')
+const composerSection = ref('Abschnitt 1')
 const canvas = ref<HTMLElement>()
 const dragging = ref<{ id: string; offsetX: number; offsetY: number }>()
 let saveTimer: ReturnType<typeof setTimeout> | undefined
@@ -51,6 +55,9 @@ const canvasHeight = computed(() => Math.max(860, ...((material.value?.blocks ??
 const sortedBlocks = computed(() => [...(material.value?.blocks ?? [])].sort((left, right) => left.y - right.y || left.x - right.x))
 const flowBlocks = computed(() => sortedBlocks.value.filter((block) => block.type !== 'media'))
 const resourceBlocks = computed(() => sortedBlocks.value.filter((block) => block.type === 'media'))
+const composerBlock = computed(() => material.value?.blocks.find((block) => block.id === composerBlockId.value))
+const composerSections = computed(() => [...new Set((material.value?.blocks ?? []).map((block) => block.section || 'Abschnitt 1'))])
+const composerBlocks = computed(() => material.value?.blocks.filter((block) => material.value?.kind !== 'presentation' || (block.section || 'Abschnitt 1') === composerSection.value) ?? [])
 
 function blockTone(block: LearningBlock, index: number): string {
   if (block.type === 'media') return 'resource'
@@ -80,7 +87,7 @@ function makeBlock(type: LearningBlockType, index: number): LearningBlock {
     task: { title: 'Arbeitsauftrag', content: 'Bearbeitet den Auftrag in Partnerarbeit.' },
     media: { title: 'Material', content: 'https:// oder Beschreibung des Materials' },
   }
-  return { id: createId(), type, title: defaults[type].title, content: defaults[type].content, x: 80 + (index % 3) * 390, y: 90 + Math.floor(index / 3) * 310, width: 330, height: 240 }
+  return { id: createId(), type, title: defaults[type].title, content: defaults[type].content, richContent: richTextFromPlain(defaults[type].content), section: 'Abschnitt 1', x: 80 + (index % 3) * 390, y: 90 + Math.floor(index / 3) * 310, width: 330, height: 240 }
 }
 
 function createMaterial(kind: DigitalLearningMaterial['kind']): DigitalLearningMaterial {
@@ -185,8 +192,57 @@ async function saveNow(): Promise<void> {
 function addBlock(type: LearningBlockType): void {
   if (!material.value) return
   const block = makeBlock(type, material.value.blocks.length)
+  if (material.value.kind === 'presentation') block.section = composerSection.value
   material.value.blocks.push(block)
   queueSave()
+}
+
+function plainText(document: RichTextDocument): string {
+  const parts: string[] = []
+  const visit = (node: RichTextNode): void => { if (node.text) parts.push(node.text); node.content?.forEach((child) => visit(child)) }
+  visit(document)
+  return parts.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+function openComposer(blockId?: string): void {
+  if (!material.value) return
+  material.value.blocks.forEach((block) => { block.richContent ??= richTextFromPlain(block.content); block.section ??= 'Abschnitt 1' })
+  composerBlockId.value = blockId ?? material.value.blocks[0]?.id ?? ''
+  composerSection.value = material.value.blocks.find((block) => block.id === composerBlockId.value)?.section ?? 'Abschnitt 1'
+  composerOpen.value = true
+}
+function selectComposerBlock(block: LearningBlock): void { composerBlockId.value = block.id; composerSection.value = block.section ?? 'Abschnitt 1' }
+function addComposerBlock(): void {
+  if (!material.value) return
+  const type: LearningBlockType = material.value.kind === 'mindmap' ? 'mindmap' : material.value.kind === 'worksheet' ? 'question' : 'text'
+  addBlock(type)
+  const created = material.value.blocks.at(-1)
+  if (created) selectComposerBlock(created)
+}
+function addComposerSection(): void {
+  const next = `Abschnitt ${composerSections.value.length + 1}`
+  composerSection.value = next
+  addComposerBlock()
+}
+function updateComposerContent(value: RichTextDocument): void {
+  if (!composerBlock.value) return
+  composerBlock.value.richContent = value
+  composerBlock.value.content = plainText(value) || composerBlock.value.content
+  queueSave()
+}
+function moveComposerBlock(direction: number): void {
+  if (!material.value || !composerBlock.value) return
+  const index = material.value.blocks.findIndex((block) => block.id === composerBlock.value?.id)
+  const target = index + direction
+  if (index < 0 || target < 0 || target >= material.value.blocks.length) return
+  const [block] = material.value.blocks.splice(index, 1)
+  material.value.blocks.splice(target, 0, block)
+  queueSave()
+}
+function removeComposerBlock(): void {
+  if (!composerBlock.value || !material.value || material.value.blocks.length === 1) return
+  const next = material.value.blocks.find((block) => block.id !== composerBlock.value?.id)
+  removeBlock(composerBlock.value.id)
+  if (next) selectComposerBlock(next)
 }
 
 function removeBlock(id: string): void {
@@ -434,13 +490,13 @@ onBeforeUnmount(() => {
     <header v-if="!presentation" class="studio-topbar" :class="{ embedded: props.embedded }">
       <button v-if="props.embedded" type="button" class="studio-brand" @click="exitPlanMaterials"><span aria-hidden="true">◇</span> Verlaufsplaner</button>
       <RouterLink v-else class="studio-brand" :to="{ name: 'home' }"><span aria-hidden="true">◇</span> Lernstudio</RouterLink>
-      <nav class="studio-nav"><template v-if="props.embedded"><button type="button" :class="{ active: activeTab === 'flow' && Boolean(material) }" @click="activeTab = 'flow'; material ?? backToLibrary()">⌘ Stundenablauf</button><button type="button" :class="{ active: activeTab === 'materials' || !material }" @click="material ? activeTab = 'materials' : backToLibrary()">▤ Materialien</button></template><RouterLink v-else :to="{ name: 'learning-materials' }" :class="{ active: !material }">Bibliothek</RouterLink><span v-if="material" class="studio-current-material">{{ kindLabels[material.kind] }}</span></nav>
       <span class="studio-spacer" />
       <span v-if="material" class="studio-status" :class="{ live: liveSession }"><i />{{ liveSession ? 'Live geteilt' : status || 'Entwurf' }}</span>
       <button v-if="material" type="button" class="studio-quiet" @click="toggleLiveSession">{{ liveSession ? 'Link beenden' : 'Live teilen' }}</button>
       <button v-if="material" type="button" class="studio-quiet" @click="exportHtml">HTML</button>
       <button v-if="material" type="button" class="studio-quiet" @click="printPdf">PDF</button>
       <button v-if="material" type="button" class="studio-quiet" @click="duplicate(material)">Duplizieren</button>
+      <button v-if="material && material.kind !== 'lesson-flow'" type="button" class="studio-quiet" @click="openComposer()">Material bearbeiten</button>
       <button v-if="material" type="button" class="studio-save" @click="saveNow">Speichern</button>
       <button v-if="material" type="button" class="studio-present" @click="startPresentation">Präsentieren</button>
     </header>
@@ -474,29 +530,9 @@ onBeforeUnmount(() => {
       </section>
       <div v-if="remoteConflict" class="studio-conflict"><span>Eine andere Person hat Änderungen gespeichert.</span><button type="button" @click="void loadMaterial()">Remote-Version laden</button><button type="button" class="secondary" @click="remoteConflict = false; queueSave()">Meine Version behalten</button></div>
       <div class="studio-workspace">
-        <aside class="lesson-outline">
-          <button v-if="linkedPlan" type="button" class="outline-back" @click="exitPlanMaterials">‹ Materialliste</button>
-          <p class="studio-kicker">Stundenablauf</p>
-          <h2>{{ linkedPlan?.metadata.title ?? material.title }}</h2>
-          <div class="outline-meta"><span>◈ {{ linkedPlan?.metadata.subject ?? kindLabels[material.kind] }}</span><span>♙ {{ linkedPlan?.metadata.targetGroup ?? 'Lerngruppe' }}</span><span>◷ {{ linkedPlan?.days[0]?.startTime ?? '--:--' }} - {{ linkedPlan?.days[0]?.endTime ?? '--:--' }}</span></div>
-          <section v-if="linkedPlan?.learningObjectives.length" class="outline-objective"><strong>◎ Stundenziel</strong><p>{{ linkedPlan.learningObjectives[0].text }}</p></section>
-          <ol v-if="planPhases.length" class="outline-phase-list">
-            <li v-for="(phase, index) in planPhases" :key="phase.id" :class="`outline-${blockTone(flowBlocks[index] ?? emptyBlock, index)}`">
-              <button type="button" @click="focusBlock(flowBlocks[index]?.id ?? '')"><span class="outline-step">{{ index + 1 }}</span><span><strong>{{ phase.phase || phase.title }}</strong><small>{{ phaseDuration(index) }}</small></span></button>
-            </li>
-          </ol>
-          <button type="button" class="outline-add-phase" @click="addBlock('task')">＋ Phase hinzufügen</button>
-        </aside>
-        <aside class="studio-tool-rail">
-          <p class="studio-kicker">Bausteine</p>
-          <button v-for="item in blockTypes" :key="item.type" type="button" class="block-tool" :class="item.color" :title="item.title" @click="addBlock(item.type)"><span>{{ item.icon }}</span><small>{{ item.title }}</small></button>
-          <div class="rail-divider" />
-          <button type="button" class="block-tool connect-tool" :class="{ selected: Boolean(connectionFrom) }" title="Zwei Bausteine verbinden" @click="connectionFrom = connectionFrom ? undefined : ''"><span>↗</span><small>Verbinden</small></button>
-        </aside>
         <section class="studio-main-area">
-          <div v-if="props.embedded" class="studio-embedded-heading"><span class="embedded-heading-icon">⌘</span><h1>Stundenablauf & Arbeitsmaterial</h1><div class="embedded-view-switch"><button type="button" :class="{ active: activeTab === 'flow' }" @click="activeTab = 'flow'; void openLessonFlow()">Ablauf</button><button type="button" :class="{ active: activeTab === 'materials' }" @click="activeTab = 'materials'">Materialien</button></div></div>
-          <div v-if="!props.embedded" class="studio-view-tabs"><button type="button" :class="{ active: activeTab === 'flow' }" @click="activeTab = 'flow'">⌘ Ablauf & Verbindungen</button><button type="button" :class="{ active: activeTab === 'materials' }" @click="activeTab = 'materials'">▤ Materialübersicht</button><span class="studio-spacer" /><small>{{ material.blocks.length }} Elemente · {{ material.connections.length }} Verbindungen</small></div>
-          <div v-if="activeTab === 'flow'" ref="canvas" class="node-canvas" @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag">
+          <div class="studio-embedded-heading"><span class="embedded-heading-icon">⌘</span><h1>Stundenablauf & Arbeitsmaterial</h1><div class="material-create-actions"><button type="button" @click="openNew('presentation')">+ Präsentation</button><button type="button" @click="openNew('worksheet')">+ Arbeitsblatt</button><button type="button" @click="openNew('mindmap')">+ Mindmap</button></div></div>
+          <div ref="canvas" class="node-canvas" @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag">
             <div class="canvas-ruler-x" /><div class="canvas-ruler-y" />
             <svg class="lesson-spine" :width="canvasWidth" :height="canvasHeight" :viewBox="`0 0 ${canvasWidth} ${canvasHeight}`"><line x1="105" y1="110" x2="105" :y2="canvasHeight - 80" class="timeline-line" /><g v-for="(block, index) in flowBlocks" :key="`phase-${block.id}`"><line x1="105" :y1="block.y + 26" :x2="block.x" :y2="block.y + 26" class="timeline-branch" :class="`tone-${blockTone(block, index)}`" /><circle cx="105" :cy="block.y + 26" r="10" class="timeline-dot" :class="`tone-${blockTone(block, index)}`" /></g></svg>
             <svg class="connection-layer" :width="canvasWidth" :height="canvasHeight" :viewBox="`0 0 ${canvasWidth} ${canvasHeight}`"><defs><marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" /></marker></defs><path v-for="edge in material.connections" :key="edge.id" :d="connectionPath(edge)" marker-end="url(#arrowhead)" @dblclick="material.connections = material.connections.filter((item) => item.id !== edge.id); queueSave()" /></svg>
@@ -508,26 +544,33 @@ onBeforeUnmount(() => {
             <article v-for="(block, index) in resourceBlocks" :key="block.id" class="learning-node resource-card" :class="{ connecting: connectionFrom === block.id, 'connect-target': connectionFrom && connectionFrom !== block.id }" :data-block-id="block.id" :style="{ left: `${block.x}px`, top: `${block.y}px`, width: `${block.width}px`, minHeight: `${block.height}px` }" @click="connectionFrom && connectionFrom !== block.id ? connectBlock(block.id) : undefined">
               <header class="resource-header" @pointerdown="startDrag($event, block)"><span class="resource-icon">▧</span><strong>{{ block.title }}</strong><button type="button" aria-label="Material entfernen" @pointerdown.stop @click="removeBlock(block.id)">⋮</button></header>
               <div class="resource-card-body"><div class="resource-preview" :class="`resource-preview-${index % 4}`"><span>{{ ['▤', '▧', '✳', '◉'][index % 4] }}</span><i /><i /><i /></div><div class="resource-description"><small>{{ ['Präsentation', 'Arbeitsblatt', 'Mindmap', 'Tafelbild'][index % 4] }}</small><input v-model="block.title" aria-label="Materialtitel" @input="queueSave" /><textarea v-model="block.content" aria-label="Materialbeschreibung" @input="queueSave" /></div></div>
-              <footer class="resource-footer"><span>{{ ['Impulsbilder', 'Aufgaben', 'Kollaborativ', 'Übersicht'][index % 4] }}</span><button type="button" @click="connectBlock(block.id)">{{ connectionFrom === block.id ? 'Ziel wählen' : '↗ Verbinden' }}</button></footer>
+              <footer class="resource-footer"><span>{{ ['Impulsbilder', 'Aufgaben', 'Kollaborativ', 'Übersicht'][index % 4] }}</span><span><button v-if="material.kind !== 'lesson-flow'" type="button" @click.stop="openComposer(block.id)">Bearbeiten</button><button type="button" @click="connectBlock(block.id)">{{ connectionFrom === block.id ? 'Ziel wählen' : '↗ Verbinden' }}</button></span></footer>
             </article>
             <button v-if="!material.blocks.length" type="button" class="canvas-empty" @click="addBlock('text')">+ Ersten Lernbaustein einfügen</button>
-          </div>
-          <div v-else class="materials-board">
-            <div class="materials-board-heading"><div><p class="studio-kicker">Ressourcen der Stunde</p><h2>Materialien</h2></div><button type="button" @click="openNew('worksheet')">+ Material erstellen</button></div>
-            <div v-if="materials.length" class="linked-material-grid">
-              <article v-for="(item, index) in materials" :key="item.id" class="linked-material-card" :class="`linked-resource-${index % 4}`">
-                <div class="linked-material-preview"><span>{{ item.kind === 'mindmap' ? '✳' : item.kind === 'worksheet' ? '▤' : item.kind === 'presentation' ? '▣' : '◷' }}</span><i /><i /><i /></div>
-                <div class="linked-material-copy"><small>{{ kindLabels[item.kind] }}</small><h3>{{ item.title }}</h3><p>{{ item.description || `${item.blocks.length} Bausteine · ${item.connections.length} Verbindungen` }}</p><button type="button" @click="openMaterial(item)">Öffnen & bearbeiten →</button></div>
-                <button type="button" class="linked-material-duplicate" @click="duplicate(item)">Duplizieren</button>
-              </article>
-            </div>
-            <p v-else class="materials-empty">Noch keine digitalen Materialien mit dieser Stunde verknüpft.</p>
-            <button type="button" class="add-material-row" @click="openNew('mindmap')">+ Gemeinsame Mindmap hinzufügen</button>
           </div>
         </section>
       </div>
       <p class="studio-footnote">Blöcke ziehen · Verbinden wählen und zwei Blöcke anklicken · Doppelklick auf Pfeil entfernt Verbindung</p>
     </template>
+
+    <section v-if="composerOpen && material" class="material-composer-backdrop" @click.self="composerOpen = false">
+      <section class="material-composer" role="dialog" aria-modal="true" aria-labelledby="composer-title">
+        <header><div><p class="studio-kicker">{{ kindLabels[material.kind] }}</p><h1 id="composer-title">{{ material.title }} bearbeiten</h1></div><button type="button" aria-label="Editor schließen" @click="composerOpen = false">×</button></header>
+        <div class="composer-layout">
+          <aside class="composer-navigation">
+            <div class="composer-actions"><button v-if="material.kind === 'presentation'" type="button" @click="addComposerSection">+ Abschnitt</button><button type="button" @click="addComposerBlock">+ {{ material.kind === 'presentation' ? 'Folie' : material.kind === 'worksheet' ? 'Seite' : 'Knoten' }}</button></div>
+            <template v-if="material.kind === 'presentation'"><section v-for="section in composerSections" :key="section" class="composer-section"><button type="button" :class="{ active: composerSection === section }" @click="composerSection = section">{{ section }}</button><button v-for="(block, index) in material.blocks.filter((item) => (item.section || 'Abschnitt 1') === section)" :key="block.id" type="button" class="composer-item" :class="{ active: composerBlockId === block.id }" @click="selectComposerBlock(block)"><span>{{ index + 1 }}</span>{{ block.title || 'Unbenannte Folie' }}</button></section></template>
+            <template v-else><button v-for="(block, index) in material.blocks" :key="block.id" type="button" class="composer-item" :class="{ active: composerBlockId === block.id }" @click="selectComposerBlock(block)"><span>{{ index + 1 }}</span>{{ block.title || (material.kind === 'mindmap' ? 'Neuer Knoten' : 'Unbenannte Seite') }}</button></template>
+          </aside>
+          <main v-if="composerBlock" class="composer-page">
+            <div class="composer-page-toolbar"><label v-if="material.kind === 'presentation'">Abschnitt<select v-model="composerBlock.section" @change="composerSection = composerBlock.section || 'Abschnitt 1'; queueSave()"><option v-for="section in composerSections" :key="section" :value="section">{{ section }}</option></select></label><span /><button type="button" :disabled="material.blocks.indexOf(composerBlock) === 0" @click="moveComposerBlock(-1)">↑</button><button type="button" :disabled="material.blocks.indexOf(composerBlock) === material.blocks.length - 1" @click="moveComposerBlock(1)">↓</button><button type="button" class="danger" :disabled="material.blocks.length === 1" @click="removeComposerBlock">Entfernen</button></div>
+            <input v-model="composerBlock.title" class="composer-title-input" :placeholder="material.kind === 'presentation' ? 'Folientitel' : material.kind === 'worksheet' ? 'Seitentitel' : 'Knotentitel'" @input="queueSave">
+            <RichTextEditor :model-value="composerBlock.richContent ?? richTextFromPlain(composerBlock.content)" :label="`${kindLabels[material.kind]}: ${composerBlock.title || 'Inhalt'}`" @update:model-value="updateComposerContent" />
+            <p v-if="material.kind === 'mindmap'" class="composer-hint">Der Knoten wird gleichzeitig auf der Canvas dargestellt. Ziehe ihn dort an die gewünschte Position und verbinde ihn über „Verbinden“ mit anderen Knoten.</p>
+          </main>
+        </div>
+      </section>
+    </section>
 
     <section v-if="presentation && material && currentBlock" class="presentation-stage">
       <header><span>{{ kindLabels[material.kind] }}</span><span>{{ presentationIndex + 1 }} / {{ material.blocks.length }}</span><button type="button" @click="presentation = false">× Beenden</button></header>
@@ -624,6 +667,7 @@ onBeforeUnmount(() => {
 .studio-main-area { grid-column: 2; grid-row: 2; display: grid; grid-template-rows: 42px minmax(600px, 1fr); min-width: 0 }
 .studio-embedded-heading { display: flex; align-items: center; gap: .75rem; min-width: 0; padding: 0 1rem; background: #101b26 }
 .studio-embedded-heading h1 { flex: 1; min-width: 0; margin: 0; overflow: hidden; color: #e8f0f3; font-size: 1.22rem; text-overflow: ellipsis; white-space: nowrap }
+.material-create-actions { display: flex; gap: .35rem }.material-create-actions button { padding: .35rem .5rem; border: 1px solid #315662; border-radius: 5px; color: #91e8dd; background: #17313b; font-size: .72rem }.material-create-actions button:hover { color: #efffff; border-color: #53dacb; background: #1c4b52 }
 .embedded-heading-icon { color: #27d0c1; font-size: 1.35rem }
 .embedded-view-switch { display: inline-flex; overflow: hidden; border: 1px solid #334a57; border-radius: 6px; background: #14222d }
 .studio-embedded-heading .embedded-view-switch button { min-width: 88px; padding: .4rem .65rem; border: 0; border-radius: 0; color: #a9bac4; background: transparent; font-size: .76rem }
@@ -718,6 +762,11 @@ onBeforeUnmount(() => {
 .linked-material-duplicate { position: absolute; top: .35rem; right: .35rem; width: 26px; height: 26px; padding: 0; color: #b4c7ce }
 .materials-empty { padding: 1rem; color: #98abb5 }
 .studio-footnote { margin: 0; padding: .35rem .8rem; border-top: 1px solid #253744; color: #7f96a2; background: #101b26; font-size: .68rem }
+.material-composer-backdrop { position: fixed; z-index: 90; inset: 0; display: grid; place-items: center; padding: 1.25rem; background: #071019cc }
+.material-composer { display: grid; grid-template-rows: auto minmax(0, 1fr); width: min(1220px, 96vw); height: min(820px, 92vh); overflow: hidden; border: 1px solid #3a5964; border-radius: 10px; background: #101d28; box-shadow: 0 28px 80px #000a }
+.material-composer > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; border-bottom: 1px solid #2c4654; background: #142430 }.material-composer h1 { margin: .12rem 0 0; color: #edf7f8; font-size: 1.15rem }.material-composer > header > button { width: 30px; height: 30px; border: 0; border-radius: 5px; color: #c9d9dc; background: #263b47; font-size: 1.25rem }
+.composer-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 0 }.composer-navigation { overflow: auto; padding: .75rem; border-right: 1px solid #2c4654; background: #111e29 }.composer-actions { display: grid; gap: .45rem; margin-bottom: .85rem }.composer-actions button, .composer-page-toolbar button { padding: .4rem .55rem; border: 1px solid #365766; border-radius: 5px; color: #bfe5e3; background: #19323d; text-align: left }.composer-section { display: grid; gap: .2rem; margin-bottom: .7rem }.composer-section > button:first-child { padding: .36rem .45rem; border: 0; color: #61dcca; background: transparent; font-weight: 800; text-align: left }.composer-section > button:first-child.active { color: #eafffc; background: #1b4850 }.composer-item { display: flex; align-items: center; gap: .4rem; width: 100%; padding: .4rem .5rem; border: 0; color: #bacbd2; background: transparent; text-align: left }.composer-item span { display: grid; place-items: center; width: 21px; height: 21px; border-radius: 4px; color: #9db6be; background: #253b47; font-size: .7rem }.composer-item.active { color: #efffff; background: #1c5660 }.composer-item.active span { color: #08272d; background: #5bdacb }
+.composer-page { min-width: 0; overflow: auto; padding: 1rem 1.25rem 1.5rem; background: #eaf0f1 }.composer-page-toolbar { display: flex; align-items: center; gap: .4rem; margin-bottom: .7rem }.composer-page-toolbar label { display: flex; align-items: center; gap: .4rem; color: #425d67; font-size: .8rem }.composer-page-toolbar select { padding: .3rem; border: 1px solid #adbec3; border-radius: 4px; color: #183039; background: #fff }.composer-page-toolbar span { flex: 1 }.composer-page-toolbar button { color: #264550; background: #fff; text-align: center }.composer-page-toolbar button:disabled { opacity: .45 }.composer-title-input { width: 100%; box-sizing: border-box; margin-bottom: .75rem; padding: .55rem .65rem; border: 1px solid #b1c4c9; border-radius: 5px; color: #172c34; background: #fff; font: 700 1.15rem/1.35 Inter, sans-serif }.composer-page :deep(.rich-editor) { border: 1px solid #b6c9ce; border-radius: 6px; overflow: hidden; background: #fff }.composer-page :deep(.editor-toolbar) { border-bottom-color: #c6d6da; background: #f4f8f8 }.composer-page :deep(.editor-page) { min-height: 390px; color: #172c34; background: #fff }.composer-hint { margin: .75rem 0 0; color: #45626a; font-size: .82rem }
 .presentation-stage { position: fixed; z-index: 100; inset: 0; display: grid; grid-template-rows: 52px 1fr 66px; color: #e9f3f4; background: #0b141d }
 .presentation-stage > header, .presentation-stage > footer { display: flex; align-items: center; gap: 1rem; padding: 0 1.25rem; color: #a4b7c0; background: #121e29 }
 .presentation-stage > header { justify-content: space-between; border-bottom: 1px solid #2e404c }
@@ -754,11 +803,20 @@ onBeforeUnmount(() => {
   .outline-add-phase { align-self: flex-start; margin-top: .2rem }
   .studio-tool-rail { grid-column: 1; grid-row: 2 }
   .studio-main-area { grid-column: 1; grid-row: 3 }
+  .material-create-actions { overflow-x: auto; max-width: 55% }
   .studio-tool-rail .studio-kicker { writing-mode: horizontal-tb; transform: none }
   .block-tool { width: auto; min-width: max-content }
   .library-create-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)) }
   .material-library-grid { padding: .4rem 1rem 2rem }
   .materials-row { grid-template-columns: 34px minmax(0,1fr) }
   .materials-row > button { grid-column: 2; justify-self: start }
+  .composer-layout { grid-template-columns: 185px minmax(0, 1fr) }.material-composer-backdrop { padding: .5rem }
 }
+</style>
+
+<style scoped>
+/* The canvas stays the central workspace after removing duplicate controls. */
+.studio-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(600px, 1fr); }
+.studio-main-area { grid-column: 1; grid-row: 1; grid-template-rows: 54px minmax(600px, 1fr); }
+@media (max-width: 850px) { .studio-workspace { grid-template-rows: minmax(600px, 1fr); } .studio-main-area { grid-column: 1; grid-row: 1; } }
 </style>
