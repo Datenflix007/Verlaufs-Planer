@@ -1,10 +1,11 @@
 ﻿<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPlanningTemplate, getPlanningTemplates } from '../data/templates/registry'
 import { createId } from '../domain/factories'
 import { aggregateMaterials } from '../domain/materials'
-import type { DashboardWidget, Room, WorkshopPlan, WorkspaceSettings } from '../domain/types'
+import type { DashboardBreakpoint, DashboardWidget, Room, WorkshopPlan, WorkspaceSettings } from '../domain/types'
+import { getWidgetLayout } from '../data/dashboardWidgets'
 import { SqlitePlanRepository } from '../repositories/SqlitePlanRepository'
 import { WorkspaceRepository } from '../repositories/WorkspaceRepository'
 import { useProjectStore } from '../stores/projectStore'
@@ -44,6 +45,7 @@ const quickCreateTone = ref<'choice' | 'term' | 'todo'>('choice')
 const quickCreateTitle = ref('')
 const quickCreateDueDate = ref(today)
 const calendarAnchor = ref(today)
+const dashboardBreakpoint = ref<DashboardBreakpoint>('laptop')
 const timeSlots = Array.from({ length: 12 }, (_, index) => index + 7)
 
 const templates = computed(() => getPlanningTemplates())
@@ -53,8 +55,13 @@ const rooms = computed<Room[]>(() =>
 const widgets = computed(() =>
   [...(workspace.value?.dashboard ?? [])]
     .filter((widget) => widget.enabled)
+    .map((widget) => ({ ...widget, ...getWidgetLayout(widget, dashboardBreakpoint.value) }))
     .sort((a, b) => a.y - b.y || a.x - b.x),
 )
+
+function updateDashboardBreakpoint(): void {
+  dashboardBreakpoint.value = window.innerWidth <= 760 ? 'phone' : window.innerWidth <= 1100 ? 'tablet' : 'laptop'
+}
 
 const allEvents = computed<CalendarEvent[]>(() => [
   ...planDetails.value.flatMap((plan) =>
@@ -283,6 +290,8 @@ async function refresh(): Promise<void> {
 }
 
 onMounted(async () => {
+  updateDashboardBreakpoint()
+  window.addEventListener('resize', updateDashboardBreakpoint)
   try {
     await Promise.all([
       refresh(),
@@ -298,6 +307,7 @@ onMounted(async () => {
     importError.value = cause instanceof Error ? cause.message : 'Dashboard konnte nicht geladen werden.'
   }
 })
+onBeforeUnmount(() => window.removeEventListener('resize', updateDashboardBreakpoint))
 
 async function create(): Promise<void> {
   const room = workspace.value?.rooms.find((item) => item.id === roomId.value)
@@ -340,13 +350,13 @@ async function open(id: string): Promise<void> {
     <p v-if="store.migrationNotice" class="success-message home-feedback">{{ store.migrationNotice }}</p>
     <p v-if="importError" class="error-message home-feedback">{{ importError }}</p>
 
-    <section class="dashboard-grid">
+    <section class="dashboard-grid" :style="{ gridTemplateColumns: `repeat(${workspace?.dashboardGridColumns[dashboardBreakpoint] ?? 12}, minmax(0, 1fr))` }">
       <article
         v-for="widget in widgets"
         :key="widget.id"
         class="dashboard-widget"
         :class="[`widget-${widget.id}`]"
-        :style="{ gridColumn: `${widget.x + 1} / span ${widget.w}`, gridRow: `${widget.y + 1} / span ${widget.h}` }"
+        :style="{ '--widget-grid-column': `${widget.x + 1} / span ${widget.w}`, '--widget-grid-row': `${widget.y + 1} / span ${widget.h}`, gridColumn: `${widget.x + 1} / span ${widget.w}`, gridRow: `${widget.y + 1} / span ${widget.h}` }"
       >
         <template v-if="widget.id === 'calendar'">
           <div class="widget-heading calendar-heading">
@@ -606,6 +616,7 @@ async function open(id: string): Promise<void> {
 .timed-event strong, .timed-event small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .timed-event small { margin-top: .1rem; opacity: .9 }
 @media (max-width: 760px) {
+  .dashboard-grid .dashboard-widget { grid-column: var(--widget-grid-column) !important; grid-row: var(--widget-grid-row) !important }
   .calendar-heading { align-items: stretch; flex-direction: column }
   .calendar-actions { justify-content: flex-end }
   .month-grid { min-width: 510px }

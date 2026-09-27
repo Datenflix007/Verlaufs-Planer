@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultDashboardWidgets, findNextFreePosition, normaliseWidget, overlaps, resolveWidgetCollisions } from './dashboardWidgets'
+import { defaultDashboardGridColumns, defaultDashboardWidgets, findNextFreePosition, getWidgetLayout, normaliseResponsiveLayout, normaliseWidget, overlaps, resolveWidgetCollisions } from './dashboardWidgets'
 import { normaliseWorkspaceSettings } from './workspaceDefaults'
 
 describe('Dashboard grid layout', () => {
@@ -33,5 +33,36 @@ describe('Dashboard grid layout', () => {
     expect(defaultDashboardWidgets().map((widget) => [widget.id, widget.x, widget.y, widget.w, widget.h])).toEqual([
       ['calendar', 0, 0, 12, 5], ['upcoming-plans', 0, 5, 6, 3], ['upcoming-todos', 6, 5, 6, 3], ['next-day-materials', 0, 8, 12, 3],
     ])
+  })
+
+  it('provides separate default arrangements for phone, tablet, and laptop', () => {
+    const widgets = defaultDashboardWidgets()
+    const calendar = widgets.find((widget) => widget.id === 'calendar')!
+    expect(defaultDashboardGridColumns).toEqual({ phone: 4, tablet: 8, laptop: 12 })
+    expect(getWidgetLayout(calendar, 'phone')).toMatchObject({ x: 0, w: 4 })
+    expect(getWidgetLayout(calendar, 'tablet')).toMatchObject({ x: 0, w: 8 })
+    expect(getWidgetLayout(calendar, 'laptop')).toMatchObject({ x: 0, w: 12 })
+  })
+
+  it('migrates legacy positions to the laptop profile and limits custom grid widths', () => {
+    const migrated = normaliseWorkspaceSettings({
+      dashboard: [{ id: 'calendar', enabled: true, x: 2, y: 1, w: 8, h: 5 }] as never,
+      dashboardGridColumns: { phone: 1, tablet: 10, laptop: 20 } as never,
+    })
+    const calendar = migrated.dashboard.find((widget) => widget.id === 'calendar')!
+    expect(migrated.dashboardGridColumns).toEqual({ phone: 2, tablet: 10, laptop: 16 })
+    expect(getWidgetLayout(calendar, 'laptop')).toMatchObject({ x: 2, y: 1, w: 8, h: 5 })
+    expect(getWidgetLayout(calendar, 'phone')).toMatchObject({ x: 0, w: 2 })
+  })
+
+  it('keeps responsive widget geometry within the configured grid', () => {
+    expect(normaliseResponsiveLayout({ x: 7, w: 12, h: 1 }, { x: 0, y: 0, w: 8, h: 5 }, 'calendar', 8))
+      .toEqual({ x: 0, y: 0, w: 8, h: 4 })
+  })
+
+  it('defaults old workspace data to the existing appearance and preserves custom preferences', () => {
+    expect(normaliseWorkspaceSettings(undefined).appearance).toEqual({ mode: 'light', palette: 'lagoon', background: 'mist' })
+    expect(normaliseWorkspaceSettings({ appearance: { mode: 'dark', palette: 'forest', background: 'grid' } }).appearance)
+      .toEqual({ mode: 'dark', palette: 'forest', background: 'grid' })
   })
 })

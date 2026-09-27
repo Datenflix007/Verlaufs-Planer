@@ -1,0 +1,78 @@
+:root {
+  --app-bg: #e8edef;
+  --surface: #fbfcfc;
+  --surface-raised: #ffffff;
+  --text: #1d2935;
+  --muted: #52636b;
+  --border: #c8d6d8;
+  --accent: #1d777f;
+  --accent-strong: #1d5960;
+  --accent-hover: #174a50;
+  --accent-soft: #e3efef;
+}
+
+:root[data-palette='forest'] { --accent: #47734f; --accent-strong: #345c3c; --accent-hover: #294b31; --accent-soft: #e5eee5 }
+:root[data-palette='berry'] { --accent: #a54863; --accent-strong: #87374f; --accent-hover: #702b40; --accent-soft: #f4e8ec }
+:root[data-palette='citrus'] { --accent: #b57522; --accent-strong: #8f5b19; --accent-hover: #744713; --accent-soft: #f5eee1 }
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --app-bg: #172326;
+  --surface: #202e32;
+  --surface-raised: #28383c;
+  --text: #e7eff0;
+  --muted: #b4c3c6;
+  --border: #405256;
+  --accent-soft: #304448;
+}
+
+:root[data-theme='dark'][data-palette='lagoon'] { --accent: #53b9bd; --accent-strong: #277f85; --accent-hover: #36999e }
+:root[data-theme='dark'][data-palette='forest'] { --accent: #8fc596; --accent-strong: #4f8a59; --accent-hover: #69a774 }
+:root[data-theme='dark'][data-palette='berry'] { --accent: #e294ab; --accent-strong: #a84f68; --accent-hover: #c66c86 }
+:root[data-theme='dark'][data-palette='citrus'] { --accent: #e5b86e; --accent-strong: #a97021; --accent-hover: #c58b3a }
+
+html, body { min-height: 100%; background-color: var(--app-bg); color: var(--text) }
+body { background-color: var(--app-bg); background-image: none }
+:is(.home-shell, .settings-hub, .settings-workspace, .editor-content) { background-color: transparent !important }
+:root[data-background='mist'] body { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 35%, var(--app-bg)), var(--app-bg) 55%) }
+:root[data-background='grid'] body { background-image: linear-gradient(color-mix(in srgb, var(--border) 22%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--border) 22%, transparent) 1px, transparent 1px); background-size: 28px 28px }
+
+button:not(.secondary):not(.danger) { border-color: var(--accent-strong); background-color: var(--accent-strong) }
+button:not(.secondary):not(.danger):hover { background-color: var(--accent-hover) }
+button.secondary { color: var(--accent-strong); border-color: var(--border) }
+button.secondary:hover { background: var(--accent-soft) }
+input, textarea, select { color: var(--text); border-color: var(--border); background: var(--surface-raised) }
+
+:is(.settings-hub, .settings-nav, .settings-hub-header, .settings-card, .dashboard-widget, .project-card, .home-empty, .planning-menu, .latex-dialog, .editor-widget-card, .editor-header, .plan-sidebar, .editor-content, .section-card, .settings-workspace) {
+  color: var(--text);
+  border-color: var(--border);
+}
+:is(.settings-hub, .settings-nav, .settings-hub-header, .settings-card, .dashboard-widget, .project-card, .home-empty, .planning-menu, .latex-dialog, .editor-widget-card, .editor-header, .plan-sidebar, .editor-content, .section-card, .settings-workspace) { background-color: var(--surface) }
+.home-brand, .brand { color: var(--accent-strong) }
+.eyebrow, .settings-nav a.active, .settings-nav a:hover { color: var(--accent-strong) }
+.settings-nav a.active, .settings-nav a:hover, .plan-sidebar button:hover, .plan-sidebar button.active { background: var(--accent-soft); border-color: var(--border) }
+
+:root[data-theme='dark'] body :is(.home-header, .settings-header, .settings-hub-header, .settings-nav, .settings-card, .dashboard-widget, .project-card, .home-empty, .planning-menu, .latex-dialog, .editor-widget-card, .editor-header, .plan-sidebar, .editor-content, .section-card, .settings-workspace, .stack-form, .settings-list article, .dashboard-grid-editor) {
+  color: var(--text);
+  border-color: var(--border);
+  background-color: var(--surface);
+}
+:root[data-theme='dark'] button.secondary { color: var(--text); background-color: var(--surface-raised) }
+:root[data-theme='dark'] body :is(.settings-hub, .settings-workspace, .editor-content) { background-color: transparent !important }
+:root[data-theme='dark'] body :is(p, small, label, legend, th, .eyebrow, .home-header > div > p:last-child, .settings-header > div > p:last-child, .widget-heading > span, .dashboard-editor-header p:last-child, .settings-workspace-header p:last-child) { color: var(--muted) }
+:root[data-theme='dark'] body :is(.dashboard-list button, .calendar-event, .month-event, .all-day-event, .widget-preview, .preview-calendar-bar, .preview-calendar-grid, .calendar-day, .month-day, .weekday, .time-axis, .time-day > header, .slots, .settings-nav a, .plan-sidebar button) { color: var(--text); border-color: var(--border); background-color: var(--surface-raised) }
+:root[data-theme='dark'] body :is(.dashboard-list button:hover, .settings-nav a.active, .settings-nav a:hover, .plan-sidebar button.active, .plan-sidebar button:hover) { background-color: var(--accent-soft) }
+:root[data-theme='dark'] body :is(.editor-page, .editor-page table, .editor-page th, .editor-page td, .latex-block-node) { color: var(--text); border-color: var(--border); background-color: var(--surface-raised) }
+
+.appearance-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; align-items: start }
+.appearance-field { display: grid; gap: .55rem; min-width: 0; padding: 0; margin: 0; border: 0 }
+.appearance-field legend { margin-bottom: .2rem; font-size: .88rem; font-weight: 700 }
+.appearance-mode-switch { display: flex; flex-wrap: wrap; gap: .35rem }
+.appearance-mode-switch button { flex: 1; min-width: 4rem }
+.palette-picker { display: flex; flex-wrap: wrap; gap: .5rem }
+.palette-swatch { display: grid; justify-items: center; gap: .25rem; padding: .3rem; color: var(--text); border: 1px solid transparent !important; background: transparent !important }
+.palette-swatch:hover, .palette-swatch.active { border-color: var(--border) !important; background: var(--accent-soft) !important }
+.palette-swatch span { width: 1.45rem; height: 1.45rem; border: 2px solid var(--surface-raised); border-radius: 50%; background: var(--swatch-color); box-shadow: 0 0 0 1px var(--border) }
+.palette-swatch small { color: var(--text); font-size: .72rem }
+.background-field select { align-self: start }
+@media (max-width: 760px) { .appearance-controls { grid-template-columns: 1fr } }
