@@ -2,6 +2,8 @@
 
 Der Verlaufsplaner ist ein lokales Planungswerkzeug für Lehrkräfte, Lehramtsstudierende, Dozierende und Workshop-Leitende. Unterrichts- und Workshopplanungen werden strukturiert erfasst, lokal gespeichert und als vollständige Dokumente exportiert.
 
+
+
 ## Funktionen
 
 - Mehrere lokale Planungen anlegen, öffnen, duplizieren und löschen; JSON-Import und -Backups. Neue Einzelplanungen starten über **Neue Planung** im Dashboard, der JSON-Import liegt unter **Einstellungen → Arbeitsbereich**.
