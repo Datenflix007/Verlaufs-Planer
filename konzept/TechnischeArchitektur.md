@@ -1,5 +1,7 @@
 # Technische Architektur
 
+> **Einordnung:** Dieses Dokument beschreibt den langfristigen Konzeptstand. Die aktuell lauffähige lokale Vue-/Vite-Anwendung und ihre verbindliche Architektur stehen in [`../ARCHITECTURE.md`](../ARCHITECTURE.md). Das implementierte Fachvorlagenkonzept ist in [`Planungsvorlagen.md`](Planungsvorlagen.md) gebündelt.
+
 ## Ziel
 
 Die technische Architektur soll einen lokalen MVP ermoeglichen und trotzdem spaeter Netzwerk- und Webbetrieb zulassen. Der Kern ist eine TypeScript-Anwendung mit SvelteKit, SQLite und klar getrennten Modulen fuer Planung, Klassenuebersichten, Modelle, Kompetenzdaten, Export, Benutzerverwaltung und optionale LLM-Unterstuetzung.
@@ -127,7 +129,7 @@ scripts/
 
 ## Datenfluss fuer Lehrplanimport
 
-1. Rohdateien liegen in `rawData/`.
+1. Rohdateien werden außerhalb des Repositorys aus dokumentierten Primärquellen beschafft.
 2. `just preprocess` extrahiert Text und Metadaten.
 3. Gueltigkeits- und Inkraftsetzungshinweise werden aus Quellseiten, Tabellen oder Begleittexten uebernommen.
 4. Annotationen werden erzeugt.

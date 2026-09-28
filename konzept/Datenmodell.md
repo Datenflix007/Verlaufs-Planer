@@ -1,5 +1,7 @@
 # Datenmodell
 
+> **Einordnung:** Dieses Dokument ist der langfristige konzeptionelle Datenraum. Das aktive JSON-Modell der lokalen Anwendung steht in [`../DATA_MODEL.md`](../DATA_MODEL.md); Planungsvorlagen und ihre Referenzregeln sind in [`Planungsvorlagen.md`](Planungsvorlagen.md) dokumentiert.
+
 ## Zweck
 
 Das Datenmodell beschreibt die zentralen Entitaeten des Verlaufs-Planers. Es ist noch kein finales Datenbankschema, aber die Begriffe und Beziehungen sollen stabil genug sein, damit Entwickler und LLM-Agenten darauf aufbauen koennen.

@@ -96,7 +96,7 @@ Details: [`MultipleVerlaufsplanModelle.md`](MultipleVerlaufsplanModelle.md)
 
 ### 5. Kompetenz-, Lehrplan- und Gueltigkeitsbezug
 
-Rohdaten aus `rawData/` werden in eine normalisierte, annotierte Form ueberfuehrt. Dabei entstehen Kompetenzen, Inhaltsfelder, Jahrgangs-/Stufenbezuege, Faecher, Bundeslaender und Quellenverweise.
+Nachvollziehbar beschaffte Rohdaten werden in eine normalisierte, annotierte Form ueberfuehrt. Dabei entstehen Kompetenzen, Inhaltsfelder, Jahrgangs-/Stufenbezuege, Faecher, Bundeslaender und Quellenverweise.
 
 Wenn Fachlehrplaene auf der Quellseite Angaben zu Gueltigkeit oder Inkraftsetzung enthalten, muss die Anwendung diese Informationen erfassen. Nutzende sollen fuer ein konkretes Schuljahr und eine konkrete Klassenstufe erkennen koennen, welcher Lehrplan gueltig, neu in Kraft, auslaufend oder nur als Entwurfs-/Erprobungsfassung relevant ist.
 
