@@ -100,6 +100,21 @@ describe("Mindmap im Präsentationseditor", () => {
     wrapper.unmount();
   });
 
+  it("löscht den ausgewählten Mindmap-Ast über die sichtbare Werkzeugleistenaktion", async () => {
+    const map = reactive(createMindmapElement().content.mindmap!);
+    const child = addMindmapChild(map, map.rootNodeId, "Zu entfernen")!;
+    const wrapper = mount(MindmapWidget, {
+      props: { mindmap: map, editing: true, selectedNodeId: child.id },
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    await wrapper.find('[aria-label="Ausgewählten Ast löschen"]').trigger("click");
+
+    expect(map.nodes.map((node) => node.id)).toEqual([map.rootNodeId]);
+    vi.restoreAllMocks();
+    wrapper.unmount();
+  });
+
   it("ordnet einen Knoten per Drag-and-drop einem anderen Ast unter", async () => {
     const map = reactive(createMindmapElement().content.mindmap!);
     const first = addMindmapChild(map, map.rootNodeId, "Voraussetzungen")!;

@@ -6,6 +6,7 @@ import { createPlan } from "../../domain/factories";
 import { SqlitePlanRepository } from "../../repositories/SqlitePlanRepository";
 import { addMindmapChild, createMindmapElement } from "../mindmap";
 import { ensurePresentation } from "../presentation";
+import { presentationChannelName } from "../presenterChannel";
 import AudienceView from "./AudienceView.vue";
 
 afterEach(() => {
@@ -50,10 +51,24 @@ describe("Audience Window", () => {
     await router.isReady();
     const wrapper = mount(AudienceView, { global: { plugins: [router] } });
     await flushPromises();
+    const presenter = new BroadcastChannel(presentationChannelName(presentation.id));
+    presenter.postMessage({ type: 'PRESENTATION_VIEW_STATE', slideId: presentation.slides[0]!.id, zoom: 1.5, audienceZoom: true });
+    presenter.postMessage({
+      type: 'PRESENTATION_INK_STROKE',
+      stroke: { id: 'stroke-1', slideId: presentation.slides[0]!.id, points: [{ x: 20, y: 30 }, { x: 80, y: 90 }], color: '#e53935', width: 5, glow: false },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await flushPromises();
     expect(wrapper.findAll(".map-node")).toHaveLength(2);
+    expect(wrapper.find(".slide-content").attributes("style")).toContain("scale(1.5)");
+    expect(wrapper.findAll(".presentation-ink-overlay path")).toHaveLength(1);
     expect(wrapper.text()).toContain("Licht");
     expect(wrapper.find(".map-toolbar").exists()).toBe(false);
     expect(wrapper.find(".fullscreen-hint").exists()).toBe(true);
+    presenter.postMessage({ type: 'PRESENTATION_VIEW_STATE', slideId: presentation.slides[0]!.id, zoom: 1.5, audienceZoom: false });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await flushPromises();
+    expect(wrapper.find(".slide-content").attributes("style")).toContain("scale(1)");
     await wrapper.find(".fullscreen-hint button").trigger("click");
     expect(request).toHaveBeenCalledTimes(2);
     Object.defineProperty(document, "fullscreenElement", {
@@ -70,6 +85,7 @@ describe("Audience Window", () => {
     document.dispatchEvent(new Event("fullscreenchange"));
     await flushPromises();
     expect(wrapper.find(".fullscreen-hint").exists()).toBe(true);
+    presenter.close();
     wrapper.unmount();
   });
 });

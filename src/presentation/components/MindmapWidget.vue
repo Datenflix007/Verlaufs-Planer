@@ -511,6 +511,13 @@ onMounted(() => {
         }}</button
       ><button type="button" @click="center">Zentrieren</button
       ><button type="button" @click="cycleDesign">Stil</button
+      ><button
+        type="button"
+        aria-label="Ausgewählten Ast löschen"
+        title="Ausgewählten Ast löschen"
+        @click="remove()"
+      >
+        🗑</button
       ><button type="button" @click="zoom = Math.max(0.5, zoom - 0.1)">−</button
       ><small>{{ Math.round(zoom * 100) }}%</small
       ><button type="button" @click="zoom = Math.min(2, zoom + 0.1)">+</button

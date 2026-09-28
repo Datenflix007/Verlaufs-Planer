@@ -21,9 +21,11 @@ import { mindmapUpdate } from "../liveMindmap";
 import {
   isSlideChange,
   openPresentationChannel,
+  type PresentationInkStroke,
   type PresentationChannelEvent,
 } from "../presenterChannel";
 import SlideCanvas from "./SlideCanvas.vue";
+import PresentationInkOverlay from "./PresentationInkOverlay.vue";
 import MindmapWidget from "./MindmapWidget.vue";
 import ImageSourcePicker from "./ImageSourcePicker.vue";
 
@@ -52,7 +54,16 @@ const upcoming = computed(() =>
 const currentMindmaps = computed(() => current.value?.elements.filter((element) => element.type === 'mindmap' && element.content.mindmap) ?? []);
 const selectedMindmapId = ref<string>();
 const selectedNodeId = ref<string>();
+const liveMindmapEditing = ref(false);
 const imagePickerOpen = ref(false);
+const presenterZoom = ref(1);
+const audienceZoom = ref(false);
+const inkTool = ref<'off' | 'pen' | 'highlighter'>('off');
+const inkColor = ref('#e53935');
+const penWidth = ref(5);
+const highlighterSeconds = ref(5);
+const inkStrokes = ref<PresentationInkStroke[]>([]);
+const inkTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const liveMindmap = computed<PresentationElement | undefined>(() => currentMindmaps.value.find(element => element.id === selectedMindmapId.value) ?? currentMindmaps.value[0]);
 const liveNode = computed(() => liveMindmap.value?.content.mindmap?.nodes.find(node => node.id === (selectedNodeId.value ?? liveMindmap.value?.content.mindmap?.rootNodeId)));
 const materialImages = computed(() => props.plan.materials.filter(material => material.resourceType === 'file' && /^(data:image|https?:\/\/.*\.(png|jpe?g|gif|webp|svg))/i.test(material.description ?? '')));
@@ -63,6 +74,14 @@ function liveChanged(): void {
   props.presentation.updatedAt = current.value.updatedAt;
   send(mindmapUpdate(current.value.id, element.id, element.content.mindmap));
   emit('changed');
+}
+function startLiveMindmap(elementId: string): void {
+  selectedMindmapId.value = elementId;
+  selectedNodeId.value = undefined;
+  liveMindmapEditing.value = true;
+}
+function finishLiveMindmap(): void {
+  liveMindmapEditing.value = false;
 }
 function setNodeImage(source: string): void {
   if (!liveNode.value) return;
@@ -98,6 +117,45 @@ function persist(): void {
 }
 function send(event: PresentationChannelEvent): void {
   channel?.postMessage(event);
+}
+function publishViewState(): void {
+  if (!currentSlideId.value) return;
+  send({ type: 'PRESENTATION_VIEW_STATE', slideId: currentSlideId.value, zoom: presenterZoom.value, audienceZoom: audienceZoom.value });
+}
+function adjustPresenterZoom(amount: number): void {
+  presenterZoom.value = Math.max(1, Math.min(3, Number((presenterZoom.value + amount).toFixed(2))));
+  if (audienceZoom.value) publishViewState();
+}
+function toggleAudienceZoom(): void {
+  audienceZoom.value = !audienceZoom.value;
+  publishViewState();
+}
+function removeInkStroke(strokeId: string): void {
+  const stroke = inkStrokes.value.find((item) => item.id === strokeId);
+  if (!stroke) return;
+  inkStrokes.value = inkStrokes.value.filter((item) => item.id !== strokeId);
+  inkTimers.delete(strokeId);
+  send({ type: 'PRESENTATION_INK_REMOVE', slideId: stroke.slideId, strokeId });
+}
+function drawInk(points: PresentationInkStroke['points']): void {
+  if (!currentSlideId.value || inkTool.value === 'off') return;
+  const glow = inkTool.value === 'highlighter';
+  const stroke: PresentationInkStroke = {
+    id: crypto.randomUUID(),
+    slideId: currentSlideId.value,
+    points,
+    color: inkColor.value,
+    width: glow ? Math.max(18, penWidth.value * 4) : penWidth.value,
+    glow,
+    expiresAt: glow ? Date.now() + highlighterSeconds.value * 1000 : undefined,
+  };
+  inkStrokes.value = [...inkStrokes.value, stroke];
+  send({ type: 'PRESENTATION_INK_STROKE', stroke });
+  if (stroke.expiresAt) inkTimers.set(stroke.id, setTimeout(() => removeInkStroke(stroke.id), highlighterSeconds.value * 1000));
+}
+function clearInkTimers(): void {
+  for (const timer of inkTimers.values()) clearTimeout(timer);
+  inkTimers.clear();
 }
 function goToSlide(slideId?: string): void {
   if (!slideId || !slides.value.some((slide) => slide.id === slideId)) return;
@@ -224,6 +282,8 @@ onMounted(() => {
       screenMessage.value = "Präsentationsfenster verbunden.";
       if (currentSlideId.value)
         send({ type: "PRESENTATION_STATE", slideId: currentSlideId.value });
+      publishViewState();
+      for (const stroke of inkStrokes.value) send({ type: 'PRESENTATION_INK_STROKE', stroke });
       syncMindmaps();
     }
     if (message.data.type === "FULLSCREEN_STATUS")
@@ -261,10 +321,22 @@ onBeforeUnmount(() => {
   window.clearInterval(audiencePoll);
   screenDetails?.removeEventListener?.("screenschange", screensChanged);
   send({ type: "PRESENTATION_END" });
+  clearInkTimers();
   channel?.close();
 });
 watch(() => props.initialSlideId, goToSlide);
-watch(currentSlideId, () => { selectedMindmapId.value = undefined; selectedNodeId.value = undefined; imagePickerOpen.value = false; });
+watch(currentSlideId, () => {
+  selectedMindmapId.value = undefined;
+  selectedNodeId.value = undefined;
+  liveMindmapEditing.value = false;
+  imagePickerOpen.value = false;
+  presenterZoom.value = 1;
+  audienceZoom.value = false;
+  inkTool.value = 'off';
+  inkStrokes.value = [];
+  clearInkTimers();
+  publishViewState();
+});
 const time = computed(
   () =>
     `${String(Math.floor(elapsed.value / 60)).padStart(2, "0")}:${String(elapsed.value % 60).padStart(2, "0")}`,
@@ -383,14 +455,36 @@ const time = computed(
         </div>
       </aside>
       <section class="presenter-current">
-        <SlideCanvas
-          v-if="current"
-          :slide="current"
-          :theme-id="presentation.themeId"
-          readonly
-        />
-        <section v-if="currentMindmaps.length" class="live-mindmap-panel">
-          <h2>Mindmap live ergänzen</h2>
+        <div v-if="current && !liveMindmapEditing" class="presenter-slide-stage">
+          <SlideCanvas
+            :slide="current"
+            :theme-id="presentation.themeId"
+            :show-mindmap-edit-button="currentMindmaps.length > 0"
+            presenter-controls
+            :zoom="presenterZoom"
+            :audience-zoom="audienceZoom"
+            @mindmap-edit="startLiveMindmap"
+            @zoom-in="adjustPresenterZoom(0.25)"
+            @zoom-out="adjustPresenterZoom(-0.25)"
+            @audience-zoom-toggle="toggleAudienceZoom"
+            readonly
+          />
+          <PresentationInkOverlay :strokes="inkStrokes" :tool="inkTool" :color="inkColor" :width="penWidth" :zoom="presenterZoom" @draw="drawInk" />
+        </div>
+        <div v-if="current && !liveMindmapEditing" class="presenter-ink-tools" role="toolbar" aria-label="Live-Zeichenwerkzeuge">
+          <button type="button" :class="{ active: inkTool === 'off' }" :aria-pressed="inkTool === 'off'" @click="inkTool = 'off'">Zeiger</button>
+          <button type="button" :class="{ active: inkTool === 'pen' }" :aria-pressed="inkTool === 'pen'" @click="inkTool = 'pen'">Stift</button>
+          <button type="button" :class="{ active: inkTool === 'highlighter' }" :aria-pressed="inkTool === 'highlighter'" @click="inkTool = 'highlighter'">Leuchtstift</button>
+          <label title="Stiftfarbe"><span>Farbe</span><input v-model="inkColor" type="color" aria-label="Stiftfarbe" /></label>
+          <button v-for="preset in [{ name: 'Rot', color: '#e53935' }, { name: 'Blau', color: '#1769d2' }, { name: 'Schwarz', color: '#172126' }]" :key="preset.name" type="button" :aria-label="`Stiftfarbe ${preset.name}`" :title="`Stiftfarbe ${preset.name}`" :style="{ width: '24px', height: '24px', padding: 0, background: preset.color, borderRadius: '50%' }" @click="inkColor = preset.color" />
+          <label title="Strichbreite"><span>Breite</span><input v-model.number="penWidth" type="range" min="2" max="18" aria-label="Stiftbreite" /></label>
+          <label v-if="inkTool === 'highlighter'" title="Leuchtdauer in Sekunden"><span>Sekunden</span><input v-model.number="highlighterSeconds" type="number" min="1" max="60" aria-label="Leuchtdauer in Sekunden" /></label>
+        </div>
+        <section v-else-if="liveMindmapEditing && liveMindmap?.content.mindmap" class="live-mindmap-panel">
+          <header class="live-mindmap-heading">
+            <h2>Mindmap live ergänzen</h2>
+            <button type="button" class="secondary" aria-label="Zur Folienvorschau" title="Zur Folienvorschau" @click="finishLiveMindmap">← Vorschau</button>
+          </header>
           <label v-if="currentMindmaps.length > 1">Mindmap
             <select v-model="selectedMindmapId">
               <option v-for="(element, index) in currentMindmaps" :key="element.id" :value="element.id">Mindmap {{ index + 1 }}</option>
@@ -405,6 +499,7 @@ const time = computed(
               @select="selectedNodeId = $event"
               @changed="liveChanged"
               @image-request="selectedNodeId = $event; imagePickerOpen = true"
+              @finish="finishLiveMindmap"
             />
           </div>
           <div v-if="liveNode" class="live-node-fields">
@@ -535,6 +630,15 @@ const time = computed(
 .presenter-current {
   min-width: 0;
 }
+.presenter-slide-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
+.presenter-slide-stage :deep(.slide-canvas) { width: 100%; height: 100%; aspect-ratio: auto; }
+.presenter-ink-tools { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; margin-top: .55rem; padding: .45rem; border: 1px solid #4b6b70; border-radius: 6px; background: #224147; }
+.presenter-ink-tools button { padding: .35rem .55rem; }
+.presenter-ink-tools button.active { border-color: #83e9df; color: #082f33; background: #83e9df; }
+.presenter-ink-tools label { display: inline-flex; align-items: center; gap: .35rem; color: #c6e5e2; font-size: .75rem; }
+.presenter-ink-tools input[type="color"] { width: 30px; height: 27px; padding: 2px; }
+.presenter-ink-tools input[type="range"] { width: 75px; }
+.presenter-ink-tools input[type="number"] { width: 54px; padding: .25rem; color: #edf9f7; background: #143137; border: 1px solid #537b7d; }
 .speaker-notes {
   margin-top: 1rem;
   min-height: 90px;
@@ -552,6 +656,7 @@ const time = computed(
   background: #224147;
 }
 .live-mindmap-panel h2 { margin-bottom: 0.6rem; font-size: 0.95rem; }
+.live-mindmap-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 .live-mindmap-panel > label, .live-node-fields label { display: grid; gap: 0.3rem; font-size: 0.8rem; }
 .live-mindmap-panel input, .live-mindmap-panel select { width: 100%; color: #eefaf9; background: #143137; border: 1px solid #537b7d; padding: 0.35rem; }
 .live-mindmap-stage { width: 100%; aspect-ratio: 16 / 9; margin-top: 0.5rem; }

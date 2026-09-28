@@ -15,6 +15,10 @@ const props = withDefaults(
     editingMindmapId?: string;
     selectedMindmapNodeId?: string;
     focusMindmapRoot?: boolean;
+    showMindmapEditButton?: boolean;
+    presenterControls?: boolean;
+    zoom?: number;
+    audienceZoom?: boolean;
     readonly?: boolean;
   }>(),
   { readonly: false },
@@ -28,6 +32,9 @@ const emit = defineEmits<{
   mindmapFinish: [];
   mindmapNodeSelect: [id?: string];
   mindmapImageRequest: [nodeId: string];
+  zoomIn: [];
+  zoomOut: [];
+  audienceZoomToggle: [];
   undo: [];
   redo: [];
 }>();
@@ -202,6 +209,7 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
     @pointerleave="end"
     @pointerdown.self="emit('select')"
   >
+    <div class="slide-content" :style="{ transform: `scale(${zoom ?? 1})` }">
     <div class="slide-background-image" />
     <div v-if="!slide.elements.length" class="empty-slide">
       <strong>{{
@@ -310,6 +318,31 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
           @pointerdown.stop="start(element, $event, handle)"
       /></template>
     </article>
+    </div>
+    <div v-if="presenterControls" class="presenter-slide-actions" @pointerdown.stop>
+      <button
+        v-if="showMindmapEditButton"
+        type="button"
+        aria-label="Mindmap bearbeiten"
+        title="Mindmap bearbeiten"
+        @click.stop="emit('mindmapEdit', slide.elements.find((element) => element.type === 'mindmap')?.id ?? '')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 4 4 4L9 19l-5 1 1-5L16 4zM14.5 5.5l4 4" /></svg>
+      </button>
+      <button
+        type="button"
+        :class="{ active: audienceZoom }"
+        :aria-label="audienceZoom ? 'Zoom im Plenum ausschalten' : 'Zoom im Plenum einschalten'"
+        :aria-pressed="audienceZoom ?? false"
+        :title="audienceZoom ? 'Zoom im Plenum ausschalten' : 'Zoom im Plenum einschalten'"
+        @click.stop="emit('audienceZoomToggle')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm10 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+      </button>
+      <span class="presenter-zoom-level">{{ Math.round((zoom ?? 1) * 100) }}%</span>
+      <button type="button" aria-label="Referentenansicht vergrößern" title="Referentenansicht vergrößern" @click.stop="emit('zoomIn')">+</button>
+      <button type="button" aria-label="Referentenansicht verkleinern" title="Referentenansicht verkleinern" @click.stop="emit('zoomOut')">−</button>
+    </div>
   </div>
 </template>
 
@@ -323,6 +356,11 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
   color: var(--slide-text);
   box-shadow: 0 22px 50px #0714178c;
   user-select: none;
+}
+.slide-content {
+  position: absolute;
+  inset: 0;
+  transform-origin: center;
 }
 .slide-background-image {
   position: absolute;
@@ -390,6 +428,35 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
   border-radius: 4px;
   font-size: 12px;
 }
+.presenter-slide-actions {
+  position: absolute;
+  z-index: 40;
+  top: 5px;
+  right: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  background: #173238c9;
+  border: 1px solid #63a5a3;
+  border-radius: 5px;
+}
+.presenter-slide-actions button {
+  display: grid;
+  width: 30px;
+  aspect-ratio: 1;
+  place-items: center;
+  padding: 0;
+  color: #edffff;
+  background: #11656c;
+  border: 1px solid #5ee0d9;
+  border-radius: 4px;
+  font-size: 18px;
+  line-height: 1;
+}
+.presenter-slide-actions button.active { color: #15343a; background: #80eee1; }
+.presenter-slide-actions svg { width: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.presenter-zoom-level { padding: 0 3px; color: #edffff; font-size: 11px; font-weight: 700; }
 .slide-element.image img {
   width: 100%;
   height: 100%;

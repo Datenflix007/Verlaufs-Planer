@@ -5,10 +5,67 @@ import { describe, expect, it, vi } from "vitest";
 import { createPlan } from "../../domain/factories";
 import { reserveAudience, type WindowManagementHost } from "../audienceWindow";
 import { ensurePresentation } from "../presentation";
+import { createMindmapElement } from "../mindmap";
 import { presentationChannelName } from "../presenterChannel";
 import PresenterConsole from "./PresenterConsole.vue";
 
 describe("Presenter Console mit Zweitbildschirm", () => {
+  it("zoomt lokal und sendet den Zoom erst nach Aktivierung an das Plenum", async () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/", component: { template: "<div />" } }] });
+    await router.push("/");
+    await router.isReady();
+    const wrapper = mount(PresenterConsole, { props: { plan, presentation }, global: { plugins: [router] } });
+    await flushPromises();
+    const observer = new BroadcastChannel(presentationChannelName(presentation.id));
+    const viewStates: Array<{ zoom: number; audienceZoom: boolean }> = [];
+    observer.onmessage = (event: MessageEvent) => {
+      if (event.data.type === 'PRESENTATION_VIEW_STATE') viewStates.push(event.data);
+    };
+
+    await wrapper.find('[aria-label="Referentenansicht vergrößern"]').trigger("click");
+    expect(wrapper.find(".slide-content").attributes("style")).toContain("scale(1.25)");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(viewStates).toHaveLength(0);
+
+    await wrapper.find('[aria-label="Zoom im Plenum einschalten"]').trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(viewStates.at(-1)).toMatchObject({ zoom: 1.25, audienceZoom: true });
+    observer.close();
+    wrapper.unmount();
+  });
+
+  it("wechselt per Stift zwischen Mindmap-Vorschau und Live-Bearbeitung", async () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    presentation.slides[0]!.elements.push(createMindmapElement());
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/", component: { template: "<div />" } }],
+    });
+    await router.push("/");
+    await router.isReady();
+    const wrapper = mount(PresenterConsole, {
+      props: { plan, presentation },
+      global: { plugins: [router] },
+    });
+    await flushPromises();
+
+    expect(wrapper.find(".slide-canvas").exists()).toBe(true);
+    expect(wrapper.find(".map-toolbar").exists()).toBe(false);
+    await wrapper.find('[aria-label="Mindmap bearbeiten"]').trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".slide-canvas").exists()).toBe(false);
+    expect(wrapper.find(".map-toolbar").exists()).toBe(true);
+
+    await wrapper.find('[aria-label="Zur Folienvorschau"]').trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".slide-canvas").exists()).toBe(true);
+    expect(wrapper.find(".map-toolbar").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it("öffnet das reservierte Fenster am externen Screen und zeigt Statusereignisse an", async () => {
     const plan = createPlan();
     const presentation = ensurePresentation(plan);

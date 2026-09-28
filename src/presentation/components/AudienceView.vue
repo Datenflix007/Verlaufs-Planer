@@ -9,9 +9,11 @@ import { tryPresentationFullscreen } from "../fullscreen";
 import {
   isSlideChange,
   openPresentationChannel,
+  type PresentationInkStroke,
   type PresentationChannelEvent,
 } from "../presenterChannel";
 import SlideCanvas from "./SlideCanvas.vue";
+import PresentationInkOverlay from "./PresentationInkOverlay.vue";
 
 const route = useRoute();
 const plan = ref<WorkshopPlan>();
@@ -19,6 +21,9 @@ const currentSlideId = ref<string>();
 const error = ref("");
 const fullscreen = ref(false);
 const ended = ref(false);
+const audienceZoom = ref(1);
+const inkStrokes = ref<PresentationInkStroke[]>([]);
+const inkTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let channel: BroadcastChannel | undefined;
 function send(event: PresentationChannelEvent): void {
   channel?.postMessage(event);
@@ -36,6 +41,10 @@ function fullscreenChanged(): void {
 }
 function windowClosing(): void {
   send({ type: "AUDIENCE_CLOSED" });
+}
+function clearInkTimers(): void {
+  for (const timer of inkTimers.values()) clearTimeout(timer);
+  inkTimers.clear();
 }
 const presentation = computed<Presentation | undefined>(() =>
   plan.value?.presentation?.id === String(route.params.presentationId)
@@ -79,12 +88,34 @@ onMounted(async () => {
       if (
         isSlideChange(event) &&
         presentation.value?.slides.some((item) => item.id === event.slideId)
-      )
+      ) {
         currentSlideId.value = event.slideId;
+        audienceZoom.value = 1;
+        inkStrokes.value = [];
+        clearInkTimers();
+      }
       if (event.type === "PRESENTATION_END") ended.value = true;
       if (event.type === "FULLSCREEN_REQUEST") void requestFullscreen();
       if (event.type === "MINDMAP_UPDATED" && presentation.value)
         applyMindmapUpdate(presentation.value, event);
+      if (event.type === 'PRESENTATION_VIEW_STATE' && event.slideId === currentSlideId.value)
+        audienceZoom.value = event.audienceZoom ? event.zoom : 1;
+      if (event.type === 'PRESENTATION_INK_STROKE' && event.stroke.slideId === currentSlideId.value) {
+        inkStrokes.value = [...inkStrokes.value.filter((stroke) => stroke.id !== event.stroke.id), event.stroke];
+        if (event.stroke.expiresAt) {
+          const delay = Math.max(0, event.stroke.expiresAt - Date.now());
+          inkTimers.set(event.stroke.id, setTimeout(() => {
+            inkStrokes.value = inkStrokes.value.filter((stroke) => stroke.id !== event.stroke.id);
+            inkTimers.delete(event.stroke.id);
+          }, delay));
+        }
+      }
+      if (event.type === 'PRESENTATION_INK_REMOVE' && event.slideId === currentSlideId.value) {
+        inkStrokes.value = inkStrokes.value.filter((stroke) => stroke.id !== event.strokeId);
+        const timer = inkTimers.get(event.strokeId);
+        if (timer) clearTimeout(timer);
+        inkTimers.delete(event.strokeId);
+      }
     };
     channel.postMessage({
       type: "PRESENTATION_REQUEST_STATE",
@@ -104,6 +135,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   document.removeEventListener("fullscreenchange", fullscreenChanged);
   window.removeEventListener("beforeunload", windowClosing);
+  clearInkTimers();
   channel?.close();
 });
 </script>
@@ -111,14 +143,18 @@ onBeforeUnmount(() => {
 <template>
   <main v-if="ended" class="audience-error">Präsentation beendet.</main>
   <main v-else-if="slide && presentation" class="audience-view">
-    <SlideCanvas
-      :key="slide.id"
-      :slide="slide"
-      :theme-id="presentation.themeId"
-      readonly
-      :class="`transition-${slide.transition.type}`"
-      :style="{ animationDuration: `${slide.transition.duration}ms` }"
-    />
+    <div class="audience-stage">
+      <SlideCanvas
+        :key="slide.id"
+        :slide="slide"
+        :theme-id="presentation.themeId"
+        :zoom="audienceZoom"
+        readonly
+        :class="`transition-${slide.transition.type}`"
+        :style="{ animationDuration: `${slide.transition.duration}ms` }"
+      />
+      <PresentationInkOverlay :strokes="inkStrokes" :zoom="audienceZoom" />
+    </div>
     <div v-if="!fullscreen" class="fullscreen-hint">
       <span>Für Präsentation Vollbild aktivieren</span
       ><button type="button" @click="requestFullscreen">
@@ -139,9 +175,16 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: #10191b;
 }
-.audience-view :deep(.slide-canvas) {
+.audience-stage {
+  position: relative;
   width: min(100vw, calc(100vh * 16 / 9));
-  max-height: 100vh;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+.audience-stage :deep(.slide-canvas) {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
   box-shadow: none;
 }
 .fullscreen-hint {
