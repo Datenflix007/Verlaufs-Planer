@@ -3,6 +3,13 @@
 Der Verlaufsplaner ist ein lokales Planungswerkzeug für Lehrkräfte, Lehramtsstudierende, Dozierende und Workshop-Leitende. Unterrichts- und Workshopplanungen werden strukturiert erfasst, lokal gespeichert und als vollständige Dokumente exportiert.
 
 
+https://github.com/user-attachments/assets/d72675a8-3515-4ba4-8cf5-8ade32a83df9
+
+https://github.com/user-attachments/assets/d240563e-e1f4-4494-9c72-58cee88119cb
+
+
+
+
 
 ## Funktionen
 
@@ -29,6 +36,10 @@ Details zu Datenmodell, Migration, Folienverweisen und Browser-Fallbacks: [konze
 Beim Anlegen einer Planung lässt sich optional ein fachlicher Kontext wählen. Die Vorlage **Digital Humanities** aktiviert DigComp 3.0 und hebt passende Kompetenzen hervor; alle 21 DigComp-Kompetenzen bleiben auswählbar. Ein Vorlagenwechsel löscht keine Inhalte. Unter **Vorlagen verwalten** können eigene Vorlagen lokal importiert, exportiert, dupliziert, umbenannt und gelöscht werden. Details: [konzept/Planungsvorlagen.md](konzept/Planungsvorlagen.md).
 
 ## Erste Schritte
+
+
+
+
 
 Voraussetzung ist Node.js ab Version 22.5.
 
