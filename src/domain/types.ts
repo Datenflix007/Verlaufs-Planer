@@ -1,4 +1,4 @@
-export const CURRENT_SCHEMA_VERSION = 1 as const
+export const CURRENT_SCHEMA_VERSION = 3 as const
 
 export type RichTextMark = { type: string; attrs?: Record<string, unknown> }
 export interface RichTextNode { type: string; text?: string; attrs?: Record<string, unknown>; marks?: RichTextMark[]; content?: RichTextNode[] }
@@ -14,6 +14,8 @@ export interface ScheduleEntry {
   type: 'phase' | 'break'; phase?: string; title?: string; content?: RichTextDocument; objective?: RichTextDocument
   teacherActivity?: RichTextDocument; participantActivity?: RichTextDocument; method?: string; socialForm?: string
   materialIds: string[]; notes?: RichTextDocument
+  /** Stable reference to one slide; its displayed number is always derived from slide.position. */
+  presentationEntryPoint?: PresentationEntryPoint
 }
 export type ScheduleField = 'time' | 'phase' | 'title' | 'objective' | 'content' | 'teacherActivity' | 'participantActivity' | 'method' | 'socialForm' | 'materials' | 'notes'
 export interface ScheduleColumn { id: string; label: string; field: ScheduleField }
@@ -55,8 +57,50 @@ export interface WorkshopPlan {
   metadata: { title: string; subtitle?: string; subject?: string; targetGroup?: string; institution?: string; location?: string; buildingId?: string; roomId?: string; priorityId?: string; authors: string[]; description?: string }
   days: WorkshopDay[]; learningObjectives: LearningObjective[]; competencies: CompetencyReference[]
   contentAnalysis: RichTextDocument; didacticAnalysis: RichTextDocument; schedule: ScheduleEntry[]; materials: Material[]
+  /** The plan-owned presentation is persisted with the plan's SQLite payload. */
+  presentation?: Presentation
   settings: { scheduleLayoutId: string; timeDisplay: 'start' | 'duration'; phaseModelId?: string; templateId?: string; enabledCompetencyFrameworkIds?: string[] }; createdAt: string; updatedAt: string
 }
+
+export type PresentationThemeId = 'schlicht' | 'tafelstil' | 'neon' | 'arbeitsblatt' | 'natur'
+export type PresentationElementType = 'text' | 'image' | 'shape' | 'icon' | 'mindmap'
+export type PresentationShapeType = 'rectangle' | 'roundedRectangle' | 'ellipse' | 'line' | 'arrow'
+export type PresentationImageFit = 'contain' | 'cover' | 'fill'
+export type PresentationTransition = 'none' | 'fade' | 'slide'
+export type PresentationLayoutType = 'blank' | 'title' | 'titleContent' | 'twoColumn' | 'imageText' | 'section' | 'closing'
+
+export type MindmapDesign = 'schlicht' | 'organisch' | 'tafel' | 'neon' | 'pastell'
+export interface MindmapNode {
+  id: string; parentId: string | null; text: string; level: number; order: number
+  x?: number; y?: number; collapsed?: boolean
+  style: { backgroundColor?: string; textColor?: string; fontSize?: number; fontWeight?: number; borderColor?: string; borderWidth?: number; borderRadius?: number; branchColor?: string }
+  image?: { source: string; fit: PresentationImageFit }
+}
+export interface MindmapEdge {
+  id: string; sourceNodeId: string; targetNodeId: string
+  style: { color?: string; width?: number; curve?: 'smooth' | 'straight' }
+}
+export interface MindmapWidget {
+  id: string; rootNodeId: string; nodes: MindmapNode[]; edges: MindmapEdge[]
+  settings: { layout: 'horizontal' | 'radial'; autoLayout: boolean; spacingX: number; spacingY: number; branchColors: boolean; design: MindmapDesign }
+}
+
+export interface PresentationElement {
+  id: string; type: PresentationElementType
+  x: number; y: number; width: number; height: number; rotation: number; zIndex: number
+  style: { color?: string; backgroundColor?: string; fontSize?: number; fontFamily?: string; fontWeight?: number; fontStyle?: 'normal' | 'italic'; textDecoration?: 'none' | 'underline'; textAlign?: 'left' | 'center' | 'right'; lineHeight?: number; letterSpacing?: number; opacity?: number; borderRadius?: number; stroke?: string; strokeWidth?: number; objectFit?: PresentationImageFit; locked?: boolean }
+  content: { text?: string; src?: string; shape?: PresentationShapeType; icon?: string; mindmap?: MindmapWidget }
+  createdAt: string; updatedAt: string
+}
+export interface PresentationSlide {
+  /** Immutable UUID. Reordering only changes position. */
+  id: string; position: number; title?: string; layoutType: PresentationLayoutType; background: { color?: string; imageUrl?: string; imageFit?: PresentationImageFit }
+  notes: string; transition: { type: PresentationTransition; duration: 200 | 400 | 700 }; elements: PresentationElement[]; createdAt: string; updatedAt: string
+}
+export interface Presentation {
+  id: string; planId: string; title: string; themeId: PresentationThemeId; templateId?: string; slides: PresentationSlide[]; recentColors?: string[]; createdAt: string; updatedAt: string
+}
+export interface PresentationEntryPoint { id: string; slideId: string; label?: string; createdAt: string }
 export interface CompetencyItem { id: string; title: string; description?: string }
 export interface CompetencyCategory { id: string; title: string; competencies: CompetencyItem[]; children?: CompetencyCategory[] }
 export interface CompetencyCatalog { id: string; name: string; subject?: string; region?: string; schoolType?: string; version?: string; source?: string; categories: CompetencyCategory[] }

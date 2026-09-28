@@ -6,9 +6,10 @@ import { createId, richTextFromPlain } from '../../domain/factories'
 import { richTextPlain } from '../../export/render'
 import { nextStartTime, synchronizeTime, totalDayMinutes } from '../../domain/schedule'
 import type { RichTextDocument, ScheduleEntry, ScheduleLayout, SchedulePattern, WorkshopDay, WorkshopPlan } from '../../domain/types'
+import { orderedSlides } from '../../presentation/presentation'
 
 const props = defineProps<{ plan: WorkshopPlan; patterns?: SchedulePattern[] }>()
-const emit = defineEmits<{ changed: [] }>()
+const emit = defineEmits<{ changed: []; openPresentation: [slideId?: string] }>()
 const template = computed(() => getPlanningTemplate(props.plan.settings.templateId))
 const layouts = computed<ScheduleLayout[]>(() => {
   const persisted = props.patterns ?? []
@@ -26,6 +27,14 @@ const phaseSuggestions = computed(() => [...new Set([...(template.value?.suggest
 const methodSuggestions = computed(() => template.value?.suggestedMethods ?? [])
 const entriesForDay = (dayId: string): ScheduleEntry[] => props.plan.schedule.filter((item) => item.dayId === dayId)
 const draggedEntryId = ref<string>()
+const slides = computed(() => props.plan.presentation ? orderedSlides(props.plan.presentation) : [])
+function linkedSlide(entry: ScheduleEntry) { return slides.value.find((slide) => slide.id === entry.presentationEntryPoint?.slideId) }
+function setEntryPoint(entry: ScheduleEntry, slideId: string): void {
+  if (!slideId) { delete entry.presentationEntryPoint; emit('changed'); return }
+  entry.presentationEntryPoint = { id: entry.presentationEntryPoint?.id ?? createId(), slideId, createdAt: entry.presentationEntryPoint?.createdAt ?? new Date().toISOString() }
+  emit('changed')
+}
+function removeEntryPoint(entry: ScheduleEntry): void { delete entry.presentationEntryPoint; emit('changed') }
 function add(day: WorkshopDay, type: ScheduleEntry['type'] = 'phase'): void {
   const startTime = nextStartTime(props.plan.schedule, day.id)
   props.plan.schedule.push({ id: createId(), dayId: day.id, startTime, type, phase: type === 'break' ? undefined : 'Einstieg', title: type === 'break' ? 'Pause' : '', materialIds: [], content: richTextFromPlain(''), objective: richTextFromPlain(''), notes: richTextFromPlain('') })
@@ -73,7 +82,7 @@ function endDrag(): void { draggedEntryId.value = undefined }
             <td v-else-if="column.field === 'materials'"><details><summary>{{ materialLabel(entry) || 'Material wählen' }}</summary><label v-for="material in plan.materials" :key="material.id" class="material-check"><input type="checkbox" :checked="entry.materialIds.includes(material.id)" @change="toggleMaterial(entry, material.id)">{{ material.name || 'Unbenanntes Material' }}</label></details></td>
             <td v-else-if="column.field === 'notes'"><textarea :value="richTextPlain(entry.notes)" rows="3" placeholder="Hinweise" @change="updateText(entry, 'notes', $event)" /></td>
           </template>
-          <td class="schedule-actions"><button type="button" class="drag-handle" draggable="true" title="Zeile ziehen und auf der Zielzeile ablegen" @dragstart="beginDrag(entry, $event)" @dragend="endDrag">Ziehen</button><button type="button" title="Duplizieren" @click="duplicate(entry)">Kopie</button><button type="button" class="danger" title="Löschen" @click="remove(entry)">Löschen</button></td>
+          <td class="schedule-actions"><div v-if="entry.type === 'phase'" class="presentation-entry-point"><button v-if="!plan.presentation" type="button" class="secondary" title="Präsentation für diesen Verlaufsplan öffnen" @click="emit('openPresentation')">↗ Präsentation</button><template v-else-if="entry.presentationEntryPoint"><button v-if="linkedSlide(entry)" type="button" class="entry-link" :title="`Öffnet die Präsentation direkt bei Folie ${linkedSlide(entry)!.position + 1}.`" @click="emit('openPresentation', entry.presentationEntryPoint.slideId)">↗ Folie {{ linkedSlide(entry)!.position + 1 }}</button><span v-else class="broken-entry">⚠ Folie nicht gefunden</span><select :value="entry.presentationEntryPoint.slideId" aria-label="Präsentationsfolie neu zuweisen" @change="setEntryPoint(entry, ($event.target as HTMLSelectElement).value)"><option value="">Neu zuweisen …</option><option v-for="slide in slides" :key="slide.id" :value="slide.id">Folie {{ slide.position + 1 }} · {{ slide.title || 'Ohne Titel' }}</option></select><button type="button" class="secondary" title="Einstiegspunkt entfernen" @click="removeEntryPoint(entry)">×</button></template><select v-else aria-label="Präsentations-Einstiegspunkt setzen" :disabled="!slides.length" @change="setEntryPoint(entry, ($event.target as HTMLSelectElement).value)"><option value="">↗ Einstiegspunkt setzen …</option><option v-for="slide in slides" :key="slide.id" :value="slide.id">Folie {{ slide.position + 1 }} · {{ slide.title || 'Ohne Titel' }}</option></select></div><button type="button" class="drag-handle" draggable="true" title="Zeile ziehen und auf der Zielzeile ablegen" @dragstart="beginDrag(entry, $event)" @dragend="endDrag">Ziehen</button><button type="button" title="Duplizieren" @click="duplicate(entry)">Kopie</button><button type="button" class="danger" title="Löschen" @click="remove(entry)">Löschen</button></td>
         </tr>
         <tr v-if="!entriesForDay(day.id).length"><td :colspan="layout.columns.length + 1" class="empty-state">Noch keine Phasen. Fügen Sie die erste Phase oder Pause hinzu.</td></tr>
       </tbody></table></div>

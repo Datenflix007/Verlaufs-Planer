@@ -14,6 +14,15 @@ Der Verlaufsplaner ist ein lokales Werkzeug fuer Lehrkraefte, Lehramtsstudierend
 - Vollstaendige HTML-, LaTeX- und JSON-Exporte sowie Browserdruck fuer PDF mit echtem Text und Print-CSS.
 - Fach- und Disziplinvorlagen als Startpunkt: mitgelieferte allgemeine und Digital-Humanities-Vorlage, referenzierte Kompetenzrahmen, Layout- und Methodenvorschläge sowie lokale JSON-Vorlagen.
 
+## Presentation Mode
+
+- Integrierter Präsentationseditor mit Folien, Canvas-Elementen, Themes und Sprechernotizen.
+- Presenter View mit Verlauf, aktueller und nächster Folie, Timer und Tastatursteuerung.
+- Zweitbildschirm/Beamer über ein separates Audience Window mit BroadcastChannel-Synchronisation.
+- Stabile Präsentations-Einstiegspunkte aus dem Verlaufsplan: Sie referenzieren unveränderliche Folien-UUIDs, nicht Foliennummern.
+
+Details zu Datenmodell, Migration, Broken Links und Browser-Fallbacks: [docs/PRESENTATION_MODE.md](docs/PRESENTATION_MODE.md).
+
 ## Planungsvorlagen
 
 Beim Anlegen einer Planung wählen Sie optional einen fachlichen Kontext. Die Vorlage **Digital Humanities** aktiviert DigComp 3.0 und hebt fachlich passende Kompetenzen hervor; alle 21 DigComp-Kompetenzen bleiben auswählbar. Ein Vorlagenwechsel löscht keine Inhalte. Unter **Vorlagen verwalten** lassen sich eigene Vorlagen lokal importieren, exportieren, duplizieren, umbenennen und löschen. Details, Datenformat und Erweiterungspunkte stehen in [konzept/Planungsvorlagen.md](konzept/Planungsvorlagen.md).
