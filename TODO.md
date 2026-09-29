@@ -1,5 +1,11 @@
 # TODO
 
+## Skalierbare Referentenfolie ohne Seitenscrollen
+
+- [x] Verfuegbaren Vorschauplatz und Sprechernotizen in der Referentenansicht analysieren.
+- [x] Automatische Anpassung an den verfuegbaren Platz sowie separate Vorschau-Verkleinerung und -Vergroesserung implementieren.
+- [x] Komponenten-, Typ-, Gesamt-, Build- und Browserpruefungen ausfuehren.
+
 ## Nahtlose und live synchronisierte Leuchtspur
 
 - [x] Fade-Fenster fuer eine optisch kontinuierliche Leuchtspur verdichten.

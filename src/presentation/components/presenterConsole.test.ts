@@ -37,6 +37,25 @@ describe("Presenter Console mit Zweitbildschirm", () => {
     wrapper.unmount();
   });
 
+  it("skaliert die Folienvorschau getrennt vom inhaltlichen Referentenzoom", async () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/", component: { template: "<div />" } }] });
+    await router.push("/");
+    await router.isReady();
+    const wrapper = mount(PresenterConsole, { props: { plan, presentation }, global: { plugins: [router] } });
+    await flushPromises();
+
+    const stage = wrapper.find(".presenter-slide-stage");
+    expect(stage.attributes("style")).toContain("width: 1280px");
+    await wrapper.find('[aria-label="Folienvorschau verkleinern"]').trigger("click");
+    expect(stage.attributes("style")).toContain("width: 1152px");
+    expect(wrapper.find(".slide-content").attributes("style")).toContain("scale(1)");
+    await wrapper.find('[aria-label="Folienvorschau automatisch anpassen"]').trigger("click");
+    expect(stage.attributes("style")).toContain("width: 1280px");
+    wrapper.unmount();
+  });
+
   it("wechselt per Stift zwischen Mindmap-Vorschau und Live-Bearbeitung", async () => {
     const plan = createPlan();
     const presentation = ensurePresentation(plan);

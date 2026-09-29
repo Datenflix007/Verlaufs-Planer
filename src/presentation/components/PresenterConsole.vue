@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { Presentation, PresentationElement, WorkshopPlan } from "../../domain/types";
 import {
@@ -59,6 +59,9 @@ const selectedNodeId = ref<string>();
 const liveMindmapEditing = ref(false);
 const imagePickerOpen = ref(false);
 const presenterZoom = ref(1);
+const presenterPreviewRegion = ref<HTMLElement>();
+const presenterPreviewFit = ref(1);
+const presenterPreviewScale = ref(1);
 const audienceZoom = ref(false);
 const audienceInkEnabled = ref(false);
 const inkTool = ref<'off' | 'pen' | 'highlighter' | 'eraser'>('off');
@@ -77,6 +80,10 @@ const inkPresets = [
   { name: 'Schwarz', color: '#172126' },
 ] as const;
 const activeInkWidth = computed(() => inkTool.value === 'highlighter' ? Math.max(18, penWidth.value * 4) : penWidth.value);
+const presenterPreviewStyle = computed(() => {
+  const scale = Math.max(.12, Math.min(1.3, presenterPreviewFit.value * presenterPreviewScale.value));
+  return { width: `${Math.round(1280 * scale)}px`, height: `${Math.round(720 * scale)}px` };
+});
 const liveMindmap = computed<PresentationElement | undefined>(() => currentMindmaps.value.find(element => element.id === selectedMindmapId.value) ?? currentMindmaps.value[0]);
 const liveNode = computed(() => liveMindmap.value?.content.mindmap?.nodes.find(node => node.id === (selectedNodeId.value ?? liveMindmap.value?.content.mindmap?.rootNodeId)));
 const materialImages = computed(() => props.plan.materials.filter(material => material.resourceType === 'file' && /^(data:image|https?:\/\/.*\.(png|jpe?g|gif|webp|svg))/i.test(material.description ?? '')));
@@ -114,6 +121,7 @@ let audiencePoll: ReturnType<typeof setInterval> | undefined;
 let audienceWindow: Window | null = null;
 let screenDetails: PresentationScreenDetails | undefined;
 let chosenScreen: PresentationScreen | undefined;
+let presenterPreviewObserver: ResizeObserver | undefined;
 const screenChoices = ref<PresentationScreen[]>([]);
 const screenStatus = ref<
   "opening" | "connected" | "blocked" | "closed" | "disconnected"
@@ -145,6 +153,18 @@ function publishInkState(): void {
 function adjustPresenterZoom(amount: number): void {
   presenterZoom.value = Math.max(1, Math.min(3, Number((presenterZoom.value + amount).toFixed(2))));
   if (audienceZoom.value) publishViewState();
+}
+function fitPresenterPreview(): void {
+  const rect = presenterPreviewRegion.value?.getBoundingClientRect();
+  if (!rect?.width || !rect.height) return;
+  presenterPreviewFit.value = Math.max(.12, Math.min(rect.width / 1280, rect.height / 720));
+}
+function adjustPresenterPreview(amount: number): void {
+  presenterPreviewScale.value = Math.max(.55, Math.min(1.25, Number((presenterPreviewScale.value + amount).toFixed(2))));
+}
+function resetPresenterPreview(): void {
+  presenterPreviewScale.value = 1;
+  fitPresenterPreview();
 }
 function toggleAudienceZoom(): void {
   audienceZoom.value = !audienceZoom.value;
@@ -348,6 +368,11 @@ onMounted(() => {
     }
   };
   window.addEventListener("keydown", keydown);
+  if (typeof ResizeObserver !== 'undefined' && presenterPreviewRegion.value) {
+    presenterPreviewObserver = new ResizeObserver(fitPresenterPreview);
+    presenterPreviewObserver.observe(presenterPreviewRegion.value);
+  }
+  void nextTick(fitPresenterPreview);
   clock = setInterval(() => (elapsed.value += 1), 1000);
   persist();
   audiencePoll = setInterval(() => {
@@ -373,6 +398,7 @@ onBeforeUnmount(() => {
   window.clearInterval(clock);
   window.clearInterval(audiencePoll);
   screenDetails?.removeEventListener?.("screenschange", screensChanged);
+  presenterPreviewObserver?.disconnect();
   send({ type: "PRESENTATION_END" });
   clearInkTimers();
   channel?.close();
@@ -388,6 +414,7 @@ watch(currentSlideId, () => {
   audienceInkEnabled.value = false;
   inkTool.value = 'off';
   publishViewState();
+  void nextTick(fitPresenterPreview);
 });
 const time = computed(
   () =>
@@ -507,21 +534,29 @@ const time = computed(
         </div>
       </aside>
       <section class="presenter-current">
-        <div v-if="current && !liveMindmapEditing" class="presenter-slide-stage">
-          <SlideCanvas
-            :slide="current"
-            :theme-id="presentation.themeId"
-            :show-mindmap-edit-button="currentMindmaps.length > 0"
-            presenter-controls
-            :zoom="presenterZoom"
-            :audience-zoom="audienceZoom"
-            @mindmap-edit="startLiveMindmap"
-            @zoom-in="adjustPresenterZoom(0.25)"
-            @zoom-out="adjustPresenterZoom(-0.25)"
-            @audience-zoom-toggle="toggleAudienceZoom"
-            readonly
-          />
-          <PresentationInkOverlay :strokes="currentInkStrokes" :tool="inkTool" :color="inkColor" :width="activeInkWidth" :zoom="presenterZoom" :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" />
+        <div v-if="current && !liveMindmapEditing" ref="presenterPreviewRegion" class="presenter-preview-region">
+          <div class="presenter-preview-size-actions" role="toolbar" aria-label="Folienvorschau skalieren">
+            <button type="button" aria-label="Folienvorschau verkleinern" title="Folienvorschau verkleinern" @click="adjustPresenterPreview(-.1)">−</button>
+            <span>{{ Math.round(presenterPreviewScale * 100) }}%</span>
+            <button type="button" aria-label="Folienvorschau vergrößern" title="Folienvorschau vergrößern" @click="adjustPresenterPreview(.1)">+</button>
+            <button type="button" aria-label="Folienvorschau automatisch anpassen" title="An verfügbaren Platz anpassen" @click="resetPresenterPreview">↺</button>
+          </div>
+          <div class="presenter-slide-stage" :style="presenterPreviewStyle">
+            <SlideCanvas
+              :slide="current"
+              :theme-id="presentation.themeId"
+              :show-mindmap-edit-button="currentMindmaps.length > 0"
+              presenter-controls
+              :zoom="presenterZoom"
+              :audience-zoom="audienceZoom"
+              @mindmap-edit="startLiveMindmap"
+              @zoom-in="adjustPresenterZoom(0.25)"
+              @zoom-out="adjustPresenterZoom(-0.25)"
+              @audience-zoom-toggle="toggleAudienceZoom"
+              readonly
+            />
+            <PresentationInkOverlay :strokes="currentInkStrokes" :tool="inkTool" :color="inkColor" :width="activeInkWidth" :zoom="presenterZoom" :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" />
+          </div>
         </div>
         <div v-if="current && !liveMindmapEditing" class="presenter-ink-tools" role="toolbar" aria-label="Live-Zeichenwerkzeuge">
           <button type="button" :class="{ active: inkTool === 'off' }" :aria-pressed="inkTool === 'off'" @click="inkTool = 'off'">Zeiger</button>
@@ -603,7 +638,11 @@ const time = computed(
 
 <style scoped>
 .presenter-console {
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #172e33;
   color: #edf9f7;
 }
@@ -635,10 +674,13 @@ const time = computed(
   font-weight: 800;
 }
 .presenter-grid {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 225px minmax(0, 1fr) 260px;
   gap: 1rem;
   padding: 1rem;
+  overflow: hidden;
 }
 .presenter-plan,
 .presenter-next,
@@ -684,9 +726,17 @@ const time = computed(
 }
 .presenter-current {
   min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto minmax(90px, 26vh) auto;
 }
-.presenter-slide-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
+.presenter-plan,
+.presenter-next { overflow: auto; }
+.presenter-preview-region { position: relative; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+.presenter-slide-stage { position: relative; flex: none; aspect-ratio: 16 / 9; overflow: hidden; }
 .presenter-slide-stage :deep(.slide-canvas) { width: 100%; height: 100%; aspect-ratio: auto; }
+.presenter-preview-size-actions { position: absolute; z-index: 50; top: .5rem; left: .5rem; display: flex; align-items: center; gap: .25rem; padding: .25rem; color: #edffff; background: #173238c9; border: 1px solid #63a5a3; border-radius: 5px; font-size: .72rem; }
+.presenter-preview-size-actions button { min-width: 26px; padding: .18rem .35rem; color: #edffff; background: #11656c; border: 1px solid #5ee0d9; border-radius: 4px; }
 .presenter-ink-tools { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; margin-top: .55rem; padding: .45rem; border: 1px solid #4b6b70; border-radius: 6px; background: #224147; }
 .presenter-ink-tools button { padding: .35rem .55rem; }
 .presenter-ink-tools button.active { border-color: #83e9df; color: #082f33; background: #83e9df; }
@@ -697,6 +747,8 @@ const time = computed(
 .speaker-notes {
   margin-top: 1rem;
   min-height: 90px;
+  max-height: 26vh;
+  overflow: auto;
 }
 .speaker-notes p {
   color: #d6e4e4;
@@ -776,7 +828,9 @@ const time = computed(
   text-align: left;
 }
 @media (max-width: 950px) {
+  .presenter-console { height: auto; min-height: 100vh; overflow: visible; }
   .presenter-grid {
+    overflow: visible;
     grid-template-columns: 180px minmax(0, 1fr);
   }
   .presenter-next {
@@ -785,6 +839,9 @@ const time = computed(
   .presenter-next :deep(.slide-canvas) {
     max-width: 360px;
   }
+  .presenter-current { display: block; }
+  .presenter-preview-region { height: auto; min-height: 180px; }
+  .presenter-slide-stage { width: 100% !important; height: auto !important; }
 }
 @media (max-width: 650px) {
   .presenter-console header {
