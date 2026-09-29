@@ -1,5 +1,44 @@
 # TODO
 
+## Punktweises Verblassen des Leuchtstifts
+
+- [x] Bestehenden Leuchtstift-Datenfluss und Ablaufzeiten analysieren sowie Ausgangstests ausführen.
+- [x] Zeitstempel für während des Zeichnens erzeugte Punkte übertragen und jedes Leuchtstiftsegment individuell ausfaden.
+- [x] Leuchtstiftspur erst entfernen, wenn ihr zuletzt gesetzter Punkt vollständig verblasst ist.
+- [x] Komponenten-, Typ-, Gesamt-, Build- und Browserprüfungen ausführen.
+
+## Marker-Verblassen und klickbarer Radierer
+
+- [x] Marker-Zeitsteuerung und Radierereingaben analysieren sowie Ausgangstests ausführen.
+- [x] Markiererspur nach der einstellbaren Dauer zuverlässig in beiden Präsentationsfenstern entfernen.
+- [x] Radierer so begrenzen, dass er nur bei linker gedrückter Maustaste auf einer Spur löscht, nie beim bloßen Überfahren.
+- [x] Komponenten-, Typ-, Gesamt-, Build- und Browserprüfungen ausführen.
+
+## Persistente und beidseitig synchronisierte Vortragszeichnungen
+
+- [x] Bestehenden Zeichenkanal, Folienwechsel und Verbindungsaufbau analysieren; Ausgangstests ausführen.
+- [x] Stift- und Markiererspuren pro Folie für die gesamte Vortragssitzung erhalten, statt sie beim Folienwechsel zu verwerfen.
+- [x] Vollständige Zeichenschnappschüsse beim Verbinden übertragen und neue Stift- sowie Radieraktionen in beide Richtungen abgleichen.
+- [x] Referentenaktion zum eindeutigen Löschen aller Zeichnungen der aktuellen Folie ergänzen.
+- [x] Regressionstests, Typprüfung, Gesamttests und Produktions-Build ausführen.
+
+## Mindmap-Neuverbindung und freigegebenes Live-Zeichnen
+
+- [x] Auswahl und direkte Neuverbindung einzelner Mindmap-Knoten analysieren und implementieren, einschließlich Schutz vor Zyklen.
+- [x] Radiergummi für Stift- und Leuchtstiftspuren in Referenten- und Präsentationsansicht implementieren.
+- [x] Live-Spuren aus der Referentenansicht im Präsentationsfenster darstellen und eingehende Publikumsaktionen synchron halten.
+- [x] Schalter in der Referentenansicht hinzufügen, der die Zeichenwerkzeuge im Präsentationsfenster pro Folie explizit freigibt.
+- [x] Komponenten-, Typ-, Gesamt- und Build-Prüfungen ausführen.
+
+## Presenter-Werkzeuge: Mindmap, Zoom und Live-Zeichnen
+
+- [x] Bestehende Mindmap-, Presenter-, Audience- und Zeichenpfade analysieren sowie Typprüfung und Tests als Ausgangsbasis ausführen.
+- [x] Mindmap-Knoten im Bearbeitungsmodus löschbar machen und dabei den Wurzelknoten schützen.
+- [x] Stift- und Plenums-Zoom-Schaltfläche auf allen Vortragsfolien einheitlich oben rechts anordnen.
+- [x] Unabhängigen Zoom nur für die Referentenansicht sowie synchronisierbaren Plenums-Zoom anbieten.
+- [x] Mehrfarbige Stifte und einen konfigurierbar nach Sekunden verschwindenden Leuchtstift für Referierende bereitstellen und an das Publikum übertragen.
+- [x] Komponenten-Tests, Typprüfung, Gesamttests und Produktions-Build ausführen.
+
 ## Mindmap live im Vortrag und Präsentationsexport
 
 - [x] Aktuelle Präsentationsarchitektur, SQLite-Speicherweg und Exportmöglichkeiten prüfen; Typprüfung und Tests als Ausgangsbasis ausführen.

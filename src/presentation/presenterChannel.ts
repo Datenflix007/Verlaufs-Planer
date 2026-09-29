@@ -1,13 +1,29 @@
 import type { MindmapWidget } from '../domain/types'
 
+export interface PresentationInkPoint {
+  x: number
+  y: number
+  at?: number
+}
+
+export const presentationInkFadeDurationMs = 600
+
 export interface PresentationInkStroke {
   id: string
   slideId: string
-  points: Array<{ x: number; y: number }>
+  points: PresentationInkPoint[]
   color: string
   width: number
   glow: boolean
+  fadeAfterMs?: number
   expiresAt?: number
+}
+
+export function copyPresentationInkStroke(stroke: PresentationInkStroke): PresentationInkStroke {
+  return {
+    ...stroke,
+    points: stroke.points.map((point) => ({ x: point.x, y: point.y, at: point.at })),
+  }
 }
 
 export type PresentationChannelEvent =
@@ -19,6 +35,8 @@ export type PresentationChannelEvent =
   | { type: 'FULLSCREEN_STATUS'; active: boolean }
   | { type: 'MINDMAP_UPDATED'; slideId: string; elementId: string; mindmap: MindmapWidget }
   | { type: 'PRESENTATION_VIEW_STATE'; slideId: string; zoom: number; audienceZoom: boolean }
+  | { type: 'PRESENTATION_INK_PERMISSION'; slideId: string; enabled: boolean }
+  | { type: 'PRESENTATION_INK_STATE'; strokes: PresentationInkStroke[] }
   | { type: 'PRESENTATION_INK_STROKE'; stroke: PresentationInkStroke }
   | { type: 'PRESENTATION_INK_REMOVE'; slideId: string; strokeId: string }
 

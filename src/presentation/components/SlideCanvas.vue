@@ -320,15 +320,9 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
     </article>
     </div>
     <div v-if="presenterControls" class="presenter-slide-actions" @pointerdown.stop>
-      <button
-        v-if="showMindmapEditButton"
-        type="button"
-        aria-label="Mindmap bearbeiten"
-        title="Mindmap bearbeiten"
-        @click.stop="emit('mindmapEdit', slide.elements.find((element) => element.type === 'mindmap')?.id ?? '')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 4 4 4L9 19l-5 1 1-5L16 4zM14.5 5.5l4 4" /></svg>
-      </button>
+      <button type="button" aria-label="Referentenansicht verkleinern" title="Referentenansicht verkleinern" @click.stop="emit('zoomOut')">−</button>
+      <span class="presenter-zoom-level">{{ Math.round((zoom ?? 1) * 100) }}%</span>
+      <button type="button" aria-label="Referentenansicht vergrößern" title="Referentenansicht vergrößern" @click.stop="emit('zoomIn')">+</button>
       <button
         type="button"
         :class="{ active: audienceZoom }"
@@ -339,9 +333,15 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
       >
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm10 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
       </button>
-      <span class="presenter-zoom-level">{{ Math.round((zoom ?? 1) * 100) }}%</span>
-      <button type="button" aria-label="Referentenansicht vergrößern" title="Referentenansicht vergrößern" @click.stop="emit('zoomIn')">+</button>
-      <button type="button" aria-label="Referentenansicht verkleinern" title="Referentenansicht verkleinern" @click.stop="emit('zoomOut')">−</button>
+      <button
+        v-if="showMindmapEditButton"
+        type="button"
+        aria-label="Mindmap bearbeiten"
+        title="Mindmap bearbeiten"
+        @click.stop="emit('mindmapEdit', slide.elements.find((element) => element.type === 'mindmap')?.id ?? '')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 4 4 4L9 19l-5 1 1-5L16 4zM14.5 5.5l4 4" /></svg>
+      </button>
     </div>
   </div>
 </template>

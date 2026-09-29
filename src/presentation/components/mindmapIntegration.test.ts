@@ -115,6 +115,22 @@ describe("Mindmap im Präsentationseditor", () => {
     wrapper.unmount();
   });
 
+  it("leert über die sichtbare Werkzeugleiste die Mindmap, wenn kein Ast ausgewählt ist", async () => {
+    const map = reactive(createMindmapElement().content.mindmap!);
+    addMindmapChild(map, map.rootNodeId, "Zu entfernen");
+    const wrapper = mount(MindmapWidget, {
+      props: { mindmap: map, editing: true },
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    await wrapper.find('[aria-label="Mindmap leeren"]').trigger("click");
+
+    expect(map.nodes.map((node) => node.id)).toEqual([map.rootNodeId]);
+    expect(map.edges).toEqual([]);
+    vi.restoreAllMocks();
+    wrapper.unmount();
+  });
+
   it("ordnet einen Knoten per Drag-and-drop einem anderen Ast unter", async () => {
     const map = reactive(createMindmapElement().content.mindmap!);
     const first = addMindmapChild(map, map.rootNodeId, "Voraussetzungen")!;
@@ -135,6 +151,22 @@ describe("Mindmap im Präsentationseditor", () => {
     expect(
       map.edges.find((edge) => edge.targetNodeId === first.id)?.sourceNodeId,
     ).toBe(second.id);
+    wrapper.unmount();
+  });
+
+  it("verbindet einen ausgewählten Knoten über den Zielknoten neu", async () => {
+    const map = reactive(createMindmapElement().content.mindmap!);
+    const source = addMindmapChild(map, map.rootNodeId, "Voraussetzungen")!;
+    const target = addMindmapChild(map, map.rootNodeId, "Produkte")!;
+    const wrapper = mount(MindmapWidget, {
+      props: { mindmap: map, editing: true, selectedNodeId: source.id },
+    });
+
+    await wrapper.findAll(".map-toolbar button").find((button) => button.text() === "Neu verbinden")!.trigger("click");
+    await wrapper.findAll(".map-node")[2]!.trigger("click");
+
+    expect(source.parentId).toBe(target.id);
+    expect(wrapper.emitted("changed")).toHaveLength(1);
     wrapper.unmount();
   });
 

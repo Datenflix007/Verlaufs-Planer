@@ -8,6 +8,7 @@ import { ensurePresentation } from "../presentation";
 import { createMindmapElement } from "../mindmap";
 import { presentationChannelName } from "../presenterChannel";
 import PresenterConsole from "./PresenterConsole.vue";
+import PresentationInkOverlay from "./PresentationInkOverlay.vue";
 
 describe("Presenter Console mit Zweitbildschirm", () => {
   it("zoomt lokal und sendet den Zoom erst nach Aktivierung an das Plenum", async () => {
@@ -63,6 +64,66 @@ describe("Presenter Console mit Zweitbildschirm", () => {
     await flushPromises();
     expect(wrapper.find(".slide-canvas").exists()).toBe(true);
     expect(wrapper.find(".map-toolbar").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("ordnet Plenumszoom neben dem Stift oben rechts an und bietet mehrere Stiftfarben", async () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    presentation.slides[0]!.elements.push(createMindmapElement());
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/", component: { template: "<div />" } }] });
+    await router.push("/");
+    await router.isReady();
+    const wrapper = mount(PresenterConsole, { props: { plan, presentation }, global: { plugins: [router] } });
+    await flushPromises();
+
+    const actions = wrapper.findAll(".presenter-slide-actions button");
+    expect(actions.at(-1)?.attributes("aria-label")).toBe("Mindmap bearbeiten");
+    expect(actions.at(-2)?.attributes("aria-label")).toBe("Zoom im Plenum einschalten");
+    expect(wrapper.findAll('[aria-label^="Stiftfarbe "]')).toHaveLength(6);
+
+    wrapper.unmount();
+  });
+
+  it("bietet einen Radiergummi und gibt Zeichenwerkzeuge im Präsentationsfenster bewusst frei", async () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/", component: { template: "<div />" } }] });
+    await router.push("/");
+    await router.isReady();
+    const wrapper = mount(PresenterConsole, { props: { plan, presentation }, global: { plugins: [router] } });
+    await flushPromises();
+    const observer = new BroadcastChannel(presentationChannelName(presentation.id));
+    const permissions: boolean[] = [];
+    const sentStrokes: string[] = [];
+    const removedStrokes: string[] = [];
+    observer.onmessage = (event: MessageEvent) => {
+      if (event.data.type === "PRESENTATION_INK_PERMISSION") permissions.push(event.data.enabled);
+      if (event.data.type === "PRESENTATION_INK_STROKE") sentStrokes.push(event.data.stroke.id);
+      if (event.data.type === "PRESENTATION_INK_REMOVE") removedStrokes.push(event.data.strokeId);
+    };
+
+    expect(wrapper.findAll("button").find((button) => button.text() === "Radiergummi")?.exists()).toBe(true);
+    await wrapper.findAll("button").find((button) => button.text().includes("Präsentationsfenster zeichnen"))!.trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(permissions).toEqual([true]);
+    expect(wrapper.findAll("button").find((button) => button.text().includes("Präsentationsfenster zeichnen"))?.attributes("aria-pressed")).toBe("true");
+    await wrapper.findAll("button").find((button) => button.text() === "Stift")!.trigger("click");
+    wrapper.findComponent(PresentationInkOverlay).vm.$emit("draw", [{ x: 20, y: 30 }, { x: 70, y: 80 }]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sentStrokes).toHaveLength(1);
+    observer.postMessage({
+      type: "PRESENTATION_INK_STROKE",
+      stroke: { id: "audience-stroke", slideId: presentation.slides[0]!.id, points: [{ x: 20, y: 30 }, { x: 70, y: 80 }], color: "#1769d2", width: 5, glow: false },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(wrapper.findAll(".presentation-ink-overlay path")).toHaveLength(2);
+    await wrapper.findAll("button").find((button) => button.text() === "Zeichnungen dieser Folie löschen")!.trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(removedStrokes).toEqual(expect.arrayContaining(["audience-stroke"]));
+    expect(wrapper.findAll(".presentation-ink-overlay path")).toHaveLength(0);
+    observer.close();
     wrapper.unmount();
   });
 

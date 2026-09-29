@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPlan } from "../../domain/factories";
 import { SqlitePlanRepository } from "../../repositories/SqlitePlanRepository";
 import { addMindmapChild, createMindmapElement } from "../mindmap";
-import { ensurePresentation } from "../presentation";
+import { ensurePresentation, insertSlide } from "../presentation";
 import { presentationChannelName } from "../presenterChannel";
 import AudienceView from "./AudienceView.vue";
 
@@ -65,6 +65,27 @@ describe("Audience Window", () => {
     expect(wrapper.text()).toContain("Licht");
     expect(wrapper.find(".map-toolbar").exists()).toBe(false);
     expect(wrapper.find(".fullscreen-hint").exists()).toBe(true);
+    const secondSlide = insertSlide(presentation, presentation.slides[0]!.id);
+    presenter.postMessage({
+      type: 'PRESENTATION_INK_STATE',
+      strokes: [
+        { id: 'first-slide-stroke', slideId: presentation.slides[0]!.id, points: [{ x: 20, y: 30 }, { x: 80, y: 90 }], color: '#e53935', width: 5, glow: false },
+        { id: 'second-slide-stroke', slideId: secondSlide.id, points: [{ x: 120, y: 130 }, { x: 180, y: 190 }], color: '#1769d2', width: 5, glow: false },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(wrapper.findAll(".presentation-ink-overlay path")).toHaveLength(1);
+    presenter.postMessage({ type: 'SLIDE_CHANGE', slideId: secondSlide.id });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(wrapper.findAll(".presentation-ink-overlay path")).toHaveLength(1);
+    presenter.postMessage({ type: 'SLIDE_CHANGE', slideId: presentation.slides[0]!.id });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(wrapper.findAll(".presentation-ink-overlay path")).toHaveLength(1);
+    presenter.postMessage({ type: 'PRESENTATION_INK_PERMISSION', slideId: presentation.slides[0]!.id, enabled: true });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await flushPromises();
+    expect(wrapper.find('[aria-label="Zeichenwerkzeuge für das Präsentationsfenster"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain("Radiergummi");
     presenter.postMessage({ type: 'PRESENTATION_VIEW_STATE', slideId: presentation.slides[0]!.id, zoom: 1.5, audienceZoom: false });
     await new Promise((resolve) => setTimeout(resolve, 20));
     await flushPromises();

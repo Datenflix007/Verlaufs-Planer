@@ -21,6 +21,8 @@ import { mindmapUpdate } from "../liveMindmap";
 import {
   isSlideChange,
   openPresentationChannel,
+  copyPresentationInkStroke,
+  presentationInkFadeDurationMs,
   type PresentationInkStroke,
   type PresentationChannelEvent,
 } from "../presenterChannel";
@@ -58,12 +60,23 @@ const liveMindmapEditing = ref(false);
 const imagePickerOpen = ref(false);
 const presenterZoom = ref(1);
 const audienceZoom = ref(false);
-const inkTool = ref<'off' | 'pen' | 'highlighter'>('off');
+const audienceInkEnabled = ref(false);
+const inkTool = ref<'off' | 'pen' | 'highlighter' | 'eraser'>('off');
 const inkColor = ref('#e53935');
 const penWidth = ref(5);
-const highlighterSeconds = ref(5);
+const highlighterSeconds = ref(3);
 const inkStrokes = ref<PresentationInkStroke[]>([]);
 const inkTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const currentInkStrokes = computed(() => inkStrokes.value.filter((stroke) => stroke.slideId === currentSlideId.value));
+const inkPresets = [
+  { name: 'Rot', color: '#e53935' },
+  { name: 'Blau', color: '#1769d2' },
+  { name: 'Grün', color: '#16854a' },
+  { name: 'Orange', color: '#f07d16' },
+  { name: 'Violett', color: '#7140b8' },
+  { name: 'Schwarz', color: '#172126' },
+] as const;
+const activeInkWidth = computed(() => inkTool.value === 'highlighter' ? Math.max(18, penWidth.value * 4) : penWidth.value);
 const liveMindmap = computed<PresentationElement | undefined>(() => currentMindmaps.value.find(element => element.id === selectedMindmapId.value) ?? currentMindmaps.value[0]);
 const liveNode = computed(() => liveMindmap.value?.content.mindmap?.nodes.find(node => node.id === (selectedNodeId.value ?? liveMindmap.value?.content.mindmap?.rootNodeId)));
 const materialImages = computed(() => props.plan.materials.filter(material => material.resourceType === 'file' && /^(data:image|https?:\/\/.*\.(png|jpe?g|gif|webp|svg))/i.test(material.description ?? '')));
@@ -122,6 +135,13 @@ function publishViewState(): void {
   if (!currentSlideId.value) return;
   send({ type: 'PRESENTATION_VIEW_STATE', slideId: currentSlideId.value, zoom: presenterZoom.value, audienceZoom: audienceZoom.value });
 }
+function publishInkPermission(): void {
+  if (!currentSlideId.value) return;
+  send({ type: 'PRESENTATION_INK_PERMISSION', slideId: currentSlideId.value, enabled: audienceInkEnabled.value });
+}
+function publishInkState(): void {
+  send({ type: 'PRESENTATION_INK_STATE', strokes: inkStrokes.value.map(copyPresentationInkStroke) });
+}
 function adjustPresenterZoom(amount: number): void {
   presenterZoom.value = Math.max(1, Math.min(3, Number((presenterZoom.value + amount).toFixed(2))));
   if (audienceZoom.value) publishViewState();
@@ -130,6 +150,10 @@ function toggleAudienceZoom(): void {
   audienceZoom.value = !audienceZoom.value;
   publishViewState();
 }
+function toggleAudienceInk(): void {
+  audienceInkEnabled.value = !audienceInkEnabled.value;
+  publishInkPermission();
+}
 function removeInkStroke(strokeId: string): void {
   const stroke = inkStrokes.value.find((item) => item.id === strokeId);
   if (!stroke) return;
@@ -137,21 +161,38 @@ function removeInkStroke(strokeId: string): void {
   inkTimers.delete(strokeId);
   send({ type: 'PRESENTATION_INK_REMOVE', slideId: stroke.slideId, strokeId });
 }
+function eraseInk(strokeIds: string[]): void {
+  for (const strokeId of strokeIds) removeInkStroke(strokeId);
+}
+function clearCurrentInk(): void {
+  for (const stroke of currentInkStrokes.value) removeInkStroke(stroke.id);
+}
+function retainInkStroke(stroke: PresentationInkStroke): void {
+  inkStrokes.value = [...inkStrokes.value.filter((item) => item.id !== stroke.id), stroke];
+  if (stroke.expiresAt) {
+    const delay = Math.max(0, stroke.expiresAt - Date.now());
+    inkTimers.set(stroke.id, setTimeout(() => removeInkStroke(stroke.id), delay));
+  }
+}
 function drawInk(points: PresentationInkStroke['points']): void {
-  if (!currentSlideId.value || inkTool.value === 'off') return;
+  if (!currentSlideId.value || inkTool.value === 'off' || inkTool.value === 'eraser') return;
   const glow = inkTool.value === 'highlighter';
+  const duration = Math.max(1, Math.min(60, Number(highlighterSeconds.value) || 5));
+  if (glow) highlighterSeconds.value = duration;
+  const timedPoints = points.map((point) => ({ x: point.x, y: point.y, at: point.at ?? Date.now() }));
+  const lastPointAt = timedPoints.at(-1)?.at ?? Date.now();
   const stroke: PresentationInkStroke = {
     id: crypto.randomUUID(),
     slideId: currentSlideId.value,
-    points,
+    points: timedPoints,
     color: inkColor.value,
-    width: glow ? Math.max(18, penWidth.value * 4) : penWidth.value,
+    width: activeInkWidth.value,
     glow,
-    expiresAt: glow ? Date.now() + highlighterSeconds.value * 1000 : undefined,
+    fadeAfterMs: glow ? duration * 1000 : undefined,
+    expiresAt: glow ? lastPointAt + duration * 1000 + presentationInkFadeDurationMs : undefined,
   };
-  inkStrokes.value = [...inkStrokes.value, stroke];
+  retainInkStroke(stroke);
   send({ type: 'PRESENTATION_INK_STROKE', stroke });
-  if (stroke.expiresAt) inkTimers.set(stroke.id, setTimeout(() => removeInkStroke(stroke.id), highlighterSeconds.value * 1000));
 }
 function clearInkTimers(): void {
   for (const timer of inkTimers.values()) clearTimeout(timer);
@@ -276,18 +317,25 @@ onMounted(() => {
       message.data.type === "PRESENTATION_REQUEST_STATE" &&
       currentSlideId.value
     )
-      send({ type: "PRESENTATION_STATE", slideId: currentSlideId.value });
+       send({ type: "PRESENTATION_STATE", slideId: currentSlideId.value });
+    if (message.data.type === "PRESENTATION_REQUEST_STATE")
+      publishInkState();
     if (message.data.type === "AUDIENCE_READY") {
       screenStatus.value = "connected";
       screenMessage.value = "Präsentationsfenster verbunden.";
       if (currentSlideId.value)
         send({ type: "PRESENTATION_STATE", slideId: currentSlideId.value });
       publishViewState();
-      for (const stroke of inkStrokes.value) send({ type: 'PRESENTATION_INK_STROKE', stroke });
+       publishInkPermission();
+       publishInkState();
       syncMindmaps();
     }
     if (message.data.type === "FULLSCREEN_STATUS")
       fullscreen.value = message.data.active;
+    if (message.data.type === 'PRESENTATION_INK_STROKE' && audienceInkEnabled.value && message.data.stroke.slideId === currentSlideId.value)
+      retainInkStroke(message.data.stroke);
+    if (message.data.type === 'PRESENTATION_INK_REMOVE' && audienceInkEnabled.value && message.data.slideId === currentSlideId.value)
+      removeInkStroke(message.data.strokeId);
     if (message.data.type === "AUDIENCE_CLOSED") {
       screenStatus.value = "closed";
       screenMessage.value = "Präsentationsfenster ist geschlossen.";
@@ -332,9 +380,8 @@ watch(currentSlideId, () => {
   imagePickerOpen.value = false;
   presenterZoom.value = 1;
   audienceZoom.value = false;
+  audienceInkEnabled.value = false;
   inkTool.value = 'off';
-  inkStrokes.value = [];
-  clearInkTimers();
   publishViewState();
 });
 const time = computed(
@@ -469,14 +516,17 @@ const time = computed(
             @audience-zoom-toggle="toggleAudienceZoom"
             readonly
           />
-          <PresentationInkOverlay :strokes="inkStrokes" :tool="inkTool" :color="inkColor" :width="penWidth" :zoom="presenterZoom" @draw="drawInk" />
+          <PresentationInkOverlay :strokes="currentInkStrokes" :tool="inkTool" :color="inkColor" :width="activeInkWidth" :zoom="presenterZoom" :fade-after-ms="highlighterSeconds * 1000" @draw="drawInk" @erase="eraseInk" />
         </div>
         <div v-if="current && !liveMindmapEditing" class="presenter-ink-tools" role="toolbar" aria-label="Live-Zeichenwerkzeuge">
           <button type="button" :class="{ active: inkTool === 'off' }" :aria-pressed="inkTool === 'off'" @click="inkTool = 'off'">Zeiger</button>
           <button type="button" :class="{ active: inkTool === 'pen' }" :aria-pressed="inkTool === 'pen'" @click="inkTool = 'pen'">Stift</button>
           <button type="button" :class="{ active: inkTool === 'highlighter' }" :aria-pressed="inkTool === 'highlighter'" @click="inkTool = 'highlighter'">Leuchtstift</button>
+          <button type="button" :class="{ active: inkTool === 'eraser' }" :aria-pressed="inkTool === 'eraser'" @click="inkTool = 'eraser'">Radiergummi</button>
+          <button type="button" :disabled="!currentInkStrokes.length" @click="clearCurrentInk">Zeichnungen dieser Folie löschen</button>
+          <button type="button" :class="{ active: audienceInkEnabled }" :aria-pressed="audienceInkEnabled" @click="toggleAudienceInk">Präsentationsfenster zeichnen: {{ audienceInkEnabled ? 'an' : 'aus' }}</button>
           <label title="Stiftfarbe"><span>Farbe</span><input v-model="inkColor" type="color" aria-label="Stiftfarbe" /></label>
-          <button v-for="preset in [{ name: 'Rot', color: '#e53935' }, { name: 'Blau', color: '#1769d2' }, { name: 'Schwarz', color: '#172126' }]" :key="preset.name" type="button" :aria-label="`Stiftfarbe ${preset.name}`" :title="`Stiftfarbe ${preset.name}`" :style="{ width: '24px', height: '24px', padding: 0, background: preset.color, borderRadius: '50%' }" @click="inkColor = preset.color" />
+          <button v-for="preset in inkPresets" :key="preset.name" type="button" :aria-label="`Stiftfarbe ${preset.name}`" :title="`Stiftfarbe ${preset.name}`" :style="{ width: '24px', height: '24px', padding: 0, background: preset.color, borderRadius: '50%' }" @click="inkColor = preset.color" />
           <label title="Strichbreite"><span>Breite</span><input v-model.number="penWidth" type="range" min="2" max="18" aria-label="Stiftbreite" /></label>
           <label v-if="inkTool === 'highlighter'" title="Leuchtdauer in Sekunden"><span>Sekunden</span><input v-model.number="highlighterSeconds" type="number" min="1" max="60" aria-label="Leuchtdauer in Sekunden" /></label>
         </div>

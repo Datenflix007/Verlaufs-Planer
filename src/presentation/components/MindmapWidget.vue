@@ -40,6 +40,7 @@ const draft = ref("");
 const draggedId = ref<string>();
 const dropHint = ref("");
 const context = ref<{ x: number; y: number; id: string }>();
+const reconnectingNodeId = ref<string>();
 const zoom = ref(1);
 const pan = ref({ x: 0, y: 0 });
 const panning = ref<{
@@ -58,8 +59,32 @@ const colors = {
 const background = computed(() => colors[props.mindmap.settings.design]);
 
 function select(id: string): void {
+  const sourceId = reconnectingNodeId.value;
+  if (sourceId && sourceId !== id) {
+    emit("beginChange");
+    if (moveMindmapNode(props.mindmap, sourceId, id)) {
+      reconnectingNodeId.value = undefined;
+      dropHint.value = `„${mindmapNode(props.mindmap, sourceId)?.text ?? "Ast"}“ wurde mit „${mindmapNode(props.mindmap, id)?.text ?? "Ast"}“ verbunden.`;
+      emit("select", sourceId);
+      emit("changed");
+    } else {
+      dropHint.value = "Dieser Knoten kann nicht mit sich selbst oder einem Unterast verbunden werden.";
+    }
+    host.value?.focus();
+    return;
+  }
   emit("select", id);
   host.value?.focus();
+}
+function startReconnect(): void {
+  const sourceId = props.selectedNodeId;
+  if (!sourceId || sourceId === props.mindmap.rootNodeId) return;
+  reconnectingNodeId.value = sourceId;
+  dropHint.value = `Zielknoten für „${mindmapNode(props.mindmap, sourceId)?.text ?? "Ast"}“ auswählen.`;
+}
+function cancelReconnect(): void {
+  reconnectingNodeId.value = undefined;
+  dropHint.value = "";
 }
 async function edit(node: MindmapNode): Promise<void> {
   if (!props.editing) {
@@ -107,7 +132,7 @@ function addSibling(
     void edit(sibling);
   }
 }
-function remove(id = props.selectedNodeId): void {
+function remove(id = props.selectedNodeId ?? props.mindmap.rootNodeId): void {
   if (!props.editing || !id) return;
   const descendants = branchIds(props.mindmap, id).size - 1;
   const prompt =
@@ -140,6 +165,11 @@ function toggle(node: MindmapNode, event: MouseEvent): void {
 function key(event: KeyboardEvent): void {
   if (!props.editing || editingNodeId.value) return;
   if ((event.target as HTMLElement).matches("input,button,select")) return;
+  if (event.key === "Escape" && reconnectingNodeId.value) {
+    event.preventDefault();
+    cancelReconnect();
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
     event.preventDefault();
     event.shiftKey ? emit("redo") : emit("undo");
@@ -378,6 +408,7 @@ watch(
     } else {
       editingNodeId.value = undefined;
       context.value = undefined;
+      reconnectingNodeId.value = undefined;
     }
   },
 );
@@ -430,6 +461,7 @@ onMounted(() => {
         class="map-node"
         :class="{
           selected: editing && selectedNodeId === item.node.id,
+          reconnecting: reconnectingNodeId === item.node.id,
           root: item.node.id === mindmap.rootNodeId,
           collapsed: item.node.collapsed,
         }"
@@ -494,6 +526,12 @@ onMounted(() => {
       ><button type="button" @click="addSibling()">+ Geschwister</button
       ><button
         type="button"
+        :disabled="!selectedNodeId || selectedNodeId === mindmap.rootNodeId"
+        :aria-pressed="Boolean(reconnectingNodeId)"
+        @click="reconnectingNodeId ? cancelReconnect() : startReconnect()"
+      >{{ reconnectingNodeId ? "Verbindung abbrechen" : "Neu verbinden" }}</button
+      ><button
+        type="button"
         :disabled="!selectedNodeId"
         @click="selectedNodeId && emit('imageRequest', selectedNodeId)"
       >
@@ -513,8 +551,8 @@ onMounted(() => {
       ><button type="button" @click="cycleDesign">Stil</button
       ><button
         type="button"
-        aria-label="Ausgewählten Ast löschen"
-        title="Ausgewählten Ast löschen"
+          :aria-label="selectedNodeId ? 'Ausgewählten Ast löschen' : 'Mindmap leeren'"
+          :title="selectedNodeId ? 'Ausgewählten Ast löschen' : 'Mindmap leeren'"
         @click="remove()"
       >
         🗑</button
@@ -664,6 +702,10 @@ onMounted(() => {
 .map-node.selected {
   outline: 3px solid #16d7dc;
   outline-offset: 2px;
+}
+.map-node.reconnecting {
+  outline: 4px solid #f0ae31;
+  outline-offset: 3px;
 }
 .map-node img {
   max-width: 100%;
