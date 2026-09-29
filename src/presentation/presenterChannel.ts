@@ -1,4 +1,4 @@
-import type { MindmapWidget } from '../domain/types'
+import type { MindmapWidget, TimelineWidget } from '../domain/types'
 
 export interface PresentationInkPoint {
   x: number
@@ -34,8 +34,10 @@ export type PresentationChannelEvent =
   | { type: 'AUDIENCE_READY' | 'AUDIENCE_CLOSED' | 'FULLSCREEN_REQUEST' }
   | { type: 'FULLSCREEN_STATUS'; active: boolean }
   | { type: 'MINDMAP_UPDATED'; slideId: string; elementId: string; mindmap: MindmapWidget }
+  | { type: 'TIMELINE_UPDATED'; slideId: string; elementId: string; timeline: TimelineWidget }
   | { type: 'PRESENTATION_VIEW_STATE'; slideId: string; zoom: number; audienceZoom: boolean; panX: number; panY: number }
   | { type: 'PRESENTATION_AUDIENCE_PAN'; slideId: string; panX: number; panY: number }
+  | { type: 'PRESENTATION_AUDIENCE_ZOOM'; slideId: string; zoom: number }
   | { type: 'POLL_VOTE'; slideId: string; elementId: string; optionId: string }
   | { type: 'POLL_STATE'; slideId: string; elementId: string; votes: Record<string, number>; showResults: boolean }
   | { type: 'PRESENTATION_INK_PERMISSION'; slideId: string; enabled: boolean }

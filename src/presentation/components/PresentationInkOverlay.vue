@@ -12,13 +12,15 @@ const props = withDefaults(defineProps<{
   zoom?: number
   panX?: number
   panY?: number
+  panEnabled?: boolean
   fadeAfterMs?: number
-}>(), { tool: 'off', color: '#e53935', width: 5, zoom: 1, panX: 0, panY: 0, fadeAfterMs: 3000 })
-const emit = defineEmits<{ ink: [strokeId: string, points: Point[]]; erase: [strokeIds: string[]] }>()
+}>(), { tool: 'off', color: '#e53935', width: 5, zoom: 1, panX: 0, panY: 0, panEnabled: false, fadeAfterMs: 3000 })
+const emit = defineEmits<{ ink: [strokeId: string, points: Point[]]; erase: [strokeIds: string[]]; panBy: [deltaX: number, deltaY: number]; wheelZoom: [amount: number] }>()
 const svg = ref<SVGSVGElement>()
 const draft = ref<Point[]>([])
 const draftStrokeId = ref<string>()
 const erasing = ref(false)
+const panDrag = ref<{ pointerId: number; lastX: number; lastY: number; smoothedX: number; smoothedY: number }>()
 const clock = ref(Date.now())
 const enabled = computed(() => props.tool !== 'off')
 const regularStrokes = computed(() => props.strokes.filter((stroke) => !stroke.glow && stroke.id !== draftStrokeId.value))
@@ -96,7 +98,29 @@ function point(event: PointerEvent): Point | undefined {
     at: Date.now(),
   }
 }
+function startPan(event: PointerEvent): void {
+  event.preventDefault()
+  panDrag.value = { pointerId: event.pointerId, lastX: event.clientX, lastY: event.clientY, smoothedX: 0, smoothedY: 0 }
+  svg.value?.setPointerCapture(event.pointerId)
+}
+function movePan(event: PointerEvent): boolean {
+  const pan = panDrag.value
+  if (!pan || pan.pointerId !== event.pointerId) return false
+  const rect = svg.value?.getBoundingClientRect()
+  if (!rect?.width || !rect.height) return true
+  const rawX = ((event.clientX - pan.lastX) / rect.width) * 100
+  const rawY = ((event.clientY - pan.lastY) / rect.height) * 100
+  pan.lastX = event.clientX
+  pan.lastY = event.clientY
+  const responsiveness = Math.min(.9, .38 + Math.hypot(rawX, rawY) * .13)
+  pan.smoothedX += (rawX - pan.smoothedX) * responsiveness
+  pan.smoothedY += (rawY - pan.smoothedY) * responsiveness
+  if (Math.abs(pan.smoothedX) > .001 || Math.abs(pan.smoothedY) > .001) emit('panBy', pan.smoothedX, pan.smoothedY)
+  event.preventDefault()
+  return true
+}
 function begin(event: PointerEvent): void {
+  if (event.button === 2 && props.panEnabled && props.zoom > 1) { startPan(event); return }
   if (!enabled.value || event.button !== 0) return
   event.preventDefault()
   const first = point(event)
@@ -112,6 +136,7 @@ function begin(event: PointerEvent): void {
   svg.value?.setPointerCapture(event.pointerId)
 }
 function move(event: PointerEvent): void {
+  if (movePan(event)) return
   if (props.tool === 'eraser') {
     if (!erasing.value) return
     const next = point(event)
@@ -137,6 +162,7 @@ function scheduleInkSync(): void {
   })
 }
 function finish(): void {
+  if (panDrag.value) { panDrag.value = undefined; return }
   erasing.value = false
   if (inkFrame !== undefined) {
     cancelAnimationFrame(inkFrame)
@@ -166,6 +192,12 @@ function eraseAt(point: Point): void {
     .map((stroke) => stroke.id)
   if (removed.length) emit('erase', removed)
 }
+function zoomWithWheel(event: WheelEvent): void {
+  if (!props.panEnabled || !event.deltaY) return
+  event.preventDefault()
+  const amount = Math.sign(-event.deltaY) * Math.min(.18, Math.max(.06, Math.abs(event.deltaY) / 720))
+  emit('wheelZoom', amount)
+}
 </script>
 
 <template>
@@ -181,6 +213,8 @@ function eraseAt(point: Point): void {
     @pointermove="move"
     @pointerup="finish"
     @pointercancel="finish"
+    @wheel="zoomWithWheel"
+    @contextmenu.prevent
   >
     <path
       v-for="stroke in regularStrokes"

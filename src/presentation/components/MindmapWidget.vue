@@ -13,6 +13,7 @@ import {
   MINDMAP_HEIGHT,
   MINDMAP_WIDTH,
 } from "../mindmap";
+import { widgetColorSet, widgetColorStyle } from '../widgetDesign';
 
 const props = withDefaults(
   defineProps<{
@@ -56,7 +57,8 @@ const colors = {
   neon: "#15152d",
   pastell: "#fbf1f8",
 };
-const background = computed(() => colors[props.mindmap.settings.design]);
+const background = computed(() => props.mindmap.settings.design === 'schlicht' ? widgetColorSet(props.mindmap.settings.colorSet).surface : colors[props.mindmap.settings.design]);
+const widgetStyle = computed(() => ({ ...widgetColorStyle(props.mindmap.settings.colorSet), background: background.value }));
 
 function select(id: string): void {
   const sourceId = reconnectingNodeId.value;
@@ -425,7 +427,7 @@ onMounted(() => {
     ref="host"
     class="mindmap-widget"
     :class="[mindmap.settings.design, { editing }]"
-    :style="{ background }"
+    :style="widgetStyle"
     :tabindex="editing ? 0 : -1"
     @keydown.stop="key"
     @wheel="wheel"
@@ -683,7 +685,7 @@ onMounted(() => {
   transform: translate(-50%, -50%);
   border: solid;
   box-shadow: 0 3px 10px #09252935;
-  background: #f7fbfb;
+  background: var(--widget-surface);
   color: #17363a;
   text-align: center;
   font-size: 11px;

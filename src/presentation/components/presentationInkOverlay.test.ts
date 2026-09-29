@@ -37,6 +37,23 @@ describe("PresentationInkOverlay", () => {
     wrapper.unmount();
   });
 
+  it("reicht Rechtsklick-Ziehen bei aktivem Zeichenwerkzeug als geglätteten Ausschnitt-Drag weiter", async () => {
+    const wrapper = mount(PresentationInkOverlay, { props: { tool: "pen", zoom: 1.5, panEnabled: true, strokes: [] } });
+    const overlay = wrapper.find("svg");
+    vi.spyOn(overlay.element, "getBoundingClientRect").mockReturnValue({ left: 0, top: 0, width: 1280, height: 720 } as DOMRect);
+
+    await overlay.trigger("pointerdown", { button: 2, clientX: 200, clientY: 160, pointerId: 3 });
+    await overlay.trigger("pointermove", { clientX: 328, clientY: 232, pointerId: 3 });
+    await overlay.trigger("pointerup", { pointerId: 3 });
+
+    const [deltaX, deltaY] = wrapper.emitted("panBy")![0] as [number, number];
+    expect(deltaX).toBeGreaterThan(0);
+    expect(deltaX).toBeLessThan(10);
+    expect(deltaY).toBeGreaterThan(0);
+    expect(wrapper.emitted("ink")).toBeUndefined();
+    wrapper.unmount();
+  });
+
   it("lässt Leuchtstiftsegmente ab ihrem jeweiligen Zeichenzeitpunkt verblassen", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-29T12:00:00Z"));

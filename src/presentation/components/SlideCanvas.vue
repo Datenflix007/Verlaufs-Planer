@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type {
   PresentationElement,
   PresentationSlide,
@@ -20,10 +20,12 @@ const props = withDefaults(
     selectedMindmapNodeId?: string;
     focusMindmapRoot?: boolean;
     showMindmapEditButton?: boolean;
+    showTimelineEditButton?: boolean;
     presenterControls?: boolean;
     zoom?: number;
     panX?: number;
     panY?: number;
+    panEnabled?: boolean;
     audienceZoom?: boolean;
     pollVotes?: Record<string, Record<string, number>>;
     pollResults?: Record<string, boolean>;
@@ -49,11 +51,14 @@ const emit = defineEmits<{
   zoomIn: [];
   zoomOut: [];
   audienceZoomToggle: [];
-  pan: [direction: 'left' | 'right' | 'up' | 'down'];
+  panBy: [deltaX: number, deltaY: number];
+  wheelZoom: [amount: number];
   undo: [];
   redo: [];
 }>();
 const canvas = ref<HTMLElement>();
+const designScale = ref(1);
+let canvasObserver: ResizeObserver | undefined;
 const drag = ref<{
   id: string;
   offsetX: number;
@@ -61,11 +66,30 @@ const drag = ref<{
   handle?: string;
   original: Pick<PresentationElement, "x" | "y" | "width" | "height">;
 }>();
+const panDrag = ref<{
+  pointerId: number;
+  lastX: number;
+  lastY: number;
+  smoothedX: number;
+  smoothedY: number;
+}>();
 const editingId = ref<string>();
 const theme = computed(() => presentationTheme(props.themeId));
 const elements = computed(() =>
   [...props.slide.elements].sort((a, b) => a.zIndex - b.zIndex),
 );
+function fitDesign(): void {
+  const rect = canvas.value?.getBoundingClientRect();
+  if (!rect?.width || !rect.height) return;
+  designScale.value = Math.min(rect.width / 1280, rect.height / 720);
+}
+onMounted(() => {
+  fitDesign();
+  if (typeof ResizeObserver === 'undefined' || !canvas.value) return;
+  canvasObserver = new ResizeObserver(fitDesign);
+  canvasObserver.observe(canvas.value);
+});
+onBeforeUnmount(() => canvasObserver?.disconnect());
 function styleFor(element: PresentationElement) {
   const shape = element.content.shape;
   const line = shape === "line" || shape === "arrow";
@@ -106,6 +130,17 @@ function coordinates(
     y: ((event.clientY - rect.top) / rect.height) * 720,
   };
 }
+function canPan(): boolean { return Boolean(props.panEnabled && (props.zoom ?? 1) > 1) }
+function startCanvas(event: PointerEvent): void {
+  if (event.button === 2 && canPan()) {
+    event.preventDefault();
+    event.stopPropagation();
+    panDrag.value = { pointerId: event.pointerId, lastX: event.clientX, lastY: event.clientY, smoothedX: 0, smoothedY: 0 };
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    return;
+  }
+  if (event.target === event.currentTarget) emit('select');
+}
 function start(
   element: PresentationElement,
   event: PointerEvent,
@@ -138,6 +173,23 @@ function start(
   emit("select", element.id);
 }
 function move(event: PointerEvent): void {
+  const pan = panDrag.value;
+  if (pan?.pointerId === event.pointerId) {
+    const rect = canvas.value?.getBoundingClientRect();
+    if (!rect?.width || !rect.height) return;
+    const rawX = ((event.clientX - pan.lastX) / rect.width) * 100;
+    const rawY = ((event.clientY - pan.lastY) / rect.height) * 100;
+    pan.lastX = event.clientX;
+    pan.lastY = event.clientY;
+    const speed = Math.hypot(rawX, rawY);
+    const responsiveness = Math.min(.9, .38 + speed * .13);
+    pan.smoothedX += (rawX - pan.smoothedX) * responsiveness;
+    pan.smoothedY += (rawY - pan.smoothedY) * responsiveness;
+    if (Math.abs(pan.smoothedX) > .001 || Math.abs(pan.smoothedY) > .001)
+      emit('panBy', pan.smoothedX, pan.smoothedY);
+    event.preventDefault();
+    return;
+  }
   const state = drag.value;
   const point = coordinates(event);
   if (!state || !point) return;
@@ -171,8 +223,16 @@ function move(event: PointerEvent): void {
   element.updatedAt = new Date().toISOString();
   emit("changed");
 }
-function end(): void {
+function end(event?: PointerEvent): void {
+  if (!event || panDrag.value?.pointerId === event.pointerId) panDrag.value = undefined;
   drag.value = undefined;
+}
+function preventCanvasMenu(event: MouseEvent): void { if (canPan()) event.preventDefault() }
+function zoomWithWheel(event: WheelEvent): void {
+  if (!props.panEnabled || !event.deltaY) return;
+  event.preventDefault();
+  const amount = Math.sign(-event.deltaY) * Math.min(.18, Math.max(.06, Math.abs(event.deltaY) / 720));
+  emit('wheelZoom', amount);
 }
 function startEditing(element: PresentationElement, event: MouseEvent): void {
   if (props.readonly) return;
@@ -222,8 +282,12 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
     @pointermove="move"
     @pointerup="end"
     @pointerleave="end"
-    @pointerdown.self="emit('select')"
+    @pointercancel="end"
+    @pointerdown="startCanvas"
+    @contextmenu="preventCanvasMenu"
+    @wheel="zoomWithWheel"
   >
+    <div class="slide-design" :style="{ transform: `scale(${designScale})` }">
     <div class="slide-content" :style="{ transform: `translate(${panX ?? 0}%, ${panY ?? 0}%) scale(${zoom ?? 1})` }">
     <div class="slide-background-image" />
     <div v-if="!slide.elements.length" class="empty-slide">
@@ -381,16 +445,11 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
       /></template>
     </article>
     </div>
+    </div>
     <div v-if="presenterControls" class="presenter-slide-actions" @pointerdown.stop>
       <button type="button" aria-label="Referentenansicht verkleinern" title="Referentenansicht verkleinern" @click.stop="emit('zoomOut')">−</button>
       <span class="presenter-zoom-level">{{ Math.round((zoom ?? 1) * 100) }}%</span>
       <button type="button" aria-label="Referentenansicht vergrößern" title="Referentenansicht vergrößern" @click.stop="emit('zoomIn')">+</button>
-      <template v-if="(zoom ?? 1) > 1">
-        <button type="button" aria-label="Bildausschnitt nach links bewegen" title="Bildausschnitt nach links bewegen" @click.stop="emit('pan', 'left')">←</button>
-        <button type="button" aria-label="Bildausschnitt nach oben bewegen" title="Bildausschnitt nach oben bewegen" @click.stop="emit('pan', 'up')">↑</button>
-        <button type="button" aria-label="Bildausschnitt nach unten bewegen" title="Bildausschnitt nach unten bewegen" @click.stop="emit('pan', 'down')">↓</button>
-        <button type="button" aria-label="Bildausschnitt nach rechts bewegen" title="Bildausschnitt nach rechts bewegen" @click.stop="emit('pan', 'right')">→</button>
-      </template>
       <button
         type="button"
         :class="{ active: audienceZoom }"
@@ -410,6 +469,15 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
       >
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 4 4 4L9 19l-5 1 1-5L16 4zM14.5 5.5l4 4" /></svg>
       </button>
+      <button
+        v-if="showTimelineEditButton"
+        type="button"
+        aria-label="Zeitstrahl bearbeiten"
+        title="Zeitstrahl bearbeiten"
+        @click.stop="emit('timelineEdit', slide.elements.find((element) => element.type === 'timeline')?.id ?? '')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14M8 7h12M8 12h8M8 17h12M6 7a2 2 0 1 0 0 .01M6 12a2 2 0 1 0 0 .01M6 17a2 2 0 1 0 0 .01" /></svg>
+      </button>
     </div>
   </div>
 </template>
@@ -424,6 +492,15 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
   color: var(--slide-text);
   box-shadow: 0 22px 50px #0714178c;
   user-select: none;
+}
+.slide-design {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  transform-origin: top left;
 }
 .slide-content {
   position: absolute;

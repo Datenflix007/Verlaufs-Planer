@@ -53,7 +53,7 @@ describe("Mindmap im Präsentationseditor", () => {
     presentation.slides[0]!.elements.push(element);
     const wrapper = mount(SlideCanvas, { props: { slide: presentation.slides[0]!, themeId: presentation.themeId, readonly: true, selectedElementId: element.id } });
 
-    expect(wrapper.find(".timeline-widget").text()).toContain("Ausgangslage");
+    expect(wrapper.find(".timeline-widget").text()).toContain("Französische Revolution");
     expect(wrapper.find(".timeline-tools").exists()).toBe(false);
     expect(wrapper.find(".timeline-edit-button").exists()).toBe(false);
     wrapper.unmount();
@@ -269,6 +269,22 @@ describe("Mindmap im Präsentationseditor", () => {
       .find(".slide-canvas")
       .trigger("pointermove", { clientX: 1220, clientY: 300, pointerId: 2 });
     expect(element.width).toBe(940);
+    wrapper.unmount();
+  });
+
+  it("verschiebt den gezoomten Ausschnitt mit Rechtsklick-Ziehen in geglätteten Deltas", async () => {
+    const presentation = ensurePresentation(createPlan());
+    const wrapper = mount(SlideCanvas, { props: { slide: presentation.slides[0]!, themeId: presentation.themeId, readonly: true, zoom: 1.5, panEnabled: true } });
+    vi.spyOn(wrapper.find('.slide-canvas').element, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, width: 1280, height: 720 } as DOMRect);
+
+    await wrapper.find('.slide-canvas').trigger('pointerdown', { button: 2, pointerId: 4, clientX: 400, clientY: 300 });
+    await wrapper.find('.slide-canvas').trigger('pointermove', { pointerId: 4, clientX: 528, clientY: 372 });
+    await wrapper.find('.slide-canvas').trigger('pointerup', { pointerId: 4 });
+
+    const [deltaX, deltaY] = wrapper.emitted('panBy')![0] as [number, number];
+    expect(deltaX).toBeGreaterThan(0);
+    expect(deltaX).toBeLessThan(10);
+    expect(deltaY).toBeGreaterThan(0);
     wrapper.unmount();
   });
 

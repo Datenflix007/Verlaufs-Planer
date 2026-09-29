@@ -9,6 +9,8 @@ describe('Zeitstrahl als Präsentationselement', () => {
     const element = createTimelineElement()
     expect(element.type).toBe('timeline')
     expect(element.content.timeline?.entries).toHaveLength(3)
+    expect(element.content.timeline?.entries.map((entry) => entry.date)).toEqual(['1789', '1791', '1799'])
+    expect(element.content.timeline?.entries.map((entry) => entry.title)).toContain('Französische Revolution')
     expect(new Set(element.content.timeline?.entries.map((entry) => entry.id)).size).toBe(3)
   })
 

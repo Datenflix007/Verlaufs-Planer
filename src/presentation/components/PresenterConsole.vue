@@ -18,6 +18,7 @@ import {
 } from "../audienceWindow";
 import { nextSlide, orderedSlides } from "../presentation";
 import { mindmapUpdate } from "../liveMindmap";
+import { timelineUpdate } from "../liveTimeline";
 import {
   isSlideChange,
   openPresentationChannel,
@@ -29,6 +30,7 @@ import {
 import SlideCanvas from "./SlideCanvas.vue";
 import PresentationInkOverlay from "./PresentationInkOverlay.vue";
 import MindmapWidget from "./MindmapWidget.vue";
+import TimelineWidget from "./TimelineWidget.vue";
 import ImageSourcePicker from "./ImageSourcePicker.vue";
 
 const props = defineProps<{
@@ -54,10 +56,13 @@ const upcoming = computed(() =>
     : undefined,
 );
 const currentMindmaps = computed(() => current.value?.elements.filter((element) => element.type === 'mindmap' && element.content.mindmap) ?? []);
+const currentTimelines = computed(() => current.value?.elements.filter((element) => element.type === 'timeline' && element.content.timeline) ?? []);
 const currentPolls = computed(() => current.value?.elements.filter((element) => element.type === 'poll' && element.content.poll) ?? []);
 const selectedMindmapId = ref<string>();
 const selectedNodeId = ref<string>();
 const liveMindmapEditing = ref(false);
+const selectedTimelineId = ref<string>();
+const liveTimelineEditing = ref(false);
 const imagePickerOpen = ref(false);
 const presenterZoom = ref(1);
 const presenterPan = ref({ x: 0, y: 0 });
@@ -90,6 +95,7 @@ const presenterPreviewStyle = computed(() => {
   return { width: `${Math.round(1280 * scale)}px`, height: `${Math.round(720 * scale)}px` };
 });
 const liveMindmap = computed<PresentationElement | undefined>(() => currentMindmaps.value.find(element => element.id === selectedMindmapId.value) ?? currentMindmaps.value[0]);
+const liveTimeline = computed<PresentationElement | undefined>(() => currentTimelines.value.find(element => element.id === selectedTimelineId.value) ?? currentTimelines.value[0]);
 const liveNode = computed(() => liveMindmap.value?.content.mindmap?.nodes.find(node => node.id === (selectedNodeId.value ?? liveMindmap.value?.content.mindmap?.rootNodeId)));
 const materialImages = computed(() => props.plan.materials.filter(material => material.resourceType === 'file' && /^(data:image|https?:\/\/.*\.(png|jpe?g|gif|webp|svg))/i.test(material.description ?? '')));
 function liveChanged(): void {
@@ -108,6 +114,22 @@ function startLiveMindmap(elementId: string): void {
 function finishLiveMindmap(): void {
   liveMindmapEditing.value = false;
 }
+function liveTimelineChanged(): void {
+  const element = liveTimeline.value;
+  if (!current.value || !element?.content.timeline) return;
+  current.value.updatedAt = new Date().toISOString();
+  props.presentation.updatedAt = current.value.updatedAt;
+  send(timelineUpdate(current.value.id, element.id, element.content.timeline));
+  emit('changed');
+}
+function startLiveTimeline(elementId: string): void {
+  selectedTimelineId.value = elementId;
+  liveMindmapEditing.value = false;
+  liveTimelineEditing.value = true;
+}
+function finishLiveTimeline(): void {
+  liveTimelineEditing.value = false;
+}
 function setNodeImage(source: string): void {
   if (!liveNode.value) return;
   liveNode.value.image = { source, fit: 'contain' };
@@ -118,6 +140,12 @@ function syncMindmaps(): void {
     for (const element of slide.elements)
       if (element.type === 'mindmap' && element.content.mindmap)
         send(mindmapUpdate(slide.id, element.id, element.content.mindmap));
+}
+function syncTimelines(): void {
+  for (const slide of slides.value)
+    for (const element of slide.elements)
+      if (element.type === 'timeline' && element.content.timeline)
+        send(timelineUpdate(slide.id, element.id, element.content.timeline));
 }
 const elapsed = ref(0);
 let channel: BroadcastChannel | undefined;
@@ -160,16 +188,12 @@ function adjustPresenterZoom(amount: number): void {
   if (presenterZoom.value === 1) presenterPan.value = { x: 0, y: 0 };
   if (audienceZoom.value) publishViewState();
 }
-function movePan(position: { x: number; y: number }, direction: 'left' | 'right' | 'up' | 'down'): { x: number; y: number } {
-  const step = 8;
-  return {
-    x: Math.max(-28, Math.min(28, position.x + (direction === 'left' ? step : direction === 'right' ? -step : 0))),
-    y: Math.max(-28, Math.min(28, position.y + (direction === 'up' ? step : direction === 'down' ? -step : 0))),
-  };
-}
-function adjustPresenterPan(direction: 'left' | 'right' | 'up' | 'down'): void {
+function adjustPresenterPan(deltaX: number, deltaY: number): void {
   if (presenterZoom.value <= 1) return;
-  presenterPan.value = movePan(presenterPan.value, direction);
+  presenterPan.value = {
+    x: Math.max(-28, Math.min(28, presenterPan.value.x + deltaX)),
+    y: Math.max(-28, Math.min(28, presenterPan.value.y + deltaY)),
+  };
   if (audienceZoom.value) {
     audiencePan.value = { ...presenterPan.value };
     publishViewState();
@@ -198,6 +222,12 @@ function publishPollState(elementId: string): void {
 }
 function publishCurrentPollStates(): void { for (const element of currentPolls.value) publishPollState(element.id); }
 function totalPollVotes(elementId: string): number { return Object.values(pollVotes.value[elementId] ?? {}).reduce((sum, votes) => sum + votes, 0); }
+function pollOptionVotes(elementId: string, optionId: string): number { return pollVotes.value[elementId]?.[optionId] ?? 0; }
+function pollOptionPercentage(elementId: string, optionId: string): number {
+  const total = totalPollVotes(elementId);
+  return total ? Math.round((pollOptionVotes(elementId, optionId) / total) * 100) : 0;
+}
+function voteLabel(votes: number): string { return `${votes} Stimme${votes === 1 ? '' : 'n'}`; }
 function togglePollResults(elementId: string): void {
   pollResults.value = { ...pollResults.value, [elementId]: !pollResults.value[elementId] };
   publishPollState(elementId);
@@ -389,10 +419,17 @@ onMounted(() => {
        publishInkState();
       publishCurrentPollStates();
       syncMindmaps();
+      syncTimelines();
     }
     if (message.data.type === 'PRESENTATION_AUDIENCE_PAN' && message.data.slideId === currentSlideId.value && audienceZoom.value) {
       audiencePan.value = { x: message.data.panX, y: message.data.panY };
       presenterPan.value = { ...audiencePan.value };
+      publishViewState();
+    }
+    if (message.data.type === 'PRESENTATION_AUDIENCE_ZOOM' && message.data.slideId === currentSlideId.value && audienceZoom.value) {
+      presenterZoom.value = Math.max(1, Math.min(3, Number(message.data.zoom.toFixed(2))));
+      if (presenterZoom.value === 1) presenterPan.value = { x: 0, y: 0 };
+      audiencePan.value = { ...presenterPan.value };
       publishViewState();
     }
     if (message.data.type === 'POLL_VOTE' && message.data.slideId === currentSlideId.value) {
@@ -456,6 +493,7 @@ watch(currentSlideId, () => {
   selectedMindmapId.value = undefined;
   selectedNodeId.value = undefined;
   liveMindmapEditing.value = false;
+  liveTimelineEditing.value = false;
   imagePickerOpen.value = false;
   presenterZoom.value = 1;
   presenterPan.value = { x: 0, y: 0 };
@@ -584,7 +622,7 @@ const time = computed(
         </div>
       </aside>
       <section class="presenter-current">
-        <div v-if="current && !liveMindmapEditing" ref="presenterPreviewRegion" class="presenter-preview-region">
+        <div v-if="current && !liveMindmapEditing && !liveTimelineEditing" ref="presenterPreviewRegion" class="presenter-preview-region">
           <div class="presenter-preview-size-actions" role="toolbar" aria-label="Folienvorschau skalieren">
             <button type="button" aria-label="Folienvorschau verkleinern" title="Folienvorschau verkleinern" @click="adjustPresenterPreview(-.1)">−</button>
             <span>{{ Math.round(presenterPreviewScale * 100) }}%</span>
@@ -596,24 +634,28 @@ const time = computed(
               :slide="current"
               :theme-id="presentation.themeId"
               :show-mindmap-edit-button="currentMindmaps.length > 0"
+              :show-timeline-edit-button="currentTimelines.length > 0"
               presenter-controls
               :zoom="presenterZoom"
               :pan-x="presenterPan.x"
               :pan-y="presenterPan.y"
+              pan-enabled
               :audience-zoom="audienceZoom"
               :poll-votes="pollVotes"
               :poll-results="pollResults"
               @mindmap-edit="startLiveMindmap"
+              @timeline-edit="startLiveTimeline"
               @zoom-in="adjustPresenterZoom(0.25)"
               @zoom-out="adjustPresenterZoom(-0.25)"
-              @pan="adjustPresenterPan"
+              @pan-by="adjustPresenterPan"
+              @wheel-zoom="adjustPresenterZoom"
               @audience-zoom-toggle="toggleAudienceZoom"
               readonly
             />
-            <PresentationInkOverlay :strokes="currentInkStrokes" :tool="inkTool" :color="inkColor" :width="activeInkWidth" :zoom="presenterZoom" :pan-x="presenterPan.x" :pan-y="presenterPan.y" :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" />
+            <PresentationInkOverlay :strokes="currentInkStrokes" :tool="inkTool" :color="inkColor" :width="activeInkWidth" :zoom="presenterZoom" :pan-x="presenterPan.x" :pan-y="presenterPan.y" pan-enabled :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" @pan-by="adjustPresenterPan" @wheel-zoom="adjustPresenterZoom" />
           </div>
         </div>
-        <div v-if="current && !liveMindmapEditing" class="presenter-ink-tools" role="toolbar" aria-label="Live-Zeichenwerkzeuge">
+        <div v-if="current && !liveMindmapEditing && !liveTimelineEditing" class="presenter-ink-tools" role="toolbar" aria-label="Live-Zeichenwerkzeuge">
           <button type="button" :class="{ active: inkTool === 'off' }" :aria-pressed="inkTool === 'off'" @click="inkTool = 'off'">Zeiger</button>
           <button type="button" :class="{ active: inkTool === 'pen' }" :aria-pressed="inkTool === 'pen'" @click="inkTool = 'pen'">Stift</button>
           <button type="button" :class="{ active: inkTool === 'highlighter' }" :aria-pressed="inkTool === 'highlighter'" @click="inkTool = 'highlighter'">Leuchtstift</button>
@@ -625,12 +667,19 @@ const time = computed(
           <label title="Strichbreite"><span>Breite</span><input v-model.number="penWidth" type="range" min="2" max="18" aria-label="Stiftbreite" /></label>
           <label v-if="inkTool === 'highlighter'" title="Leuchtdauer in Sekunden"><span>Sekunden</span><input v-model.number="highlighterSeconds" type="number" min="1" max="60" aria-label="Leuchtdauer in Sekunden" /></label>
         </div>
-        <div v-if="currentPolls.length && !liveMindmapEditing" class="presenter-poll-controls" role="toolbar" aria-label="Abstimmung steuern">
-          <template v-for="element in currentPolls" :key="element.id">
-            <strong>{{ element.content.poll!.question }}</strong>
-            <span>{{ totalPollVotes(element.id) }} Stimme{{ totalPollVotes(element.id) === 1 ? '' : 'n' }}</span>
-            <button type="button" :aria-pressed="Boolean(pollResults[element.id])" @click="togglePollResults(element.id)">{{ pollResults[element.id] ? 'Ergebnis ausblenden' : 'Ergebnis anzeigen' }}</button>
-          </template>
+        <div v-if="currentPolls.length && !liveMindmapEditing && !liveTimelineEditing" class="presenter-poll-controls" role="toolbar" aria-label="Abstimmung steuern">
+          <section v-for="element in currentPolls" :key="element.id" class="presenter-poll-preview">
+            <header>
+              <div><strong>{{ element.content.poll!.question }}</strong><small>{{ element.content.poll!.type === 'multiple-choice' ? 'Mehrfachauswahl' : 'Ja / Nein' }} · {{ voteLabel(totalPollVotes(element.id)) }}</small></div>
+              <button type="button" :aria-pressed="Boolean(pollResults[element.id])" @click="togglePollResults(element.id)">{{ pollResults[element.id] ? 'Ergebnis ausblenden' : 'Ergebnis anzeigen' }}</button>
+            </header>
+            <div class="presenter-poll-bars" role="img" :aria-label="`Live-Balkendiagramm zu ${element.content.poll!.question}`">
+              <div v-for="option in element.content.poll!.options" :key="option.id" class="presenter-poll-bar">
+                <div class="presenter-poll-bar-label"><span>{{ option.label }}</span><strong>{{ voteLabel(pollOptionVotes(element.id, option.id)) }} · {{ pollOptionPercentage(element.id, option.id) }} %</strong></div>
+                <div class="presenter-poll-bar-track"><i :style="{ width: `${pollOptionPercentage(element.id, option.id)}%` }" /></div>
+              </div>
+            </div>
+          </section>
         </div>
         <section v-else-if="liveMindmapEditing && liveMindmap?.content.mindmap" class="live-mindmap-panel">
           <header class="live-mindmap-heading">
@@ -661,6 +710,21 @@ const time = computed(
             <details :open="imagePickerOpen" @toggle="imagePickerOpen = ($event.target as HTMLDetailsElement).open"><summary>Bild zum Knoten hinzufügen</summary><ImageSourcePicker :materials="materialImages" :plan-id="plan.id" @select="setNodeImage" /></details>
           </div>
           <p>Änderungen erscheinen sofort auf dem Präsentationsbildschirm und werden im Plan gespeichert.</p>
+        </section>
+        <section v-else-if="liveTimelineEditing && liveTimeline?.content.timeline" class="live-timeline-panel">
+          <header class="live-mindmap-heading">
+            <h2>Historischen Zeitstrahl bearbeiten</h2>
+            <button type="button" class="secondary" aria-label="Zur Folienvorschau" title="Zur Folienvorschau" @click="finishLiveTimeline">← Vorschau</button>
+          </header>
+          <label v-if="currentTimelines.length > 1">Zeitstrahl
+            <select v-model="selectedTimelineId">
+              <option v-for="(element, index) in currentTimelines" :key="element.id" :value="element.id">Zeitstrahl {{ index + 1 }}</option>
+            </select>
+          </label>
+          <div class="live-timeline-stage">
+            <TimelineWidget :key="liveTimeline.id" :timeline="liveTimeline.content.timeline" editing @changed="liveTimelineChanged" @finish="finishLiveTimeline" />
+          </div>
+          <p>Jahr, Titel, Beschreibung, Ereigniszahl und Ausrichtung lassen sich live ändern und werden sofort auf dem Präsentationsbildschirm angezeigt.</p>
         </section>
         <section class="speaker-notes">
           <h2>Sprechernotizen</h2>
@@ -806,7 +870,7 @@ const time = computed(
 .presenter-ink-tools input[type="color"] { width: 30px; height: 27px; padding: 2px; }
 .presenter-ink-tools input[type="range"] { width: 75px; }
 .presenter-ink-tools input[type="number"] { width: 54px; padding: .25rem; color: #edf9f7; background: #143137; border: 1px solid #537b7d; }
-.presenter-poll-controls { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; margin-top: .55rem; padding: .45rem; color: #d7f4f0; background: #224147; border: 1px solid #4b6b70; border-radius: 6px; font-size: .8rem; }.presenter-poll-controls strong { margin-left: .3rem; }.presenter-poll-controls button { padding: .35rem .55rem; }
+.presenter-poll-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .55rem; margin-top: .55rem; padding: .55rem; color: #d7f4f0; background: #224147; border: 1px solid #4b6b70; border-radius: 6px; font-size: .8rem; }.presenter-poll-preview { display: grid; gap: .45rem; padding: .55rem; background: #17383e; border: 1px solid #4b6b70; border-radius: 5px; }.presenter-poll-preview header { display: flex; align-items: start; justify-content: space-between; gap: .6rem; }.presenter-poll-preview header div { display: grid; gap: .12rem; min-width: 0; }.presenter-poll-preview strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.presenter-poll-preview small { color: #9dc7c3; }.presenter-poll-preview button { flex: 0 0 auto; padding: .35rem .55rem; }.presenter-poll-bars { display: grid; gap: .35rem; }.presenter-poll-bar { display: grid; gap: .18rem; }.presenter-poll-bar-label { display: flex; justify-content: space-between; gap: .5rem; color: #cae9e5; }.presenter-poll-bar-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.presenter-poll-bar-label strong { color: #efffff; font-size: .75rem; }.presenter-poll-bar-track { height: .55rem; overflow: hidden; background: #0f2c31; border: 1px solid #4b6b70; border-radius: 999px; }.presenter-poll-bar-track i { display: block; height: 100%; min-width: 0; background: linear-gradient(90deg, #39c7c0, #85eee1); border-radius: inherit; transition: width .24s ease-out; }
 .speaker-notes {
   margin-top: 1rem;
   min-height: 90px;
@@ -833,6 +897,7 @@ const time = computed(
 .live-node-fields { display: grid; gap: 0.5rem; margin-top: 0.65rem; }
 .live-node-fields details { color: #d4f0ec; font-size: 0.8rem; }
 .live-mindmap-panel > p { margin-top: 0.6rem; color: #b9d6d3; font-size: 0.75rem; }
+.live-timeline-panel { min-height: 0; height: 100%; margin-top: 1rem; padding: .8rem; border: 1px solid #4b6b70; border-radius: 8px; background: #224147; }.live-timeline-panel h2 { margin-bottom: .6rem; font-size: .95rem; }.live-timeline-panel > label { display: grid; gap: .3rem; margin-bottom: .5rem; font-size: .8rem; }.live-timeline-panel select { width: 100%; color: #eefaf9; background: #143137; border: 1px solid #537b7d; padding: .35rem; }.live-timeline-stage { height: min(42vh, 440px); min-height: 260px; }.live-timeline-panel > p { margin-top: .6rem; color: #b9d6d3; font-size: .75rem; }
 .presenter-controls {
   display: flex;
   align-items: center;

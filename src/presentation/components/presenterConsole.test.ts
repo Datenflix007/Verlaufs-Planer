@@ -6,6 +6,8 @@ import { createPlan } from "../../domain/factories";
 import { reserveAudience, type WindowManagementHost } from "../audienceWindow";
 import { ensurePresentation } from "../presentation";
 import { createMindmapElement } from "../mindmap";
+import { createPollElement } from "../poll";
+import { createTimelineElement } from "../timeline";
 import { presentationChannelName } from "../presenterChannel";
 import PresenterConsole from "./PresenterConsole.vue";
 import PresentationInkOverlay from "./PresentationInkOverlay.vue";
@@ -27,12 +29,14 @@ describe("Presenter Console mit Zweitbildschirm", () => {
 
     await wrapper.find('[aria-label="Referentenansicht vergrößern"]').trigger("click");
     expect(wrapper.find(".slide-content").attributes("style")).toContain("scale(1.25)");
+    await wrapper.find('.slide-canvas').trigger('wheel', { deltaY: -120 });
+    expect(wrapper.find(".slide-content").attributes("style")).toContain("scale(1.42)");
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(viewStates).toHaveLength(0);
 
     await wrapper.find('[aria-label="Zoom im Plenum einschalten"]').trigger("click");
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(viewStates.at(-1)).toMatchObject({ zoom: 1.25, audienceZoom: true });
+    expect(viewStates.at(-1)).toMatchObject({ zoom: 1.42, audienceZoom: true });
     observer.close();
     wrapper.unmount();
   });
@@ -53,6 +57,46 @@ describe("Presenter Console mit Zweitbildschirm", () => {
     expect(wrapper.find(".slide-content").attributes("style")).toContain("scale(1)");
     await wrapper.find('[aria-label="Folienvorschau automatisch anpassen"]').trigger("click");
     expect(stage.attributes("style")).toContain("width: 1280px");
+    wrapper.unmount();
+  });
+
+  it("zeigt Referierenden eingehende Stimmen als Live-Balkendiagramm, ohne Ergebnisse freizugeben", async () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    const pollElement = createPollElement();
+    const multiplePollElement = createPollElement();
+    const multiplePoll = multiplePollElement.content.poll!;
+    multiplePoll.type = 'multiple-choice';
+    multiplePoll.options.push({ id: crypto.randomUUID(), label: 'Option 3' });
+    presentation.slides[0]!.elements.push(pollElement);
+    presentation.slides[0]!.elements.push(multiplePollElement);
+    const poll = pollElement.content.poll!;
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/", component: { template: "<div />" } }] });
+    await router.push("/");
+    await router.isReady();
+    const wrapper = mount(PresenterConsole, { props: { plan, presentation }, global: { plugins: [router] } });
+    await flushPromises();
+    const sender = new BroadcastChannel(presentationChannelName(presentation.id));
+
+    const previews = wrapper.findAll('.presenter-poll-preview');
+    expect(previews).toHaveLength(2);
+    expect(previews[0]!.text()).toContain('Ja / Nein');
+    expect(previews[1]!.text()).toContain('Mehrfachauswahl');
+    expect(previews[1]!.findAll('.presenter-poll-bar')).toHaveLength(3);
+    expect(wrapper.find('.presenter-poll-bars').attributes('aria-label')).toContain(poll.question);
+    expect(wrapper.find('.poll-result').exists()).toBe(false);
+    sender.postMessage({ type: 'POLL_VOTE', slideId: presentation.slides[0]!.id, elementId: pollElement.id, optionId: poll.options[0]!.id });
+    sender.postMessage({ type: 'POLL_VOTE', slideId: presentation.slides[0]!.id, elementId: pollElement.id, optionId: poll.options[0]!.id });
+    sender.postMessage({ type: 'POLL_VOTE', slideId: presentation.slides[0]!.id, elementId: pollElement.id, optionId: poll.options[1]!.id });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const bars = previews[0]!.findAll('.presenter-poll-bar');
+    expect(bars).toHaveLength(2);
+    expect(bars[0]!.text()).toContain('2 Stimmen · 67 %');
+    expect(bars[0]!.find('i').attributes('style')).toContain('width: 67%');
+    expect(bars[1]!.text()).toContain('1 Stimme · 33 %');
+    expect(wrapper.find('.poll-result').exists()).toBe(false);
+    sender.close();
     wrapper.unmount();
   });
 
@@ -83,6 +127,41 @@ describe("Presenter Console mit Zweitbildschirm", () => {
     await flushPromises();
     expect(wrapper.find(".slide-canvas").exists()).toBe(true);
     expect(wrapper.find(".map-toolbar").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("bearbeitet historische Zeitstrahlen live und veröffentlicht Änderungen für das Präsentationsfenster", async () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    const timelineElement = createTimelineElement();
+    presentation.slides[0]!.elements.push(timelineElement);
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/", component: { template: "<div />" } }] });
+    await router.push("/");
+    await router.isReady();
+    const wrapper = mount(PresenterConsole, { props: { plan, presentation }, global: { plugins: [router] } });
+    await flushPromises();
+    const observer = new BroadcastChannel(presentationChannelName(presentation.id));
+    const updates: Array<{ timeline: { entries: Array<{ date: string }> } }> = [];
+    observer.onmessage = (event: MessageEvent) => {
+      if (event.data.type === 'TIMELINE_UPDATED') updates.push(event.data);
+    };
+
+    await wrapper.find('[aria-label="Zeitstrahl bearbeiten"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('.slide-canvas').exists()).toBe(false);
+    expect(wrapper.find('.live-timeline-panel').text()).toContain('Historischen Zeitstrahl bearbeiten');
+    await wrapper.find('.timeline-date').setValue('476 v. Chr.');
+    await wrapper.find('.timeline-tools button').trigger('click');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(timelineElement.content.timeline!.entries[0]!.date).toBe('476 v. Chr.');
+    expect(timelineElement.content.timeline!.entries).toHaveLength(4);
+    expect(updates.at(-1)?.timeline.entries).toHaveLength(4);
+
+    await wrapper.find('[aria-label="Zur Folienvorschau"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('.slide-canvas').exists()).toBe(true);
+    expect(wrapper.find('.timeline-widget').text()).toContain('476 v. Chr.');
+    observer.close();
     wrapper.unmount();
   });
 

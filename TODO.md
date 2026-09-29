@@ -1,5 +1,48 @@
 # TODO
 
+## Widget-Vorlagen, Farbsets und elegante Zeitstrahlbearbeitung
+
+- [ ] Bestehende Widget-Datenmodelle, Editor- und Präsentationsrenderstrecken sowie Tests analysieren und Ausgangsprüfungen ausführen.
+- [ ] Wiederverwendbare Widget-Vorlagen und konfigurierbare Farbsets rückwärtskompatibel im Präsentationsmodell ergänzen.
+- [ ] Die Zeitstrahlbearbeitung als kompakte, klar gegliederte Inspector-Oberfläche mit schnell erreichbaren Vorlagen und Farbsets gestalten.
+- [ ] Vorlagen- und Farbset-Auswahl für alle unterstützten Widgets im Editor zugänglich machen und im Präsentationsfenster identisch rendern.
+- [ ] Unit-, Komponenten-, Typ-, Gesamt- und Build-Prüfungen ausführen und die TODO-Punkte nach erfolgreicher Prüfung abschließen.
+
+## Zeitstrahl-Design und Mausrad-Zoom
+
+- [x] Bestehende Zeitstrahl-, Zoom-, Pan- und Synchronisationsstrecken analysieren sowie Ausgangsprüfungen ausführen.
+- [x] Zeitstrahl als hochwertige historische Ereignisachse mit klaren Karten, Jahresmarken und überlappungsfreier Bearbeitungsansicht gestalten.
+- [x] Stufenloses Zoom per Mausrad in Referentenansicht und freigegebenem Präsentationsfenster ergänzen und synchronisieren.
+- [x] Komponenten-, Browser-, Typ-, Gesamt-, Build- und Diff-Prüfungen ausführen.
+
+## Historischer, live bearbeitbarer Zeitstrahl
+
+- [x] Datenmodell, Zeitstrahl-Widget, Referentenansicht und Synchronisationskanal analysieren sowie Ausgangsprüfungen ausführen.
+- [x] Historische Beispielereignisse mit echten Zeitpunkten als Ausgangszustand statt Ablaufphasen bereitstellen und alle Ereignisfelder editierbar halten.
+- [x] Zeitstrahlbearbeitung in der Referentenansicht mit Hinzufügen, Löschen, Ausrichtung und direkter Synchronisierung ins Präsentationsfenster ergänzen.
+- [x] Komponenten-, Browser-, Typ-, Gesamt-, Build- und Diff-Prüfungen ausführen.
+
+## Live-Balkenvorschau für Abstimmungen in der Referentenansicht
+
+- [x] Abstimmungsdaten, Referentensteuerung und bestehende Browser-/Komponententests analysieren sowie Ausgangsprüfungen ausführen.
+- [x] Für jede Ja/Nein- und Mehrfachauswahl eine nur für Referierende sichtbare Live-Balkenvorschau mit Stimmen, Anteilen und Gesamtzahl ergänzen.
+- [x] Sicherstellen, dass die Vorschau eingehende Stimmen sofort abbildet, ohne die Ergebnissperre im Präsentationsfenster aufzuheben.
+- [x] Komponenten-, Browser-, Typ-, Gesamt-, Build- und Diff-Prüfungen ausführen.
+
+## Einheitliche Folienformatierung in beiden Ansichten
+
+- [x] Gemeinsame Canvas-Renderstrecke sowie Größen- und Skalierungsunterschiede in Referenten- und Präsentationsfenster analysieren und Ausgangsprüfungen ausführen.
+- [x] Eine feste 1280×720-Entwurfsfläche im gemeinsamen Foliencanvas einführen, die nur als Ganzes auf die verfügbare Ansicht skaliert wird.
+- [x] Presenter- und Audience-Ansicht einschließlich Zoom, Ink-Overlay und interaktiver Widgets auf das identische Layout prüfen.
+- [x] Komponenten-, Browser-, Typ-, Gesamt-, Build- und Diff-Prüfungen ausführen.
+
+## Ausschnitt per rechter Maustaste verschieben
+
+- [x] Bestehende Zoom-, Pan- und Synchronisationsstrecke in Canvas, Referenten- und Präsentationsansicht analysieren sowie Ausgangsprüfungen ausführen.
+- [x] Rechtsklick-Ziehen mit mausstreckenabhängiger, geglätteter Bewegung im gemeinsamen Foliencanvas umsetzen.
+- [x] Pfeil-Schaltflächen entfernen und die aktualisierte Ausschnittposition zwischen Referent und Präsentationsfenster synchronisieren.
+- [x] Komponenten-, Browser-, Typ-, Gesamt-, Build- und Diff-Prüfungen ausführen.
+
 ## Medien als lokale Kopie oder URL
 
 - [x] Bestehende Medien-Auswahl, Präsentationselemente, SQLite-Persistenz und die API-Strecke analysieren sowie Ausgangsprüfungen ausführen.

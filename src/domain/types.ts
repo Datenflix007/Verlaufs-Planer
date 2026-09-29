@@ -70,6 +70,9 @@ export type PresentationTransition = 'none' | 'fade' | 'slide'
 export type PresentationLayoutType = 'blank' | 'title' | 'titleContent' | 'twoColumn' | 'imageText' | 'section' | 'closing'
 
 export type MindmapDesign = 'schlicht' | 'organisch' | 'tafel' | 'neon' | 'pastell'
+export type WidgetColorSet = 'ozean' | 'sonnenuntergang' | 'wald' | 'violett' | 'monochrom'
+export type TimelineTemplate = 'chronik' | 'museum' | 'minimal'
+export type PollTemplate = 'karten' | 'podium' | 'kompakt'
 export interface MindmapNode {
   id: string; parentId: string | null; text: string; level: number; order: number
   x?: number; y?: number; collapsed?: boolean
@@ -82,19 +85,19 @@ export interface MindmapEdge {
 }
 export interface MindmapWidget {
   id: string; rootNodeId: string; nodes: MindmapNode[]; edges: MindmapEdge[]
-  settings: { layout: 'horizontal' | 'radial'; autoLayout: boolean; spacingX: number; spacingY: number; branchColors: boolean; design: MindmapDesign }
+  settings: { layout: 'horizontal' | 'radial'; autoLayout: boolean; spacingX: number; spacingY: number; branchColors: boolean; design: MindmapDesign; colorSet?: WidgetColorSet }
 }
 export interface TimelineEntry {
   id: string; date: string; title: string; description?: string; color?: string
 }
 export interface TimelineWidget {
-  id: string; orientation: 'horizontal' | 'vertical'; entries: TimelineEntry[]
+  id: string; orientation: 'horizontal' | 'vertical'; entries: TimelineEntry[]; template?: TimelineTemplate; colorSet?: WidgetColorSet
 }
 export interface PollOption {
   id: string; label: string
 }
 export interface PollWidget {
-  id: string; question: string; type: 'yes-no' | 'multiple-choice'; options: PollOption[]
+  id: string; question: string; type: 'yes-no' | 'multiple-choice'; options: PollOption[]; template?: PollTemplate; colorSet?: WidgetColorSet
 }
 
 export interface PresentationElement {

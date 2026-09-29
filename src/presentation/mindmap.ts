@@ -6,6 +6,7 @@ import type {
   MindmapWidget,
   PresentationElement,
 } from "../domain/types";
+import { widgetColorSet } from './widgetDesign';
 
 export const MINDMAP_WIDTH = 1000;
 export const MINDMAP_HEIGHT = 600;
@@ -43,6 +44,7 @@ export function createMindmap(): MindmapWidget {
       spacingY: 78,
       branchColors: true,
       design: "schlicht",
+      colorSet: 'ozean',
     },
   };
 }
@@ -248,7 +250,7 @@ export function colorForNode(mindmap: MindmapWidget, nodeId: string): string {
   while (top.parentId && top.parentId !== mindmap.rootNodeId)
     top = mindmapNode(mindmap, top.parentId) ?? top;
   return (
-    top.style.branchColor ?? branchPalette[top.order % branchPalette.length]!
+    top.style.branchColor ?? widgetColorSet(mindmap.settings.colorSet).branches[top.order % branchPalette.length]!
   );
 }
 

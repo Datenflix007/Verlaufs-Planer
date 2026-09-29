@@ -18,7 +18,7 @@ const MindmapNodeSchema = z.object({
 const MindmapEdgeSchema = z.object({ id: IdSchema, sourceNodeId: IdSchema, targetNodeId: IdSchema, style: z.object({ color: z.string().optional(), width: z.number().positive().optional(), curve: z.enum(['smooth', 'straight']).optional() }) })
 const MindmapWidgetSchema = z.object({
   id: IdSchema, rootNodeId: IdSchema, nodes: z.array(MindmapNodeSchema).min(1), edges: z.array(MindmapEdgeSchema),
-  settings: z.object({ layout: z.enum(['horizontal', 'radial']), autoLayout: z.boolean(), spacingX: z.number().positive(), spacingY: z.number().positive(), branchColors: z.boolean(), design: z.enum(['schlicht', 'organisch', 'tafel', 'neon', 'pastell']) }),
+  settings: z.object({ layout: z.enum(['horizontal', 'radial']), autoLayout: z.boolean(), spacingX: z.number().positive(), spacingY: z.number().positive(), branchColors: z.boolean(), design: z.enum(['schlicht', 'organisch', 'tafel', 'neon', 'pastell']), colorSet: z.enum(['ozean', 'sonnenuntergang', 'wald', 'violett', 'monochrom']).optional() }),
 }).superRefine((mindmap, ctx) => {
   const nodes = new Map(mindmap.nodes.map((node) => [node.id, node]))
   if (nodes.size !== mindmap.nodes.length || !nodes.has(mindmap.rootNodeId) || nodes.get(mindmap.rootNodeId)?.parentId !== null) ctx.addIssue({ code: 'custom', message: 'Ungültiger Mindmap-Wurzelknoten.' })
@@ -30,9 +30,9 @@ const MindmapWidgetSchema = z.object({
   if (mindmap.edges.length !== mindmap.nodes.length - 1 || new Set(mindmap.edges.map((edge) => edge.id)).size !== mindmap.edges.length || new Set(mindmap.edges.map((edge) => edge.targetNodeId)).size !== mindmap.edges.length || mindmap.edges.some((edge) => nodes.get(edge.targetNodeId)?.parentId !== edge.sourceNodeId)) ctx.addIssue({ code: 'custom', message: 'Ungültige Mindmap-Verbindung.' })
 })
 const TimelineEntrySchema = z.object({ id: IdSchema, date: z.string(), title: z.string(), description: z.string().optional(), color: z.string().optional() })
-const TimelineWidgetSchema = z.object({ id: IdSchema, orientation: z.enum(['horizontal', 'vertical']), entries: z.array(TimelineEntrySchema).min(1) })
+const TimelineWidgetSchema = z.object({ id: IdSchema, orientation: z.enum(['horizontal', 'vertical']), entries: z.array(TimelineEntrySchema).min(1), template: z.enum(['chronik', 'museum', 'minimal']).optional(), colorSet: z.enum(['ozean', 'sonnenuntergang', 'wald', 'violett', 'monochrom']).optional() })
 const PollOptionSchema = z.object({ id: IdSchema, label: z.string().min(1) })
-const PollWidgetSchema = z.object({ id: IdSchema, question: z.string().min(1), type: z.enum(['yes-no', 'multiple-choice']), options: z.array(PollOptionSchema).min(2) })
+const PollWidgetSchema = z.object({ id: IdSchema, question: z.string().min(1), type: z.enum(['yes-no', 'multiple-choice']), options: z.array(PollOptionSchema).min(2), template: z.enum(['karten', 'podium', 'kompakt']).optional(), colorSet: z.enum(['ozean', 'sonnenuntergang', 'wald', 'violett', 'monochrom']).optional() })
 const PresentationElementSchema = z.object({
   id: IdSchema, type: z.enum(['text', 'image', 'video', 'shape', 'icon', 'mindmap', 'timeline', 'poll']), x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive(), rotation: z.number(), zIndex: z.number().int(),
   style: z.object({ color: z.string().optional(), backgroundColor: z.string().optional(), fontSize: z.number().positive().optional(), fontFamily: z.string().optional(), fontWeight: z.number().optional(), fontStyle: z.enum(['normal', 'italic']).optional(), textDecoration: z.enum(['none', 'underline']).optional(), textAlign: z.enum(['left', 'center', 'right']).optional(), lineHeight: z.number().positive().optional(), letterSpacing: z.number().optional(), opacity: z.number().min(0).max(1).optional(), borderRadius: z.number().nonnegative().optional(), stroke: z.string().optional(), strokeWidth: z.number().nonnegative().optional(), objectFit: z.enum(['contain', 'cover', 'fill']).optional(), locked: z.boolean().optional() }),

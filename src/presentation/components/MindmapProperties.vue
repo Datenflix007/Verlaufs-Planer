@@ -5,8 +5,10 @@ import type {
   MindmapDesign,
   MindmapWidget,
   PresentationElement,
+  WidgetColorSet,
 } from "../../domain/types";
 import { mindmapNode } from "../mindmap";
+import { widgetColorSets } from '../widgetDesign';
 import ImageSourcePicker from "./ImageSourcePicker.vue";
 
 const props = defineProps<{
@@ -35,6 +37,9 @@ const designs: { id: MindmapDesign; label: string }[] = [
   { id: "neon", label: "Neon" },
   { id: "pastell", label: "Pastell" },
 ];
+function setColorSet(value: WidgetColorSet): void {
+  update(() => (props.mindmap.settings.colorSet = value));
+}
 function update(change: () => void): void {
   emit("beginChange");
   change();
@@ -244,6 +249,11 @@ function value(event: Event): string {
           {{ design.label }}
         </button>
       </div>
+      <label>Farbset
+        <select :value="mindmap.settings.colorSet ?? 'ozean'" @change="setColorSet(value($event) as WidgetColorSet)">
+          <option v-for="palette in widgetColorSets" :key="palette.id" :value="palette.id">{{ palette.label }}</option>
+        </select>
+      </label>
       <h2>Widget auf Folie</h2>
       <div class="grid">
         <label

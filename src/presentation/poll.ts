@@ -3,7 +3,7 @@ import type { PollWidget, PresentationElement } from '../domain/types'
 
 export function createPoll(): PollWidget {
   return {
-    id: createId(), question: 'Wie schätzt ihr das ein?', type: 'yes-no',
+    id: createId(), question: 'Wie schätzt ihr das ein?', type: 'yes-no', template: 'karten', colorSet: 'ozean',
     options: [{ id: createId(), label: 'Ja' }, { id: createId(), label: 'Nein' }],
   }
 }

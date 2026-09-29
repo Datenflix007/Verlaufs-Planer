@@ -5,10 +5,12 @@ export function createTimeline(): TimelineWidget {
   return {
     id: createId(),
     orientation: 'horizontal',
+    template: 'chronik',
+    colorSet: 'ozean',
     entries: [
-      { id: createId(), date: 'Start', title: 'Ausgangslage', description: 'Worum geht es?' },
-      { id: createId(), date: 'Mitte', title: 'Erarbeitung', description: 'Zentrale Station' },
-      { id: createId(), date: 'Ziel', title: 'Sicherung', description: 'Ergebnis festhalten' },
+      { id: createId(), date: '1789', title: 'Französische Revolution', description: 'Sturm auf die Bastille und Beginn des Umbruchs.' },
+      { id: createId(), date: '1791', title: 'Erste Verfassung', description: 'Frankreich wird zur konstitutionellen Monarchie.' },
+      { id: createId(), date: '1799', title: 'Napoleons Staatsstreich', description: 'Das Direktorium endet; Napoleon übernimmt die Macht.' },
     ],
   }
 }
