@@ -29,11 +29,19 @@ const MindmapWidgetSchema = z.object({
   }
   if (mindmap.edges.length !== mindmap.nodes.length - 1 || new Set(mindmap.edges.map((edge) => edge.id)).size !== mindmap.edges.length || new Set(mindmap.edges.map((edge) => edge.targetNodeId)).size !== mindmap.edges.length || mindmap.edges.some((edge) => nodes.get(edge.targetNodeId)?.parentId !== edge.sourceNodeId)) ctx.addIssue({ code: 'custom', message: 'Ungültige Mindmap-Verbindung.' })
 })
+const TimelineEntrySchema = z.object({ id: IdSchema, date: z.string(), title: z.string(), description: z.string().optional(), color: z.string().optional() })
+const TimelineWidgetSchema = z.object({ id: IdSchema, orientation: z.enum(['horizontal', 'vertical']), entries: z.array(TimelineEntrySchema).min(1) })
+const PollOptionSchema = z.object({ id: IdSchema, label: z.string().min(1) })
+const PollWidgetSchema = z.object({ id: IdSchema, question: z.string().min(1), type: z.enum(['yes-no', 'multiple-choice']), options: z.array(PollOptionSchema).min(2) })
 const PresentationElementSchema = z.object({
-  id: IdSchema, type: z.enum(['text', 'image', 'shape', 'icon', 'mindmap']), x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive(), rotation: z.number(), zIndex: z.number().int(),
+  id: IdSchema, type: z.enum(['text', 'image', 'video', 'shape', 'icon', 'mindmap', 'timeline', 'poll']), x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive(), rotation: z.number(), zIndex: z.number().int(),
   style: z.object({ color: z.string().optional(), backgroundColor: z.string().optional(), fontSize: z.number().positive().optional(), fontFamily: z.string().optional(), fontWeight: z.number().optional(), fontStyle: z.enum(['normal', 'italic']).optional(), textDecoration: z.enum(['none', 'underline']).optional(), textAlign: z.enum(['left', 'center', 'right']).optional(), lineHeight: z.number().positive().optional(), letterSpacing: z.number().optional(), opacity: z.number().min(0).max(1).optional(), borderRadius: z.number().nonnegative().optional(), stroke: z.string().optional(), strokeWidth: z.number().nonnegative().optional(), objectFit: z.enum(['contain', 'cover', 'fill']).optional(), locked: z.boolean().optional() }),
-  content: z.object({ text: z.string().optional(), src: z.string().optional(), shape: z.enum(['rectangle', 'roundedRectangle', 'ellipse', 'line', 'arrow']).optional(), icon: z.string().optional(), mindmap: MindmapWidgetSchema.optional() }), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
-}).superRefine((element, ctx) => { if (element.type === 'mindmap' && !element.content.mindmap) ctx.addIssue({ code: 'custom', message: 'Mindmap-Element ohne Datenmodell.' }) })
+  content: z.object({ text: z.string().optional(), src: z.string().optional(), shape: z.enum(['rectangle', 'roundedRectangle', 'ellipse', 'diamond', 'triangle', 'hexagon', 'callout', 'chevron', 'line', 'arrow']).optional(), icon: z.string().optional(), mindmap: MindmapWidgetSchema.optional(), timeline: TimelineWidgetSchema.optional(), poll: PollWidgetSchema.optional() }), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
+}).superRefine((element, ctx) => {
+  if (element.type === 'mindmap' && !element.content.mindmap) ctx.addIssue({ code: 'custom', message: 'Mindmap-Element ohne Datenmodell.' })
+  if (element.type === 'timeline' && !element.content.timeline) ctx.addIssue({ code: 'custom', message: 'Zeitstrahl-Element ohne Datenmodell.' })
+  if (element.type === 'poll' && !element.content.poll) ctx.addIssue({ code: 'custom', message: 'Abstimmungs-Element ohne Datenmodell.' })
+})
 const PresentationSlideSchema = z.object({
   id: IdSchema, position: z.number().int().nonnegative(), title: z.string().optional(), layoutType: z.enum(['blank', 'title', 'titleContent', 'twoColumn', 'imageText', 'section', 'closing']), background: z.object({ color: z.string().optional(), imageUrl: z.string().optional(), imageFit: z.enum(['contain', 'cover', 'fill']).optional() }), notes: z.string(), transition: z.object({ type: z.enum(['none', 'fade', 'slide']), duration: z.union([z.literal(200), z.literal(400), z.literal(700)]) }), elements: z.array(PresentationElementSchema), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
 })

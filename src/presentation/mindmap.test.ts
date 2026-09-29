@@ -51,6 +51,21 @@ describe("Mindmap als Präsentationselement", () => {
     ]);
   });
 
+  it("verteilt Hauptäste beidseitig um die Wurzel und behält Unteräste auf ihrer Seite", () => {
+    const map = createMindmap();
+    const rightBranch = addMindmapChild(map, map.rootNodeId, "Rechts")!;
+    const leftBranch = addMindmapChild(map, map.rootNodeId, "Links")!;
+    const rightLeaf = addMindmapChild(map, rightBranch.id, "Rechts unten")!;
+    const leftLeaf = addMindmapChild(map, leftBranch.id, "Links unten")!;
+    const positions = new Map(layoutMindmap(map).nodes.map((item) => [item.node.id, item]));
+    const root = positions.get(map.rootNodeId)!;
+
+    expect(positions.get(rightBranch.id)!.x).toBeGreaterThan(root.x);
+    expect(positions.get(leftBranch.id)!.x).toBeLessThan(root.x);
+    expect(positions.get(rightLeaf.id)!.x).toBeGreaterThan(root.x);
+    expect(positions.get(leftLeaf.id)!.x).toBeLessThan(root.x);
+  });
+
   it("löscht einen vollständigen Ast und lässt die Wurzel stehen", () => {
     const map = createMindmap();
     const branch = addMindmapChild(map, map.rootNodeId)!;

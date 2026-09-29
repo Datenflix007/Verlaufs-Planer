@@ -54,15 +54,20 @@ const upcoming = computed(() =>
     : undefined,
 );
 const currentMindmaps = computed(() => current.value?.elements.filter((element) => element.type === 'mindmap' && element.content.mindmap) ?? []);
+const currentPolls = computed(() => current.value?.elements.filter((element) => element.type === 'poll' && element.content.poll) ?? []);
 const selectedMindmapId = ref<string>();
 const selectedNodeId = ref<string>();
 const liveMindmapEditing = ref(false);
 const imagePickerOpen = ref(false);
 const presenterZoom = ref(1);
+const presenterPan = ref({ x: 0, y: 0 });
 const presenterPreviewRegion = ref<HTMLElement>();
 const presenterPreviewFit = ref(1);
 const presenterPreviewScale = ref(1);
 const audienceZoom = ref(false);
+const audiencePan = ref({ x: 0, y: 0 });
+const pollVotes = ref<Record<string, Record<string, number>>>({});
+const pollResults = ref<Record<string, boolean>>({});
 const audienceInkEnabled = ref(false);
 const inkTool = ref<'off' | 'pen' | 'highlighter' | 'eraser'>('off');
 const inkColor = ref('#e53935');
@@ -141,7 +146,7 @@ function send(event: PresentationChannelEvent): void {
 }
 function publishViewState(): void {
   if (!currentSlideId.value) return;
-  send({ type: 'PRESENTATION_VIEW_STATE', slideId: currentSlideId.value, zoom: presenterZoom.value, audienceZoom: audienceZoom.value });
+  send({ type: 'PRESENTATION_VIEW_STATE', slideId: currentSlideId.value, zoom: presenterZoom.value, audienceZoom: audienceZoom.value, panX: audiencePan.value.x, panY: audiencePan.value.y });
 }
 function publishInkPermission(): void {
   if (!currentSlideId.value) return;
@@ -152,7 +157,23 @@ function publishInkState(): void {
 }
 function adjustPresenterZoom(amount: number): void {
   presenterZoom.value = Math.max(1, Math.min(3, Number((presenterZoom.value + amount).toFixed(2))));
+  if (presenterZoom.value === 1) presenterPan.value = { x: 0, y: 0 };
   if (audienceZoom.value) publishViewState();
+}
+function movePan(position: { x: number; y: number }, direction: 'left' | 'right' | 'up' | 'down'): { x: number; y: number } {
+  const step = 8;
+  return {
+    x: Math.max(-28, Math.min(28, position.x + (direction === 'left' ? step : direction === 'right' ? -step : 0))),
+    y: Math.max(-28, Math.min(28, position.y + (direction === 'up' ? step : direction === 'down' ? -step : 0))),
+  };
+}
+function adjustPresenterPan(direction: 'left' | 'right' | 'up' | 'down'): void {
+  if (presenterZoom.value <= 1) return;
+  presenterPan.value = movePan(presenterPan.value, direction);
+  if (audienceZoom.value) {
+    audiencePan.value = { ...presenterPan.value };
+    publishViewState();
+  }
 }
 function fitPresenterPreview(): void {
   const rect = presenterPreviewRegion.value?.getBoundingClientRect();
@@ -168,7 +189,18 @@ function resetPresenterPreview(): void {
 }
 function toggleAudienceZoom(): void {
   audienceZoom.value = !audienceZoom.value;
+  audiencePan.value = audienceZoom.value ? { ...presenterPan.value } : { x: 0, y: 0 };
   publishViewState();
+}
+function publishPollState(elementId: string): void {
+  if (!currentSlideId.value) return;
+  send({ type: 'POLL_STATE', slideId: currentSlideId.value, elementId, votes: { ...(pollVotes.value[elementId] ?? {}) }, showResults: Boolean(pollResults.value[elementId]) });
+}
+function publishCurrentPollStates(): void { for (const element of currentPolls.value) publishPollState(element.id); }
+function totalPollVotes(elementId: string): number { return Object.values(pollVotes.value[elementId] ?? {}).reduce((sum, votes) => sum + votes, 0); }
+function togglePollResults(elementId: string): void {
+  pollResults.value = { ...pollResults.value, [elementId]: !pollResults.value[elementId] };
+  publishPollState(elementId);
 }
 function toggleAudienceInk(): void {
   audienceInkEnabled.value = !audienceInkEnabled.value;
@@ -345,6 +377,8 @@ onMounted(() => {
        send({ type: "PRESENTATION_STATE", slideId: currentSlideId.value });
     if (message.data.type === "PRESENTATION_REQUEST_STATE")
       publishInkState();
+    if (message.data.type === "PRESENTATION_REQUEST_STATE")
+      publishCurrentPollStates();
     if (message.data.type === "AUDIENCE_READY") {
       screenStatus.value = "connected";
       screenMessage.value = "Präsentationsfenster verbunden.";
@@ -353,7 +387,21 @@ onMounted(() => {
       publishViewState();
        publishInkPermission();
        publishInkState();
+      publishCurrentPollStates();
       syncMindmaps();
+    }
+    if (message.data.type === 'PRESENTATION_AUDIENCE_PAN' && message.data.slideId === currentSlideId.value && audienceZoom.value) {
+      audiencePan.value = { x: message.data.panX, y: message.data.panY };
+      presenterPan.value = { ...audiencePan.value };
+      publishViewState();
+    }
+    if (message.data.type === 'POLL_VOTE' && message.data.slideId === currentSlideId.value) {
+      const event = message.data;
+      const poll = currentPolls.value.find((element) => element.id === event.elementId)?.content.poll;
+      if (poll?.options.some((option) => option.id === event.optionId) && !pollResults.value[event.elementId]) {
+        pollVotes.value = { ...pollVotes.value, [event.elementId]: { ...(pollVotes.value[event.elementId] ?? {}), [event.optionId]: (pollVotes.value[event.elementId]?.[event.optionId] ?? 0) + 1 } };
+        publishPollState(event.elementId);
+      }
     }
     if (message.data.type === "FULLSCREEN_STATUS")
       fullscreen.value = message.data.active;
@@ -410,7 +458,9 @@ watch(currentSlideId, () => {
   liveMindmapEditing.value = false;
   imagePickerOpen.value = false;
   presenterZoom.value = 1;
+  presenterPan.value = { x: 0, y: 0 };
   audienceZoom.value = false;
+  audiencePan.value = { x: 0, y: 0 };
   audienceInkEnabled.value = false;
   inkTool.value = 'off';
   publishViewState();
@@ -548,14 +598,19 @@ const time = computed(
               :show-mindmap-edit-button="currentMindmaps.length > 0"
               presenter-controls
               :zoom="presenterZoom"
+              :pan-x="presenterPan.x"
+              :pan-y="presenterPan.y"
               :audience-zoom="audienceZoom"
+              :poll-votes="pollVotes"
+              :poll-results="pollResults"
               @mindmap-edit="startLiveMindmap"
               @zoom-in="adjustPresenterZoom(0.25)"
               @zoom-out="adjustPresenterZoom(-0.25)"
+              @pan="adjustPresenterPan"
               @audience-zoom-toggle="toggleAudienceZoom"
               readonly
             />
-            <PresentationInkOverlay :strokes="currentInkStrokes" :tool="inkTool" :color="inkColor" :width="activeInkWidth" :zoom="presenterZoom" :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" />
+            <PresentationInkOverlay :strokes="currentInkStrokes" :tool="inkTool" :color="inkColor" :width="activeInkWidth" :zoom="presenterZoom" :pan-x="presenterPan.x" :pan-y="presenterPan.y" :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" />
           </div>
         </div>
         <div v-if="current && !liveMindmapEditing" class="presenter-ink-tools" role="toolbar" aria-label="Live-Zeichenwerkzeuge">
@@ -569,6 +624,13 @@ const time = computed(
           <button v-for="preset in inkPresets" :key="preset.name" type="button" :aria-label="`Stiftfarbe ${preset.name}`" :title="`Stiftfarbe ${preset.name}`" :style="{ width: '24px', height: '24px', padding: 0, background: preset.color, borderRadius: '50%' }" @click="inkColor = preset.color" />
           <label title="Strichbreite"><span>Breite</span><input v-model.number="penWidth" type="range" min="2" max="18" aria-label="Stiftbreite" /></label>
           <label v-if="inkTool === 'highlighter'" title="Leuchtdauer in Sekunden"><span>Sekunden</span><input v-model.number="highlighterSeconds" type="number" min="1" max="60" aria-label="Leuchtdauer in Sekunden" /></label>
+        </div>
+        <div v-if="currentPolls.length && !liveMindmapEditing" class="presenter-poll-controls" role="toolbar" aria-label="Abstimmung steuern">
+          <template v-for="element in currentPolls" :key="element.id">
+            <strong>{{ element.content.poll!.question }}</strong>
+            <span>{{ totalPollVotes(element.id) }} Stimme{{ totalPollVotes(element.id) === 1 ? '' : 'n' }}</span>
+            <button type="button" :aria-pressed="Boolean(pollResults[element.id])" @click="togglePollResults(element.id)">{{ pollResults[element.id] ? 'Ergebnis ausblenden' : 'Ergebnis anzeigen' }}</button>
+          </template>
         </div>
         <section v-else-if="liveMindmapEditing && liveMindmap?.content.mindmap" class="live-mindmap-panel">
           <header class="live-mindmap-heading">
@@ -596,7 +658,7 @@ const time = computed(
             <label>Knotentext
               <input :value="liveNode.text" @change="liveNode.text = ($event.target as HTMLInputElement).value; liveChanged()" />
             </label>
-            <details :open="imagePickerOpen" @toggle="imagePickerOpen = ($event.target as HTMLDetailsElement).open"><summary>Bild zum Knoten hinzufügen</summary><ImageSourcePicker :materials="materialImages" @select="setNodeImage" /></details>
+            <details :open="imagePickerOpen" @toggle="imagePickerOpen = ($event.target as HTMLDetailsElement).open"><summary>Bild zum Knoten hinzufügen</summary><ImageSourcePicker :materials="materialImages" :plan-id="plan.id" @select="setNodeImage" /></details>
           </div>
           <p>Änderungen erscheinen sofort auf dem Präsentationsbildschirm und werden im Plan gespeichert.</p>
         </section>
@@ -744,6 +806,7 @@ const time = computed(
 .presenter-ink-tools input[type="color"] { width: 30px; height: 27px; padding: 2px; }
 .presenter-ink-tools input[type="range"] { width: 75px; }
 .presenter-ink-tools input[type="number"] { width: 54px; padding: .25rem; color: #edf9f7; background: #143137; border: 1px solid #537b7d; }
+.presenter-poll-controls { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; margin-top: .55rem; padding: .45rem; color: #d7f4f0; background: #224147; border: 1px solid #4b6b70; border-radius: 6px; font-size: .8rem; }.presenter-poll-controls strong { margin-left: .3rem; }.presenter-poll-controls button { padding: .35rem .55rem; }
 .speaker-notes {
   margin-top: 1rem;
   min-height: 90px;

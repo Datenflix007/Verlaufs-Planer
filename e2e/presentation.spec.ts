@@ -15,6 +15,17 @@ test('Mindmap bearbeiten, lokal speichern und auf dem Audience-Fenster zeigen', 
   await page.getByRole('button', { name: '+ Unterast' }).click()
   await page.locator('.map-node input').fill('Voraussetzungen')
   await page.locator('.map-node input').press('Enter')
+  await page.getByRole('button', { name: '+ Geschwister' }).click()
+  await page.locator('.map-node input').fill('Produkte')
+  await page.locator('.map-node input').press('Enter')
+  const mapNodePositions = await page.locator('.map-node').evaluateAll((nodes) => nodes.map((node) => ({
+    root: node.classList.contains('root'),
+    left: Number.parseFloat((node as HTMLElement).style.left),
+  })))
+  const rootPosition = mapNodePositions.find((node) => node.root)?.left ?? 50
+  const branchPositions = mapNodePositions.filter((node) => !node.root).map((node) => node.left)
+  expect(branchPositions.some((left) => left < rootPosition)).toBe(true)
+  expect(branchPositions.some((left) => left > rootPosition)).toBe(true)
   await page.locator('.map-toolbar').getByRole('button', { name: '+', exact: true }).click()
   await expect(page.locator('.map-toolbar small')).toHaveText('110%')
   await page.getByRole('button', { name: 'Zentrieren' }).click()
@@ -22,14 +33,14 @@ test('Mindmap bearbeiten, lokal speichern und auf dem Audience-Fenster zeigen', 
   await page.getByRole('button', { name: 'Bearbeitung beenden' }).last().click()
   await page.getByRole('button', { name: '+ Folie' }).click()
   await page.locator('.thumb').first().click()
-  await expect(page.locator('.map-node')).toContainText(['Fotosynthese', 'Voraussetzungen'])
+  await expect(page.locator('.map-node')).toContainText(['Fotosynthese', 'Voraussetzungen', 'Produkte'])
   await expect.poll(async () => {
     const response = await request.get(`/api/plans/${plan.id}`)
     const saved = await response.json()
     return saved.presentation?.slides?.[0]?.elements?.[0]?.content?.mindmap?.nodes?.length
-  }).toBe(2)
+  }).toBe(3)
   await page.reload()
-  await expect(page.locator('.map-node')).toContainText(['Fotosynthese', 'Voraussetzungen'])
+  await expect(page.locator('.map-node')).toContainText(['Fotosynthese', 'Voraussetzungen', 'Produkte'])
   const popupPromise = context.waitForEvent('page')
   await page.getByRole('button', { name: 'Präsentieren' }).click()
   const audience = await popupPromise
@@ -43,17 +54,21 @@ test('Mindmap bearbeiten, lokal speichern und auf dem Audience-Fenster zeigen', 
   const presenterStageAfterScale = await page.locator('.presenter-slide-stage').boundingBox()
   if (!presenterStageBeforeScale || !presenterStageAfterScale) throw new Error('Referenten-Folienvorschau ist nicht sichtbar')
   expect(presenterStageAfterScale.width).toBeLessThan(presenterStageBeforeScale.width)
-  await expect(audience.locator('.map-node')).toContainText(['Fotosynthese', 'Voraussetzungen'])
+  await expect(audience.locator('.map-node')).toContainText(['Fotosynthese', 'Voraussetzungen', 'Produkte'])
   await page.getByRole('button', { name: 'Mindmap bearbeiten' }).click()
   await expect(page.locator('.live-mindmap-panel .map-toolbar')).toBeVisible()
   await page.locator('.live-mindmap-panel').getByRole('button', { name: '+ Unterast' }).click()
   await page.locator('.live-mindmap-panel .map-node input').fill('Chlorophyll')
   await page.locator('.live-mindmap-panel .map-node input').press('Enter')
-  await expect(audience.locator('.map-node')).toContainText(['Fotosynthese', 'Voraussetzungen', 'Chlorophyll'])
+  await expect(audience.locator('.map-node')).toContainText(['Fotosynthese', 'Voraussetzungen', 'Produkte', 'Chlorophyll'])
   await page.getByRole('button', { name: 'Zur Folienvorschau' }).click()
   await page.getByRole('button', { name: 'Referentenansicht vergrößern' }).click()
   await page.getByRole('button', { name: 'Zoom im Plenum einschalten' }).click()
   await expect(audience.locator('.slide-content')).toHaveAttribute('style', /scale\(1\.25\)/)
+  await page.getByRole('button', { name: 'Bildausschnitt nach links bewegen' }).click()
+  await expect(audience.locator('.slide-content')).toHaveAttribute('style', /translate\(8%, 0%\) scale\(1\.25\)/)
+  await audience.getByRole('button', { name: 'Bildausschnitt nach rechts bewegen' }).click()
+  await expect(page.locator('.presenter-slide-stage .slide-content')).toHaveAttribute('style', /translate\(0%, 0%\) scale\(1\.25\)/)
   await page.getByRole('button', { name: 'Stift', exact: true }).click()
   const stage = await page.locator('.presenter-slide-stage').boundingBox()
   if (!stage) throw new Error('Presenter-Folienfläche ist nicht sichtbar')
@@ -78,7 +93,7 @@ test('Mindmap bearbeiten, lokal speichern und auf dem Audience-Fenster zeigen', 
     const response = await request.get(`/api/plans/${plan.id}`)
     const saved = await response.json()
     return saved.presentation?.slides?.[0]?.elements?.[0]?.content?.mindmap?.nodes?.length
-  }).toBe(3)
+  }).toBe(4)
   await page.getByRole('button', { name: 'Nächste →' }).click()
   await expect(audience.getByText('Titel hinzufügen')).toBeVisible()
   await expect(audience.locator('.map-node')).toHaveCount(0)
@@ -98,6 +113,84 @@ test('Mindmap bearbeiten, lokal speichern und auf dem Audience-Fenster zeigen', 
   await expect.poll(() => audience.locator('.presentation-ink-overlay path').count()).toBe(0)
   await page.getByRole('button', { name: 'Präsentation beenden' }).click()
   await expect(audience.getByText('Präsentation beendet.')).toBeVisible()
+})
+
+test('erstellt einen Zeitstrahl, bearbeitet Ereignisse und zeigt ihn im Präsentationsfenster', async ({ page, request, context }) => {
+  const plan = createPlan('Zeitstrahl Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+
+  await page.getByTitle('Zeitstrahl').click()
+  await expect(page.locator('.timeline-widget')).toBeVisible()
+  await expect(page.locator('.timeline-entry')).toHaveCount(3)
+  await page.locator('.timeline-tools').getByRole('button', { name: '+ Ereignis' }).click()
+  await expect(page.locator('.timeline-entry')).toHaveCount(4)
+  await page.locator('.timeline-entry input').nth(1).fill('Auftakt')
+  await page.locator('.timeline-entry input').nth(1).press('Enter')
+  await page.locator('.timeline-tools').getByRole('button', { name: 'Bearbeitung beenden' }).click()
+
+  await expect.poll(async () => {
+    const response = await request.get(`/api/plans/${plan.id}`)
+    const saved = await response.json()
+    return saved.presentation?.slides?.[0]?.elements?.[0]?.content?.timeline?.entries?.map((entry: { title: string }) => entry.title)
+  }).toContain('Auftakt')
+  await page.reload()
+  await expect(page.locator('.timeline-widget')).toContainText('Auftakt')
+
+  const popupPromise = context.waitForEvent('page')
+  await page.getByRole('button', { name: 'Präsentieren' }).click()
+  const audience = await popupPromise
+  await expect(audience.locator('.timeline-widget')).toContainText('Auftakt')
+})
+
+test('speichert lokale Bild- und Videokopien in SQLite und akzeptiert externe Medien-URLs', async ({ page, request }) => {
+  const plan = createPlan('Medien Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+
+  await page.getByTitle('Bild').click()
+  await page.getByPlaceholder('Bild-URL (https://…)').fill('https://example.test/wald.jpg')
+  await page.getByRole('button', { name: 'URL einfügen' }).click()
+  await expect(page.locator('.slide-element.image img')).toHaveAttribute('src', 'https://example.test/wald.jpg')
+  await page.getByTitle('Bild').click()
+  await page.locator('.toolbar .image-picker').getByLabel('Bilddatei als Kopie auswählen').setInputFiles({ name: 'wald.png', mimeType: 'image/png', buffer: Buffer.from([137, 80, 78, 71]) })
+  await expect(page.locator('.slide-element.image img')).toHaveCount(2)
+  const copiedImage = await page.locator('.slide-element.image img').last().getAttribute('src')
+  expect(copiedImage).toMatch(/^\/api\/presentation-media\//)
+  const copiedImageResponse = await request.get(copiedImage!)
+  expect(copiedImageResponse.headers()['content-type']).toBe('image/png')
+  expect(await copiedImageResponse.body()).toEqual(Buffer.from([137, 80, 78, 71]))
+
+  await page.getByTitle('Video').click()
+  await page.getByPlaceholder('Video-URL (https://…)').fill('https://example.test/erklaerung.mp4')
+  await page.getByRole('button', { name: 'URL einfügen' }).click()
+  await expect(page.locator('.slide-element.video video')).toHaveAttribute('src', 'https://example.test/erklaerung.mp4')
+  await page.getByTitle('Video').click()
+  await page.locator('.toolbar .image-picker').getByLabel('Videodatei als Kopie auswählen').setInputFiles({ name: 'erklaerung.mp4', mimeType: 'video/mp4', buffer: Buffer.from([0, 0, 0, 24]) })
+  await expect(page.locator('.slide-element.video video')).toHaveCount(2)
+  const copiedVideo = await page.locator('.slide-element.video video').last().getAttribute('src')
+  expect(copiedVideo).toMatch(/^\/api\/presentation-media\//)
+  expect((await request.get(copiedVideo!)).headers()['content-type']).toBe('video/mp4')
+  await expect.poll(async () => (await (await request.get(`/api/plans/${plan.id}`)).json()).presentation.slides[0].elements.map((element: { type: string; content: { src?: string } }) => ({ type: element.type, src: element.content.src }))).toEqual(expect.arrayContaining([{ type: 'image', src: 'https://example.test/wald.jpg' }, { type: 'video', src: 'https://example.test/erklaerung.mp4' }, { type: 'image', src: copiedImage }, { type: 'video', src: copiedVideo }]))
+})
+
+test('sammelt Abstimmungs-Klicks im Plenum und zeigt das Ergebnis erst nach Freigabe', async ({ page, request, context }) => {
+  const plan = createPlan('Abstimmung Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+  await page.getByTitle('Abstimmung').click()
+  await page.getByRole('button', { name: 'Bearbeitung beenden' }).click()
+  await expect.poll(async () => (await (await request.get(`/api/plans/${plan.id}`)).json()).presentation?.slides?.[0]?.elements?.[0]?.type).toBe('poll')
+
+  const popupPromise = context.waitForEvent('page')
+  await page.getByRole('button', { name: 'Präsentieren' }).click()
+  const audience = await popupPromise
+  await audience.getByRole('button', { name: 'Ja' }).click()
+  await expect(page.getByText('1 Stimme', { exact: true })).toBeVisible()
+  await expect(audience.locator('.vote-total')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Ergebnis anzeigen' }).click()
+  await expect(audience.locator('.vote-total')).toHaveText('1 Stimme')
+  await expect(audience.locator('.poll-result').first()).toContainText('100 %')
 })
 
 test('exportiert alle Folien als selbstständiges HTML und als PDF', async ({ page, request, context }) => {

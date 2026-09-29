@@ -6,6 +6,8 @@ import type {
 } from "../../domain/types";
 import { presentationTheme } from "../presentation";
 import MindmapWidget from "./MindmapWidget.vue";
+import TimelineWidget from "./TimelineWidget.vue";
+import PollWidget from "./PollWidget.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -13,12 +15,19 @@ const props = withDefaults(
     themeId: import("../../domain/types").PresentationThemeId;
     selectedElementId?: string;
     editingMindmapId?: string;
+    editingTimelineId?: string;
+    editingPollId?: string;
     selectedMindmapNodeId?: string;
     focusMindmapRoot?: boolean;
     showMindmapEditButton?: boolean;
     presenterControls?: boolean;
     zoom?: number;
+    panX?: number;
+    panY?: number;
     audienceZoom?: boolean;
+    pollVotes?: Record<string, Record<string, number>>;
+    pollResults?: Record<string, boolean>;
+    pollVotingEnabled?: boolean;
     readonly?: boolean;
   }>(),
   { readonly: false },
@@ -32,9 +41,15 @@ const emit = defineEmits<{
   mindmapFinish: [];
   mindmapNodeSelect: [id?: string];
   mindmapImageRequest: [nodeId: string];
+  timelineEdit: [id: string];
+  timelineFinish: [];
+  pollEdit: [id: string];
+  pollFinish: [];
+  pollVote: [elementId: string, optionId: string];
   zoomIn: [];
   zoomOut: [];
   audienceZoomToggle: [];
+  pan: [direction: 'left' | 'right' | 'up' | 'down'];
   undo: [];
   redo: [];
 }>();
@@ -209,7 +224,7 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
     @pointerleave="end"
     @pointerdown.self="emit('select')"
   >
-    <div class="slide-content" :style="{ transform: `scale(${zoom ?? 1})` }">
+    <div class="slide-content" :style="{ transform: `translate(${panX ?? 0}%, ${panY ?? 0}%) scale(${zoom ?? 1})` }">
     <div class="slide-background-image" />
     <div v-if="!slide.elements.length" class="empty-slide">
       <strong>{{
@@ -269,6 +284,42 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
           Mindmap bearbeiten
         </button>
       </template>
+      <template v-else-if="element.type === 'timeline' && element.content.timeline">
+        <TimelineWidget
+          :timeline="element.content.timeline"
+          :editing="!readonly && editingTimelineId === element.id"
+          @begin-change="emit('beginChange')"
+          @changed="emit('changed')"
+          @finish="emit('timelineFinish')"
+        />
+        <button
+          v-if="!readonly && selectedElementId === element.id && editingTimelineId !== element.id"
+          type="button"
+          class="timeline-edit-button"
+          @pointerdown.stop
+          @click.stop="emit('timelineEdit', element.id)"
+        >Zeitstrahl bearbeiten</button>
+      </template>
+      <template v-else-if="element.type === 'poll' && element.content.poll">
+        <PollWidget
+          :poll="element.content.poll"
+          :editing="!readonly && editingPollId === element.id"
+          :votes="pollVotes?.[element.id]"
+          :show-results="pollResults?.[element.id]"
+          :allow-voting="pollVotingEnabled"
+          @begin-change="emit('beginChange')"
+          @changed="emit('changed')"
+          @finish="emit('pollFinish')"
+          @vote="emit('pollVote', element.id, $event)"
+        />
+        <button
+          v-if="!readonly && selectedElementId === element.id && editingPollId !== element.id"
+          type="button"
+          class="timeline-edit-button"
+          @pointerdown.stop
+          @click.stop="emit('pollEdit', element.id)"
+        >Abstimmung bearbeiten</button>
+      </template>
       <template v-else-if="element.type === 'image'"
         ><img
           v-if="element.content.src"
@@ -276,6 +327,17 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
           alt=""
         /><span v-else class="image-placeholder"
           >Bild hinzufügen</span
+        ></template
+      >
+      <template v-else-if="element.type === 'video'"
+        ><video
+          v-if="element.content.src"
+          :src="element.content.src"
+          controls
+          playsinline
+          preload="metadata"
+        /><span v-else class="image-placeholder"
+          >Video hinzufügen</span
         ></template
       >
       <template v-else-if="element.type === 'icon'"
@@ -323,6 +385,12 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
       <button type="button" aria-label="Referentenansicht verkleinern" title="Referentenansicht verkleinern" @click.stop="emit('zoomOut')">−</button>
       <span class="presenter-zoom-level">{{ Math.round((zoom ?? 1) * 100) }}%</span>
       <button type="button" aria-label="Referentenansicht vergrößern" title="Referentenansicht vergrößern" @click.stop="emit('zoomIn')">+</button>
+      <template v-if="(zoom ?? 1) > 1">
+        <button type="button" aria-label="Bildausschnitt nach links bewegen" title="Bildausschnitt nach links bewegen" @click.stop="emit('pan', 'left')">←</button>
+        <button type="button" aria-label="Bildausschnitt nach oben bewegen" title="Bildausschnitt nach oben bewegen" @click.stop="emit('pan', 'up')">↑</button>
+        <button type="button" aria-label="Bildausschnitt nach unten bewegen" title="Bildausschnitt nach unten bewegen" @click.stop="emit('pan', 'down')">↓</button>
+        <button type="button" aria-label="Bildausschnitt nach rechts bewegen" title="Bildausschnitt nach rechts bewegen" @click.stop="emit('pan', 'right')">→</button>
+      </template>
       <button
         type="button"
         :class="{ active: audienceZoom }"
@@ -402,7 +470,8 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
 .slide-element.locked {
   cursor: not-allowed;
 }
-.slide-element.image {
+.slide-element.image,
+.slide-element.video {
   overflow: hidden;
   background: #dbe7e6;
 }
@@ -411,6 +480,7 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
   overflow: hidden;
   background: #f7fbfb;
 }
+.slide-element.poll { display: block; overflow: hidden; background: #f7fbfb; }
 .slide-element.mindmap-editing {
   overflow: visible;
   z-index: 20 !important;
@@ -428,6 +498,7 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
   border-radius: 4px;
   font-size: 12px;
 }
+.timeline-edit-button { position: absolute; z-index: 5; top: 5px; right: 5px; padding: 4px 7px; color: #edffff; background: #11656c; border: 1px solid #5ee0d9; border-radius: 4px; font-size: 12px; }
 .presenter-slide-actions {
   position: absolute;
   z-index: 40;
@@ -457,7 +528,8 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
 .presenter-slide-actions button.active { color: #15343a; background: #80eee1; }
 .presenter-slide-actions svg { width: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 .presenter-zoom-level { padding: 0 3px; color: #edffff; font-size: 11px; font-weight: 700; }
-.slide-element.image img {
+.slide-element.image img,
+.slide-element.video video {
   width: 100%;
   height: 100%;
   object-fit: var(--object-fit);
@@ -485,6 +557,11 @@ function keydown(element: PresentationElement, event: KeyboardEvent): void {
   background: var(--stroke) !important;
   border-radius: 999px !important;
 }
+.slide-element.diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.slide-element.triangle { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.slide-element.hexagon { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.slide-element.callout { clip-path: polygon(0 0, 100% 0, 100% 76%, 63% 76%, 52% 100%, 49% 76%, 0 76%); }
+.slide-element.chevron { clip-path: polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%, 25% 50%); }
 .arrow-tip {
   position: absolute;
   right: -1px;

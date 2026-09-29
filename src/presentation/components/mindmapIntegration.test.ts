@@ -5,11 +5,78 @@ import { describe, expect, it, vi } from "vitest";
 import { createPlan } from "../../domain/factories";
 import { addMindmapChild, createMindmapElement } from "../mindmap";
 import { ensurePresentation } from "../presentation";
+import { createTimelineElement } from "../timeline";
 import PresentationEditor from "./PresentationEditor.vue";
 import SlideCanvas from "./SlideCanvas.vue";
 import MindmapWidget from "./MindmapWidget.vue";
 
 describe("Mindmap im Präsentationseditor", () => {
+  it("bietet Times New Roman und zusätzliche Formen als anwendbare Editoroptionen", async () => {
+    const plan = reactive(createPlan());
+    const wrapper = mount(PresentationEditor, { props: { plan } });
+    await wrapper.find('[title="Text"]').trigger("click");
+    await wrapper.findAll("menu button").find((button) => button.text().includes("Flie"))!.trigger("click");
+    const fontSelect = wrapper.findAll("label").find((label) => label.text().includes("Schrift"))!.find("select");
+
+    expect(fontSelect.html()).toContain("Times New Roman");
+    await fontSelect.setValue("'Times New Roman', Times, serif");
+    expect(plan.presentation!.slides[0]!.elements[0]!.style.fontFamily).toBe("'Times New Roman', Times, serif");
+    await wrapper.find('[title="Form"]').trigger("click");
+    await wrapper.findAll("menu button").find((button) => button.text() === "Raute")!.trigger("click");
+    expect(plan.presentation!.slides[0]!.elements.at(-1)?.content.shape).toBe("diamond");
+    expect(wrapper.find(".slide-element.diamond").exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("erstellt und bearbeitet einen Zeitstrahl direkt auf der Folie", async () => {
+    const plan = reactive(createPlan());
+    const wrapper = mount(PresentationEditor, { props: { plan } });
+    await wrapper.find('[title="Zeitstrahl"]').trigger("click");
+    const timeline = plan.presentation!.slides[0]!.elements[0]!.content.timeline!;
+
+    expect(wrapper.find(".timeline-widget.editing").exists()).toBe(true);
+    expect(timeline.entries).toHaveLength(3);
+    await wrapper.findAll(".timeline-tools button").find((button) => button.text() === "+ Ereignis")!.trigger("click");
+    expect(timeline.entries).toHaveLength(4);
+    await wrapper.find(".timeline-title").setValue("Auftakt");
+    expect(timeline.entries[0]!.title).toBe("Auftakt");
+    await wrapper.findAll(".timeline-tools button").find((button) => button.text() === "Bearbeitung beenden")!.trigger("click");
+    expect(wrapper.find(".timeline-widget.editing").exists()).toBe(false);
+    expect(wrapper.emitted("changed")?.length).toBeGreaterThan(1);
+    wrapper.unmount();
+  });
+
+  it("rendert Zeitstrahlen im schreibgeschützten Canvas ohne Bearbeitungswerkzeuge", () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    const element = createTimelineElement();
+    presentation.slides[0]!.elements.push(element);
+    const wrapper = mount(SlideCanvas, { props: { slide: presentation.slides[0]!, themeId: presentation.themeId, readonly: true, selectedElementId: element.id } });
+
+    expect(wrapper.find(".timeline-widget").text()).toContain("Ausgangslage");
+    expect(wrapper.find(".timeline-tools").exists()).toBe(false);
+    expect(wrapper.find(".timeline-edit-button").exists()).toBe(false);
+    wrapper.unmount();
+  });
+  it("erstellt eine Mehrfachauswahl und gibt Stimmen erst mit Ergebnisfreigabe aus", async () => {
+    const plan = reactive(createPlan());
+    const editor = mount(PresentationEditor, { props: { plan } });
+    await editor.find('[title="Abstimmung"]').trigger("click");
+    const poll = plan.presentation!.slides[0]!.elements[0]!.content.poll!;
+    await editor.find('.poll-widget select').setValue('multiple-choice');
+    await editor.find('.poll-tools button').trigger('click');
+    expect(poll.options).toHaveLength(4);
+    await editor.findAll('.poll-tools button').find((button) => button.text() === 'Bearbeitung beenden')!.trigger('click');
+    expect(editor.find('.poll-widget.editing').exists()).toBe(false);
+
+    const canvas = mount(SlideCanvas, { props: { slide: plan.presentation!.slides[0]!, themeId: plan.presentation!.themeId, readonly: true, pollVotingEnabled: true, pollVotes: { [plan.presentation!.slides[0]!.elements[0]!.id]: { [poll.options[0]!.id]: 1 } } } });
+    await canvas.find('.poll-option').trigger('click');
+    expect(canvas.emitted('pollVote')?.[0]).toEqual([plan.presentation!.slides[0]!.elements[0]!.id, poll.options[0]!.id]);
+    await canvas.setProps({ pollResults: { [plan.presentation!.slides[0]!.elements[0]!.id]: true } });
+    expect(canvas.find('.vote-total').text()).toBe('1 Stimme');
+    editor.unmount();
+    canvas.unmount();
+  });
   it("erstellt und bearbeitet eine Mindmap direkt auf der Folie", async () => {
     const plan = reactive(createPlan());
     const wrapper = mount(PresentationEditor, { props: { plan } });
@@ -65,7 +132,7 @@ describe("Mindmap im Präsentationseditor", () => {
     await wrapper.find('[title="Mindmap"]').trigger("click");
     const map = plan.presentation!.slides[0]!.elements[0]!.content.mindmap!;
     await wrapper.find(".map-node input").trigger("keydown", { key: "Enter" });
-    await wrapper.find(".image-picker button").trigger("click");
+    await wrapper.findAll(".image-picker button").find((button) => button.text() === "Pflanze")!.trigger("click");
     expect(map.nodes[0]!.image?.source).toBe("data:image/png;base64,AA==");
     await wrapper.find(".map-toolbar button:last-child").trigger("click");
     await wrapper.find(".slides > div button").trigger("click");

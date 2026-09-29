@@ -1,5 +1,29 @@
 # TODO
 
+## Medien als lokale Kopie oder URL
+
+- [x] Bestehende Medien-Auswahl, Präsentationselemente, SQLite-Persistenz und die API-Strecke analysieren sowie Ausgangsprüfungen ausführen.
+- [x] Medienmodell und serverseitige Speicherung für Bilder und Videos als lokale, planbezogene Kopie ergänzen.
+- [x] Bild- und Videoeinfügung über URL sowie per lokaler Datei in den Präsentationseditor integrieren.
+- [x] Lokale Medien beim Laden und im Präsentationsfenster zuverlässig ausliefern und darstellen.
+- [x] Abstimmungs-Widget für Ja/Nein und freie Auswahlmöglichkeiten mit Teilnehmenden-Klicks und erst nach Referentenfreigabe sichtbarem Ergebnis ergänzen.
+- [x] Gezoomten Bildausschnitt in Referenten- und Präsentationsansicht per Richtungssteuerung synchron verschiebbar machen.
+- [x] Schema-, Server-, Komponenten- und Browsertests sowie Typprüfung, Gesamttests, Build und Diff-Prüfung ausführen.
+
+## Zeitstrahl-Widget, Schriftarten und Formen
+
+- [x] Bestehendes Präsentationsmodell, Schema, Editor-Toolbar, Canvas und Tests analysieren sowie Ausgangsprüfungen ausführen.
+- [x] Zeitstrahl-Datenmodell mit editierbaren Ereignissen, Duplizierung und Schema-Validierung ergänzen.
+- [x] Zeitstrahl als sichtbares, editierbares Widget in Editor, Referenten- und Präsentationsansicht integrieren.
+- [x] Schriftfamilien einschließlich Times New Roman und zusätzliche tatsächlich gerenderte Formen ergänzen.
+- [x] Unit-, Komponenten- und Browsertests sowie Typprüfung, Gesamttests, Build und Diff-Prüfung ausführen.
+
+## Beidseitige Mindmap-Hauptaeste
+
+- [x] Bestehendes horizontales Mindmap-Automatiklayout und seine Knotenreihenfolge analysieren.
+- [x] Hauptaeste links und rechts der Wurzel verteilen und Unteraeste auf ihrer jeweiligen Seite halten.
+- [x] Layout-, Komponenten-, Typ-, Gesamt-, Build- und Browserpruefungen ausfuehren.
+
 ## Skalierbare Referentenfolie ohne Seitenscrollen
 
 - [x] Verfuegbaren Vorschauplatz und Sprechernotizen in der Referentenansicht analysieren.

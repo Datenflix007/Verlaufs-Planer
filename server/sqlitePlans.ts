@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
+import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { builtInSchedulePatternSeeds } from '../src/data/schedulePatterns'
@@ -8,6 +9,12 @@ import type { WorkspaceSettings } from '../src/domain/types'
 
 export interface StoredPlanSummary { id: string; title: string; updatedAt: string; dateRange: string }
 type StoredPlan = { id: string; metadata: { title: string }; updatedAt: string; days: Array<{ date: string }> }
+export interface StoredPresentationMedia {
+  id: string; planId: string; name: string; mimeType: string; size: number; createdAt: string; content: Buffer
+}
+export interface PresentationMediaInput {
+  planId: string; name: string; mimeType: string; content: Buffer
+}
 const databasePath = resolve(process.cwd(), 'data', 'verlaufsplaner.sqlite')
 
 export class SqlitePlans {
@@ -25,6 +32,30 @@ export class SqlitePlans {
     this.database.prepare('INSERT INTO plans (id, title, updated_at, date_range, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at, date_range = excluded.date_range, payload = excluded.payload').run(plan.id, plan.metadata.title, plan.updatedAt, dateRange, JSON.stringify(input))
   }
   remove(id: string): boolean { return this.database.prepare('DELETE FROM plans WHERE id = ?').run(id).changes > 0 }
+}
+
+/** Stores plan-owned media as BLOBs, while the plan JSON keeps only the stable API URL. */
+export class SqlitePresentationMedia {
+  private readonly database: DatabaseSync
+  constructor(path = databasePath) {
+    mkdirSync(dirname(path), { recursive: true })
+    this.database = new DatabaseSync(path)
+    this.database.exec('CREATE TABLE IF NOT EXISTS presentation_media (id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, name TEXT NOT NULL, mime_type TEXT NOT NULL, content BLOB NOT NULL, created_at TEXT NOT NULL) STRICT; CREATE INDEX IF NOT EXISTS presentation_media_plan_id ON presentation_media(plan_id);')
+  }
+  save(input: PresentationMediaInput): Omit<StoredPresentationMedia, 'content'> {
+    const record = { id: randomUUID(), planId: input.planId, name: input.name || 'Medium', mimeType: input.mimeType, size: input.content.byteLength, createdAt: new Date().toISOString() }
+    this.database.prepare('INSERT INTO presentation_media (id, plan_id, name, mime_type, content, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(record.id, record.planId, record.name, record.mimeType, input.content, record.createdAt)
+    return record
+  }
+  get(id: string): StoredPresentationMedia | undefined {
+    const row = this.database.prepare('SELECT id, plan_id AS planId, name, mime_type AS mimeType, length(content) AS size, created_at AS createdAt, content FROM presentation_media WHERE id = ?').get(id) as Omit<StoredPresentationMedia, 'content'> & { content: Uint8Array } | undefined
+    return row && { ...row, content: Buffer.from(row.content) }
+  }
+  list(planId: string): Array<Omit<StoredPresentationMedia, 'content'>> {
+    return this.database.prepare('SELECT id, plan_id AS planId, name, mime_type AS mimeType, length(content) AS size, created_at AS createdAt FROM presentation_media WHERE plan_id = ? ORDER BY created_at').all(planId) as Array<Omit<StoredPresentationMedia, 'content'>>
+  }
+  remove(id: string): boolean { return this.database.prepare('DELETE FROM presentation_media WHERE id = ?').run(id).changes > 0 }
+  removeForPlan(planId: string): number { return Number(this.database.prepare('DELETE FROM presentation_media WHERE plan_id = ?').run(planId).changes) }
 }
 
 export class SqliteDigitalLearningMaterials {

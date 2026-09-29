@@ -23,6 +23,9 @@ const error = ref("");
 const fullscreen = ref(false);
 const ended = ref(false);
 const audienceZoom = ref(1);
+const audiencePan = ref({ x: 0, y: 0 });
+const pollVotes = ref<Record<string, Record<string, number>>>({});
+const pollResults = ref<Record<string, boolean>>({});
 const inkStrokes = ref<PresentationInkStroke[]>([]);
 const inkTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const audienceInkEnabled = ref(false);
@@ -103,6 +106,19 @@ function eraseInk(strokeIds: string[]): void {
     send({ type: 'PRESENTATION_INK_REMOVE', slideId: currentSlideId.value, strokeId });
   }
 }
+function adjustAudiencePan(direction: 'left' | 'right' | 'up' | 'down'): void {
+  if (!currentSlideId.value || audienceZoom.value <= 1) return;
+  const step = 8;
+  audiencePan.value = {
+    x: Math.max(-28, Math.min(28, audiencePan.value.x + (direction === 'left' ? step : direction === 'right' ? -step : 0))),
+    y: Math.max(-28, Math.min(28, audiencePan.value.y + (direction === 'up' ? step : direction === 'down' ? -step : 0))),
+  };
+  send({ type: 'PRESENTATION_AUDIENCE_PAN', slideId: currentSlideId.value, panX: audiencePan.value.x, panY: audiencePan.value.y });
+}
+function vote(elementId: string, optionId: string): void {
+  if (!currentSlideId.value || pollResults.value[elementId]) return;
+  send({ type: 'POLL_VOTE', slideId: currentSlideId.value, elementId, optionId });
+}
 const presentation = computed<Presentation | undefined>(() =>
   plan.value?.presentation?.id === String(route.params.presentationId)
     ? plan.value.presentation
@@ -148,6 +164,7 @@ onMounted(async () => {
       ) {
         currentSlideId.value = event.slideId;
         audienceZoom.value = 1;
+        audiencePan.value = { x: 0, y: 0 };
         audienceInkEnabled.value = false;
         inkTool.value = 'off';
       }
@@ -156,7 +173,11 @@ onMounted(async () => {
       if (event.type === "MINDMAP_UPDATED" && presentation.value)
         applyMindmapUpdate(presentation.value, event);
       if (event.type === 'PRESENTATION_VIEW_STATE' && event.slideId === currentSlideId.value)
-        audienceZoom.value = event.audienceZoom ? event.zoom : 1;
+        { audienceZoom.value = event.audienceZoom ? event.zoom : 1; audiencePan.value = event.audienceZoom ? { x: event.panX, y: event.panY } : { x: 0, y: 0 }; }
+      if (event.type === 'POLL_STATE' && event.slideId === currentSlideId.value) {
+        pollVotes.value = { ...pollVotes.value, [event.elementId]: event.votes };
+        pollResults.value = { ...pollResults.value, [event.elementId]: event.showResults };
+      }
       if (event.type === 'PRESENTATION_INK_PERMISSION' && event.slideId === currentSlideId.value) {
         audienceInkEnabled.value = event.enabled;
         if (!event.enabled) inkTool.value = 'off';
@@ -200,11 +221,17 @@ onBeforeUnmount(() => {
         :slide="slide"
         :theme-id="presentation.themeId"
         :zoom="audienceZoom"
+        :pan-x="audiencePan.x"
+        :pan-y="audiencePan.y"
+        :poll-votes="pollVotes"
+        :poll-results="pollResults"
+        poll-voting-enabled
+        @poll-vote="vote"
         readonly
         :class="`transition-${slide.transition.type}`"
         :style="{ animationDuration: `${slide.transition.duration}ms` }"
       />
-      <PresentationInkOverlay :strokes="currentInkStrokes" :tool="audienceInkEnabled ? inkTool : 'off'" :color="inkColor" :width="activeInkWidth" :zoom="audienceZoom" :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" />
+      <PresentationInkOverlay :strokes="currentInkStrokes" :tool="audienceInkEnabled ? inkTool : 'off'" :color="inkColor" :width="activeInkWidth" :zoom="audienceZoom" :pan-x="audiencePan.x" :pan-y="audiencePan.y" :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" />
     </div>
     <div v-if="audienceInkEnabled" class="audience-ink-tools" role="toolbar" aria-label="Zeichenwerkzeuge für das Präsentationsfenster">
       <span>Freigegeben:</span>
@@ -215,6 +242,9 @@ onBeforeUnmount(() => {
       <input v-model="inkColor" type="color" aria-label="Stiftfarbe im Präsentationsfenster" />
       <label>Breite <input v-model.number="penWidth" type="range" min="2" max="18" aria-label="Stiftbreite im Präsentationsfenster" /></label>
       <label v-if="inkTool === 'highlighter'">Sekunden <input v-model.number="highlighterSeconds" type="number" min="1" max="60" aria-label="Leuchtdauer im Präsentationsfenster" /></label>
+    </div>
+    <div v-if="audienceZoom > 1" class="audience-pan-tools" role="toolbar" aria-label="Bildausschnitt im Präsentationsfenster bewegen">
+      <button type="button" aria-label="Bildausschnitt nach links bewegen" @click="adjustAudiencePan('left')">←</button><button type="button" aria-label="Bildausschnitt nach oben bewegen" @click="adjustAudiencePan('up')">↑</button><button type="button" aria-label="Bildausschnitt nach unten bewegen" @click="adjustAudiencePan('down')">↓</button><button type="button" aria-label="Bildausschnitt nach rechts bewegen" @click="adjustAudiencePan('right')">→</button>
     </div>
     <div v-if="!fullscreen" class="fullscreen-hint">
       <span>Für Präsentation Vollbild aktivieren</span
@@ -269,6 +299,7 @@ onBeforeUnmount(() => {
 .audience-ink-tools input[type="color"] { width: 28px; height: 26px; padding: 1px; }
 .audience-ink-tools input[type="range"] { width: 70px; }
 .audience-ink-tools input[type="number"] { width: 48px; }
+.audience-pan-tools { position: fixed; z-index: 40; top: 10px; right: 10px; display: flex; gap: .25rem; padding: .35rem; background: #102b30e8; border: 1px solid #3f7175; border-radius: 6px; }.audience-pan-tools button { min-width: 30px; padding: .25rem; }
 .fullscreen-hint {
   position: fixed;
   z-index: 5;

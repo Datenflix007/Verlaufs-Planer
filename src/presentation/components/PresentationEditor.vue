@@ -25,6 +25,8 @@ import {
   sendToBack,
 } from "../presentation";
 import { createMindmapElement, duplicateMindmap } from "../mindmap";
+import { createTimelineElement, duplicateTimeline } from "../timeline";
+import { createPollElement, duplicatePoll } from "../poll";
 import ImageSourcePicker from "./ImageSourcePicker.vue";
 import MindmapProperties from "./MindmapProperties.vue";
 import SlideCanvas from "./SlideCanvas.vue";
@@ -41,6 +43,8 @@ const slides = computed(() => orderedSlides(presentation.value));
 const selectedSlideId = ref(props.initialSlideId ?? slides.value[0]?.id);
 const selectedElementId = ref<string>();
 const editingMindmapId = ref<string>();
+const editingTimelineId = ref<string>();
+const editingPollId = ref<string>();
 const selectedMindmapNodeId = ref<string>();
 const focusMindmapRoot = ref(false);
 const tab = ref<"properties" | "layout" | "design" | "animation">("properties");
@@ -49,9 +53,8 @@ const notesOpen = ref(true);
 const textMenu = ref(false);
 const shapeMenu = ref(false);
 const imageMenu = ref(false);
+const videoMenu = ref(false);
 const draggingSlideId = ref<string>();
-const imageInput = ref<HTMLInputElement>();
-const backgroundInput = ref<HTMLInputElement>();
 const contextMenu = ref<{ x: number; y: number }>();
 const past = ref<Presentation[]>([]);
 const future = ref<Presentation[]>([]);
@@ -98,6 +101,8 @@ function restore(snapshot: Presentation): void {
   selectedSlideId.value = props.plan.presentation.slides[0]?.id;
   selectedElementId.value = undefined;
   editingMindmapId.value = undefined;
+  editingTimelineId.value = undefined;
+  editingPollId.value = undefined;
   selectedMindmapNodeId.value = undefined;
   recording = false;
   changed();
@@ -183,15 +188,31 @@ function addShape(shape: PresentationShapeType): void {
   shapeMenu.value = false;
   changed();
 }
-function addImage(src = ""): void {
+function addMedia(type: "image" | "video", src = ""): void {
   if (!selectedSlide.value) return;
   remember();
-  const element = createElement("image", { x: 300, y: 210 });
+  const element = createElement(type, { x: 300, y: 210 });
   element.content.src = src;
   element.zIndex = maxZ() + 1;
   selectedSlide.value.elements.push(element);
   selectedElementId.value = element.id;
   imageMenu.value = false;
+  videoMenu.value = false;
+  changed();
+}
+function addImage(src = ""): void { addMedia("image", src); }
+function addVideo(src = ""): void { addMedia("video", src); }
+function replaceMedia(src: string): void {
+  if (!selectedElement.value || (selectedElement.value.type !== "image" && selectedElement.value.type !== "video")) return;
+  remember();
+  selectedElement.value.content.src = src;
+  changed();
+}
+function setBackgroundImage(src: string): void {
+  if (!selectedSlide.value) return;
+  remember();
+  selectedSlide.value.background.imageUrl = src;
+  selectedSlide.value.background.imageFit = "cover";
   changed();
 }
 function addIcon(): void {
@@ -215,9 +236,31 @@ function addMindmap(): void {
   focusMindmapRoot.value = true;
   changed();
 }
+function addTimeline(): void {
+  if (!selectedSlide.value) return;
+  remember();
+  const element = createTimelineElement();
+  element.zIndex = maxZ() + 1;
+  selectedSlide.value.elements.push(element);
+  selectedElementId.value = element.id;
+  editingTimelineId.value = element.id;
+  changed();
+}
+function addPoll(): void {
+  if (!selectedSlide.value) return;
+  remember();
+  const element = createPollElement();
+  element.zIndex = maxZ() + 1;
+  selectedSlide.value.elements.push(element);
+  selectedElementId.value = element.id;
+  editingPollId.value = element.id;
+  changed();
+}
 function selectElement(id?: string): void {
   selectedElementId.value = id;
   if (id !== editingMindmapId.value) finishMindmapEdit();
+  if (id !== editingTimelineId.value) finishTimelineEdit();
+  if (id !== editingPollId.value) finishPollEdit();
 }
 function startMindmapEdit(id: string): void {
   const element = selectedSlide.value?.elements.find((item) => item.id === id);
@@ -232,6 +275,24 @@ function finishMindmapEdit(): void {
   selectedMindmapNodeId.value = undefined;
   focusMindmapRoot.value = false;
 }
+function startTimelineEdit(id: string): void {
+  const element = selectedSlide.value?.elements.find((item) => item.id === id);
+  if (!element?.content.timeline) return;
+  selectedElementId.value = id;
+  editingTimelineId.value = id;
+}
+function finishTimelineEdit(): void {
+  editingTimelineId.value = undefined;
+}
+function startPollEdit(id: string): void {
+  const element = selectedSlide.value?.elements.find((item) => item.id === id);
+  if (!element?.content.poll) return;
+  selectedElementId.value = id;
+  editingPollId.value = id;
+}
+function finishPollEdit(): void {
+  editingPollId.value = undefined;
+}
 function duplicateElement(): void {
   if (!selectedSlide.value || !selectedElement.value) return;
   remember();
@@ -240,6 +301,10 @@ function duplicateElement(): void {
   copy.id = crypto.randomUUID();
   if (copy.content.mindmap)
     copy.content.mindmap = duplicateMindmap(copy.content.mindmap);
+  if (copy.content.timeline)
+    copy.content.timeline = duplicateTimeline(copy.content.timeline);
+  if (copy.content.poll)
+    copy.content.poll = duplicatePoll(copy.content.poll);
   copy.x += 20;
   copy.y += 20;
   copy.zIndex = maxZ() + 1;
@@ -305,21 +370,6 @@ function applyLayout(
   remember();
   applySlideLayout(selectedSlide.value, layout);
   changed();
-}
-function chooseFile(event: Event, background = false): void {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file?.type.startsWith("image/")) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    if (background && selectedSlide.value) {
-      remember();
-      selectedSlide.value.background.imageUrl = String(reader.result);
-      selectedSlide.value.background.imageFit = "cover";
-      changed();
-    } else addImage(String(reader.result));
-  };
-  reader.readAsDataURL(file);
-  (event.target as HTMLInputElement).value = "";
 }
 function context(id: string, event: MouseEvent): void {
   selectedElementId.value = id;
@@ -401,19 +451,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
 
 <template>
   <main class="presentation-editor" @click.self="contextMenu = undefined">
-    <input
-      ref="imageInput"
-      class="hidden"
-      type="file"
-      accept="image/*"
-      @change="chooseFile($event)"
-    /><input
-      ref="backgroundInput"
-      class="hidden"
-      type="file"
-      accept="image/*"
-      @change="chooseFile($event, true)"
-    />
     <header class="toolbar">
       <div class="drop">
         <button type="button" title="Text" @click="textMenu = !textMenu">
@@ -444,7 +481,20 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
         <menu v-if="imageMenu">
           <ImageSourcePicker
             :materials="materialImages"
+            :plan-id="plan.id"
             @select="addImage($event)"
+          />
+        </menu>
+      </div>
+      <div class="drop">
+        <button type="button" title="Video" @click="videoMenu = !videoMenu">
+          ▷ Video
+        </button>
+        <menu v-if="videoMenu">
+          <ImageSourcePicker
+            :plan-id="plan.id"
+            media-type="video"
+            @select="addVideo($event)"
           />
         </menu>
       </div>
@@ -458,6 +508,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
               'rectangle',
               'roundedRectangle',
               'ellipse',
+              'diamond',
+              'triangle',
+              'hexagon',
+              'callout',
+              'chevron',
               'line',
               'arrow',
             ] as PresentationShapeType[]"
@@ -470,6 +525,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
                 rectangle: "Rechteck",
                 roundedRectangle: "Rundes Rechteck",
                 ellipse: "Ellipse",
+                diamond: "Raute",
+                triangle: "Dreieck",
+                hexagon: "Sechseck",
+                callout: "Sprechblase",
+                chevron: "Chevron",
                 line: "Linie",
                 arrow: "Pfeil",
               }[shape]
@@ -480,6 +540,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
       <button type="button" title="Icon" @click="addIcon">★ Icon</button>
       <button type="button" title="Mindmap" @click="addMindmap">
         ✣ Mindmap</button
+      ><button type="button" title="Zeitstrahl" @click="addTimeline">↔ Zeitstrahl</button
+      ><button type="button" title="Abstimmung" @click="addPoll">▣ Abstimmung</button
       ><i /><button type="button" @click="tab = 'layout'">▤ Layout</button
       ><button type="button" @click="tab = 'design'">◐ Design</button
       ><i /><button
@@ -615,6 +677,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
               :theme-id="presentation.themeId"
               :selected-element-id="selectedElementId"
               :editing-mindmap-id="editingMindmapId"
+              :editing-timeline-id="editingTimelineId"
+              :editing-poll-id="editingPollId"
               :selected-mindmap-node-id="selectedMindmapNodeId"
               :focus-mindmap-root="focusMindmapRoot"
               @select="selectElement"
@@ -625,6 +689,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
               @mindmap-finish="finishMindmapEdit"
               @mindmap-node-select="selectedMindmapNodeId = $event"
               @mindmap-image-request="selectedMindmapNodeId = $event"
+              @timeline-edit="startTimelineEdit"
+              @timeline-finish="finishTimelineEdit"
+              @poll-edit="startPollEdit"
+              @poll-finish="finishPollEdit"
               @undo="undo"
               @redo="redo"
             />
@@ -682,9 +750,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
                 {
                   text: "Text",
                   image: "Bild",
+                  video: "Video",
                   shape: "Form",
                   icon: "Icon",
                   mindmap: "Mindmap",
+                  timeline: "Zeitstrahl",
+                  poll: "Abstimmung",
                 }[selectedElement.type]
               }}
             </h2>
@@ -764,7 +835,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
                   "
                 >
                   <option value="Inter, sans-serif">Sans Serif</option>
-                  <option value="Georgia, serif">Serif</option>
+                  <option value="Arial, sans-serif">Arial</option>
+                  <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="Verdana, sans-serif">Verdana</option>
+                  <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                  <option value="'Courier New', monospace">Courier New</option>
                   <option value="monospace">Monospace</option>
                 </select></label
               ><label
@@ -777,9 +853,15 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
                       Number(($event.target as HTMLInputElement).value),
                     )
                   " /></label></template
-            ><template v-if="selectedElement.type === 'image'"
-              ><button type="button" @click="imageInput?.click()">
-                Bild ersetzen</button
+            ><template v-if="selectedElement.type === 'image' || selectedElement.type === 'video'"
+              ><details class="media-source">
+                <summary>{{ selectedElement.type === 'video' ? 'Video ersetzen' : 'Bild ersetzen' }}</summary>
+                <ImageSourcePicker
+                  :plan-id="plan.id"
+                  :media-type="selectedElement.type === 'video' ? 'video' : 'image'"
+                  @select="replaceMedia($event)"
+                />
+              </details
               ><label
                 >Fit<select
                   :value="selectedElement.style.objectFit ?? 'cover'"
@@ -810,6 +892,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
                   <option value="rectangle">Rechteck</option>
                   <option value="roundedRectangle">Rundes Rechteck</option>
                   <option value="ellipse">Ellipse</option>
+                  <option value="diamond">Raute</option>
+                  <option value="triangle">Dreieck</option>
+                  <option value="hexagon">Sechseck</option>
+                  <option value="callout">Sprechblase</option>
+                  <option value="chevron">Chevron</option>
                   <option value="line">Linie</option>
                   <option value="arrow">Pfeil</option>
                 </select></label
@@ -920,8 +1007,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
               type="color"
               @focus="remember"
               @input="changed" /></label
-          ><button type="button" @click="backgroundInput?.click()">
-            Hintergrundbild</button
+          ><details class="media-source">
+            <summary>Hintergrundbild</summary>
+            <ImageSourcePicker :plan-id="plan.id" @select="setBackgroundImage($event)" />
+          </details
           ><button
             v-if="selectedSlide?.background.imageUrl"
             type="button"
@@ -967,6 +1056,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
         :mindmap="selectedElement.content.mindmap"
         :selected-node-id="selectedMindmapNodeId"
         :materials="materialImages"
+        :plan-id="plan.id"
         :editing="editingMindmapId === selectedElement.id"
         @begin-change="remember"
         @changed="changed"
@@ -1073,6 +1163,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
   border: 0;
   text-align: left;
 }
+.media-source { min-width: 0; }
+.media-source summary { cursor: pointer; }
 .workspace {
   position: relative;
   display: grid;

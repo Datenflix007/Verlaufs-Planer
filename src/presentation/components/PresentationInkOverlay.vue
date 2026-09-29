@@ -10,8 +10,10 @@ const props = withDefaults(defineProps<{
   color?: string
   width?: number
   zoom?: number
+  panX?: number
+  panY?: number
   fadeAfterMs?: number
-}>(), { tool: 'off', color: '#e53935', width: 5, zoom: 1, fadeAfterMs: 3000 })
+}>(), { tool: 'off', color: '#e53935', width: 5, zoom: 1, panX: 0, panY: 0, fadeAfterMs: 3000 })
 const emit = defineEmits<{ ink: [strokeId: string, points: Point[]]; erase: [strokeIds: string[]] }>()
 const svg = ref<SVGSVGElement>()
 const draft = ref<Point[]>([])
@@ -86,9 +88,11 @@ onBeforeUnmount(() => {
 function point(event: PointerEvent): Point | undefined {
   const rect = svg.value?.getBoundingClientRect()
   if (!rect?.width || !rect.height) return
+  const x = (((event.clientX - rect.left) / rect.width) * 1280 - props.panX * 12.8 - 640) / props.zoom + 640
+  const y = (((event.clientY - rect.top) / rect.height) * 720 - props.panY * 7.2 - 360) / props.zoom + 360
   return {
-    x: Math.max(0, Math.min(1280, ((((event.clientX - rect.left) / rect.width) * 1280 - 640) / props.zoom) + 640)),
-    y: Math.max(0, Math.min(720, ((((event.clientY - rect.top) / rect.height) * 720 - 360) / props.zoom) + 360)),
+    x: Math.max(0, Math.min(1280, x)),
+    y: Math.max(0, Math.min(720, y)),
     at: Date.now(),
   }
 }
@@ -169,7 +173,7 @@ function eraseAt(point: Point): void {
     ref="svg"
     class="presentation-ink-overlay"
     :class="{ drawing: enabled, erasing: tool === 'eraser' }"
-    :style="{ transform: `scale(${zoom})` }"
+    :style="{ transform: `translate(${panX}%, ${panY}%) scale(${zoom})` }"
     viewBox="0 0 1280 720"
     preserveAspectRatio="none"
     aria-hidden="true"

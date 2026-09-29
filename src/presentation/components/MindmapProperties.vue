@@ -14,6 +14,7 @@ const props = defineProps<{
   mindmap: MindmapWidget;
   selectedNodeId?: string;
   materials: Material[];
+  planId: string;
   editing: boolean;
 }>();
 const emit = defineEmits<{
@@ -137,6 +138,7 @@ function value(event: Event): string {
         <h3>Bild</h3>
         <ImageSourcePicker
           :materials="materials"
+          :plan-id="planId"
           @select="
             update(() => (node!.image = { source: $event, fit: 'contain' }))
           "

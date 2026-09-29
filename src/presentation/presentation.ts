@@ -1,6 +1,8 @@
 import { createId } from '../domain/factories'
 import type { Presentation, PresentationElement, PresentationLayoutType, PresentationShapeType, PresentationSlide, PresentationThemeId, WorkshopPlan } from '../domain/types'
 import { duplicateMindmap } from './mindmap'
+import { duplicateTimeline } from './timeline'
+import { duplicatePoll } from './poll'
 
 const now = (): string => new Date().toISOString()
 // Presentation data is persisted as JSON; serializing it also unwraps Vue's reactive proxies.
@@ -43,7 +45,7 @@ export function duplicateSlide(presentation: Presentation, slideId: string): Pre
   const source = presentation.slides.find((slide) => slide.id === slideId)
   if (!source) return undefined
   const copy = clonePresentationData(source); const timestamp = now(); copy.id = createId(); copy.position = source.position + 1; copy.title = `${source.title || 'Folie'} (Kopie)`; copy.createdAt = timestamp; copy.updatedAt = timestamp
-  copy.elements = copy.elements.map((element) => ({ ...element, id: createId(), content: element.content.mindmap ? { ...element.content, mindmap: duplicateMindmap(element.content.mindmap) } : element.content, createdAt: timestamp, updatedAt: timestamp }))
+  copy.elements = copy.elements.map((element) => ({ ...element, id: createId(), content: element.content.mindmap ? { ...element.content, mindmap: duplicateMindmap(element.content.mindmap) } : element.content.timeline ? { ...element.content, timeline: duplicateTimeline(element.content.timeline) } : element.content.poll ? { ...element.content, poll: duplicatePoll(element.content.poll) } : element.content, createdAt: timestamp, updatedAt: timestamp }))
   presentation.slides.push(copy); normaliseSlidePositions(presentation); return copy
 }
 export function moveSlide(presentation: Presentation, slideId: string, destination: number): void {
@@ -59,10 +61,11 @@ export function deleteSlide(presentation: Presentation, slideId: string): boolea
 }
 export function createElement(type: PresentationElement['type'], position: { x: number; y: number }, options: Partial<PresentationElement> = {}): PresentationElement {
   const timestamp = now()
-  const base: PresentationElement = { id: createId(), type, x: position.x, y: position.y, width: type === 'text' ? 420 : type === 'icon' ? 100 : 280, height: type === 'text' ? 120 : type === 'icon' ? 100 : 190, rotation: 0, zIndex: 1, style: { opacity: 1 }, content: {}, createdAt: timestamp, updatedAt: timestamp, ...options }
+  const media = type === 'image' || type === 'video'
+  const base: PresentationElement = { id: createId(), type, x: position.x, y: position.y, width: type === 'text' ? 420 : type === 'icon' ? 100 : media ? 480 : 280, height: type === 'text' ? 120 : type === 'icon' ? 100 : media ? 270 : 190, rotation: 0, zIndex: 1, style: { opacity: 1 }, content: {}, createdAt: timestamp, updatedAt: timestamp, ...options }
   if (type === 'text' && !base.content.text) base.content.text = 'Text hinzufügen'
   if (type === 'shape') { if (!base.content.shape) base.content.shape = 'rectangle'; if (!base.style.backgroundColor) base.style.backgroundColor = '#397078' }
-  if (type === 'image') base.content.src = ''
+  if (media) base.content.src = ''
   if (type === 'icon') base.content.icon = '★'
   return base
 }

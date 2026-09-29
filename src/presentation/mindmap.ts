@@ -292,12 +292,22 @@ export function layoutMindmap(mindmap: MindmapWidget): MindmapLayout {
   const depth = Math.max(...descendants.map((node) => node.depth));
   const scaleX = Math.min(
     1,
-    (MINDMAP_WIDTH - 180) / Math.max(1, depth * spacingX),
+    (MINDMAP_WIDTH / 2 - 120) / Math.max(1, depth * spacingX),
   );
   const scaleY = Math.min(1, (MINDMAP_HEIGHT - 120) / Math.max(1, maxX - minX));
   const positions = new Map<string, PositionedMindmapNode>();
+  const rootBranches = hierarchy.children ?? [];
+  const branchDirections = new Map(
+    rootBranches.map((branch, index) => [branch.id!, index % 2 === 0 ? 1 : -1]),
+  );
+  const directionFor = (item: typeof descendants[number]): number => {
+    let branch = item;
+    while (branch.parent && branch.parent.depth > 0) branch = branch.parent;
+    return branchDirections.get(branch.id!) ?? 1;
+  };
   for (const item of descendants) {
-    let x = 115 + item.y * scaleX;
+    const direction = item.depth === 0 ? 0 : directionFor(item);
+    let x = MINDMAP_WIDTH / 2 + direction * item.y * scaleX;
     let y = MINDMAP_HEIGHT / 2 + (item.x - (minX + maxX) / 2) * scaleY;
     if (descendants.length === 1) x = MINDMAP_WIDTH / 2;
     if (mindmap.settings.layout === "radial") {

@@ -63,8 +63,8 @@ export interface WorkshopPlan {
 }
 
 export type PresentationThemeId = 'schlicht' | 'tafelstil' | 'neon' | 'arbeitsblatt' | 'natur'
-export type PresentationElementType = 'text' | 'image' | 'shape' | 'icon' | 'mindmap'
-export type PresentationShapeType = 'rectangle' | 'roundedRectangle' | 'ellipse' | 'line' | 'arrow'
+export type PresentationElementType = 'text' | 'image' | 'video' | 'shape' | 'icon' | 'mindmap' | 'timeline' | 'poll'
+export type PresentationShapeType = 'rectangle' | 'roundedRectangle' | 'ellipse' | 'diamond' | 'triangle' | 'hexagon' | 'callout' | 'chevron' | 'line' | 'arrow'
 export type PresentationImageFit = 'contain' | 'cover' | 'fill'
 export type PresentationTransition = 'none' | 'fade' | 'slide'
 export type PresentationLayoutType = 'blank' | 'title' | 'titleContent' | 'twoColumn' | 'imageText' | 'section' | 'closing'
@@ -84,12 +84,24 @@ export interface MindmapWidget {
   id: string; rootNodeId: string; nodes: MindmapNode[]; edges: MindmapEdge[]
   settings: { layout: 'horizontal' | 'radial'; autoLayout: boolean; spacingX: number; spacingY: number; branchColors: boolean; design: MindmapDesign }
 }
+export interface TimelineEntry {
+  id: string; date: string; title: string; description?: string; color?: string
+}
+export interface TimelineWidget {
+  id: string; orientation: 'horizontal' | 'vertical'; entries: TimelineEntry[]
+}
+export interface PollOption {
+  id: string; label: string
+}
+export interface PollWidget {
+  id: string; question: string; type: 'yes-no' | 'multiple-choice'; options: PollOption[]
+}
 
 export interface PresentationElement {
   id: string; type: PresentationElementType
   x: number; y: number; width: number; height: number; rotation: number; zIndex: number
   style: { color?: string; backgroundColor?: string; fontSize?: number; fontFamily?: string; fontWeight?: number; fontStyle?: 'normal' | 'italic'; textDecoration?: 'none' | 'underline'; textAlign?: 'left' | 'center' | 'right'; lineHeight?: number; letterSpacing?: number; opacity?: number; borderRadius?: number; stroke?: string; strokeWidth?: number; objectFit?: PresentationImageFit; locked?: boolean }
-  content: { text?: string; src?: string; shape?: PresentationShapeType; icon?: string; mindmap?: MindmapWidget }
+  content: { text?: string; src?: string; shape?: PresentationShapeType; icon?: string; mindmap?: MindmapWidget; timeline?: TimelineWidget; poll?: PollWidget }
   createdAt: string; updatedAt: string
 }
 export interface PresentationSlide {
