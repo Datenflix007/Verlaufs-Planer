@@ -95,11 +95,11 @@ describe("Presenter Console mit Zweitbildschirm", () => {
     await flushPromises();
     const observer = new BroadcastChannel(presentationChannelName(presentation.id));
     const permissions: boolean[] = [];
-    const sentStrokes: string[] = [];
+    const sentStrokes: Array<{ id: string; points: Array<{ x: number; y: number }> }> = [];
     const removedStrokes: string[] = [];
     observer.onmessage = (event: MessageEvent) => {
       if (event.data.type === "PRESENTATION_INK_PERMISSION") permissions.push(event.data.enabled);
-      if (event.data.type === "PRESENTATION_INK_STROKE") sentStrokes.push(event.data.stroke.id);
+      if (event.data.type === "PRESENTATION_INK_STROKE") sentStrokes.push(event.data.stroke);
       if (event.data.type === "PRESENTATION_INK_REMOVE") removedStrokes.push(event.data.strokeId);
     };
 
@@ -110,9 +110,13 @@ describe("Presenter Console mit Zweitbildschirm", () => {
     expect(permissions).toEqual([true]);
     expect(wrapper.findAll("button").find((button) => button.text().includes("Präsentationsfenster zeichnen"))?.attributes("aria-pressed")).toBe("true");
     await wrapper.findAll("button").find((button) => button.text() === "Stift")!.trigger("click");
-    wrapper.findComponent(PresentationInkOverlay).vm.$emit("draw", [{ x: 20, y: 30 }, { x: 70, y: 80 }]);
+    wrapper.findComponent(PresentationInkOverlay).vm.$emit("ink", "presenter-stroke", [{ x: 20, y: 30 }, { x: 70, y: 80 }]);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(sentStrokes).toHaveLength(1);
+    wrapper.findComponent(PresentationInkOverlay).vm.$emit("ink", "presenter-stroke", [{ x: 20, y: 30 }, { x: 70, y: 80 }, { x: 110, y: 100 }]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sentStrokes).toHaveLength(2);
+    expect(sentStrokes.map((stroke) => stroke.id)).toEqual(["presenter-stroke", "presenter-stroke"]);
+    expect(sentStrokes.at(-1)?.points).toHaveLength(3);
     observer.postMessage({
       type: "PRESENTATION_INK_STROKE",
       stroke: { id: "audience-stroke", slideId: presentation.slides[0]!.id, points: [{ x: 20, y: 30 }, { x: 70, y: 80 }], color: "#1769d2", width: 5, glow: false },

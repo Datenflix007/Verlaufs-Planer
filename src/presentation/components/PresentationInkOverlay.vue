@@ -12,35 +12,77 @@ const props = withDefaults(defineProps<{
   zoom?: number
   fadeAfterMs?: number
 }>(), { tool: 'off', color: '#e53935', width: 5, zoom: 1, fadeAfterMs: 3000 })
-const emit = defineEmits<{ draw: [points: Point[]]; erase: [strokeIds: string[]] }>()
+const emit = defineEmits<{ ink: [strokeId: string, points: Point[]]; erase: [strokeIds: string[]] }>()
 const svg = ref<SVGSVGElement>()
 const draft = ref<Point[]>([])
+const draftStrokeId = ref<string>()
 const erasing = ref(false)
 const clock = ref(Date.now())
 const enabled = computed(() => props.tool !== 'off')
-const regularStrokes = computed(() => props.strokes.filter((stroke) => !stroke.glow))
-type GlowSegment = { id: string; points: Point[]; color: string; width: number; opacity: number }
-function fadeOpacity(point: Point, fadeAfterMs: number): number {
-  const fadeStarted = (point.at ?? clock.value) + fadeAfterMs
+const regularStrokes = computed(() => props.strokes.filter((stroke) => !stroke.glow && stroke.id !== draftStrokeId.value))
+const glowIntervalMs = 48
+type CurvePiece = { at: number; start: Point; control?: Point; end: Point }
+type GlowSegment = { id: string; path: string; color: string; width: number; opacity: number }
+function midpoint(first: Point, second: Point): Point {
+  return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 }
+}
+function curvePieces(points: Point[]): CurvePiece[] {
+  if (points.length < 2) return []
+  if (points.length === 2) return [{ at: points[1]!.at ?? clock.value, start: points[0]!, end: points[1]! }]
+
+  return Array.from({ length: points.length - 2 }, (_, offset) => {
+    const index = offset + 1
+    const control = points[index]!
+    return {
+      at: control.at ?? clock.value,
+      start: index === 1 ? points[0]! : midpoint(points[index - 1]!, control),
+      control,
+      end: index === points.length - 2 ? points.at(-1)! : midpoint(control, points[index + 1]!),
+    }
+  })
+}
+function curveCommand(piece: CurvePiece): string {
+  return piece.control
+    ? ` Q${piece.control.x},${piece.control.y} ${piece.end.x},${piece.end.y}`
+    : ` L${piece.end.x},${piece.end.y}`
+}
+function curvePath(pieces: CurvePiece[]): string {
+  if (!pieces.length) return ''
+  return `M${pieces[0]!.start.x},${pieces[0]!.start.y}${pieces.map(curveCommand).join('')}`
+}
+function fadeOpacity(at: number, fadeAfterMs: number): number {
+  const fadeStarted = at + fadeAfterMs
   return Math.max(0, Math.min(1, 1 - Math.max(0, clock.value - fadeStarted) / presentationInkFadeDurationMs))
 }
 function segments(id: string, points: Point[], color: string, width: number, fadeAfterMs: number): GlowSegment[] {
-  return points.slice(1).flatMap((point, index) => {
-    const opacity = fadeOpacity(point, fadeAfterMs)
-    return opacity > 0 ? [{ id: `${id}-${index + 1}`, points: [points[index]!, point], color, width, opacity: opacity * .9 }] : []
+  const chunks: Array<{ at: number; pieces: CurvePiece[] }> = []
+  for (const piece of curvePieces(points)) {
+    const bucket = Math.floor(piece.at / glowIntervalMs)
+    const current = chunks.at(-1)
+    if (!current || Math.floor(current.at / glowIntervalMs) !== bucket)
+      chunks.push({ at: piece.at, pieces: [piece] })
+    else current.pieces.push(piece)
+  }
+  return chunks.flatMap((chunk, index) => {
+    const opacity = fadeOpacity(chunk.at, fadeAfterMs)
+    return opacity > 0 ? [{ id: `${id}-${index}`, path: curvePath(chunk.pieces), color, width, opacity }] : []
   })
 }
 const glowSegments = computed(() => {
   clock.value
-  return props.strokes.filter((stroke) => stroke.glow).flatMap((stroke) => segments(stroke.id, stroke.points, stroke.color, stroke.width, stroke.fadeAfterMs ?? 3000))
+  return props.strokes.filter((stroke) => stroke.glow && stroke.id !== draftStrokeId.value).flatMap((stroke) => segments(stroke.id, stroke.points, stroke.color, stroke.width, stroke.fadeAfterMs ?? 3000))
 })
 const draftGlowSegments = computed(() => {
   clock.value
   return props.tool === 'highlighter' ? segments('draft', draft.value, props.color, props.width, props.fadeAfterMs) : []
 })
 let clockTimer: ReturnType<typeof setInterval> | undefined
-onMounted(() => { clockTimer = setInterval(() => (clock.value = Date.now()), 50) })
-onBeforeUnmount(() => { if (clockTimer) clearInterval(clockTimer) })
+let inkFrame: number | undefined
+onMounted(() => { clockTimer = setInterval(() => (clock.value = Date.now()), 32) })
+onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer)
+  if (inkFrame !== undefined) cancelAnimationFrame(inkFrame)
+})
 function point(event: PointerEvent): Point | undefined {
   const rect = svg.value?.getBoundingClientRect()
   if (!rect?.width || !rect.height) return
@@ -61,6 +103,7 @@ function begin(event: PointerEvent): void {
     svg.value?.setPointerCapture(event.pointerId)
     return
   }
+  draftStrokeId.value = crypto.randomUUID()
   draft.value = [first]
   svg.value?.setPointerCapture(event.pointerId)
 }
@@ -73,15 +116,35 @@ function move(event: PointerEvent): void {
   }
   if (!draft.value.length) return
   const next = point(event)
-  if (next) draft.value = [...draft.value, next]
+  if (next) {
+    draft.value = [...draft.value, next]
+    scheduleInkSync()
+  }
+}
+function publishDraft(): void {
+  if (draftStrokeId.value && draft.value.length > 1)
+    emit('ink', draftStrokeId.value, draft.value.map((point) => ({ ...point })))
+}
+function scheduleInkSync(): void {
+  if (inkFrame !== undefined) return
+  inkFrame = requestAnimationFrame(() => {
+    inkFrame = undefined
+    publishDraft()
+  })
 }
 function finish(): void {
   erasing.value = false
-  if (draft.value.length > 1) emit('draw', draft.value)
+  if (inkFrame !== undefined) {
+    cancelAnimationFrame(inkFrame)
+    inkFrame = undefined
+  }
+  publishDraft()
   draft.value = []
+  draftStrokeId.value = undefined
 }
-function path(points: Point[]): string {
-  return points.map((item, index) => `${index ? 'L' : 'M'}${item.x},${item.y}`).join(' ')
+function smoothPath(points: Point[]): string {
+  if (points.length === 1) return `M${points[0]!.x},${points[0]!.y}`
+  return curvePath(curvePieces(points))
 }
 function eraseAt(point: Point): void {
   const removed = props.strokes
@@ -115,16 +178,10 @@ function eraseAt(point: Point): void {
     @pointerup="finish"
     @pointercancel="finish"
   >
-    <defs>
-      <filter id="presentation-ink-glow" x="-100%" y="-100%" width="300%" height="300%">
-        <feGaussianBlur stdDeviation="9" result="blur" />
-        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-      </filter>
-    </defs>
     <path
       v-for="stroke in regularStrokes"
       :key="stroke.id"
-      :d="path(stroke.points)"
+      :d="smoothPath(stroke.points)"
       fill="none"
       :stroke="stroke.color"
       :stroke-width="stroke.width"
@@ -132,22 +189,19 @@ function eraseAt(point: Point): void {
       stroke-linecap="round"
       stroke-linejoin="round"
     />
-    <path
+    <g
       v-for="segment in glowSegments"
       :key="segment.id"
       class="presentation-ink-glow-segment"
-      :d="path(segment.points)"
-      fill="none"
-      :stroke="segment.color"
-      :stroke-width="segment.width"
-      :stroke-opacity="segment.opacity"
-      filter="url(#presentation-ink-glow)"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
+    >
+      <path class="presentation-ink-glow-aura" :d="segment.path" fill="none" :stroke="segment.color" :stroke-width="segment.width * 1.9" :stroke-opacity="segment.opacity * .1" stroke-linecap="butt" stroke-linejoin="round" />
+      <path class="presentation-ink-glow-halo" :d="segment.path" fill="none" :stroke="segment.color" :stroke-width="segment.width * 1.35" :stroke-opacity="segment.opacity * .16" stroke-linecap="butt" stroke-linejoin="round" />
+      <path class="presentation-ink-glow-core" :d="segment.path" fill="none" :stroke="segment.color" :stroke-width="segment.width * .84" :stroke-opacity="segment.opacity * .76" stroke-linecap="butt" stroke-linejoin="round" />
+      <path class="presentation-ink-glow-sheen" :d="segment.path" fill="none" stroke="#fff" :stroke-width="segment.width * .2" :stroke-opacity="segment.opacity * .2" stroke-linecap="butt" stroke-linejoin="round" />
+    </g>
     <path
       v-if="draft.length && tool !== 'highlighter'"
-      :d="path(draft)"
+      :d="smoothPath(draft)"
       fill="none"
       :stroke="color"
       :stroke-width="width"
@@ -155,19 +209,16 @@ function eraseAt(point: Point): void {
       stroke-linecap="round"
       stroke-linejoin="round"
     />
-    <path
+    <g
       v-for="segment in draftGlowSegments"
       :key="segment.id"
       class="presentation-ink-glow-segment"
-      :d="path(segment.points)"
-      fill="none"
-      :stroke="segment.color"
-      :stroke-width="segment.width"
-      :stroke-opacity="segment.opacity"
-      filter="url(#presentation-ink-glow)"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
+    >
+      <path class="presentation-ink-glow-aura" :d="segment.path" fill="none" :stroke="segment.color" :stroke-width="segment.width * 1.9" :stroke-opacity="segment.opacity * .1" stroke-linecap="butt" stroke-linejoin="round" />
+      <path class="presentation-ink-glow-halo" :d="segment.path" fill="none" :stroke="segment.color" :stroke-width="segment.width * 1.35" :stroke-opacity="segment.opacity * .16" stroke-linecap="butt" stroke-linejoin="round" />
+      <path class="presentation-ink-glow-core" :d="segment.path" fill="none" :stroke="segment.color" :stroke-width="segment.width * .84" :stroke-opacity="segment.opacity * .76" stroke-linecap="butt" stroke-linejoin="round" />
+      <path class="presentation-ink-glow-sheen" :d="segment.path" fill="none" stroke="#fff" :stroke-width="segment.width * .2" :stroke-opacity="segment.opacity * .2" stroke-linecap="butt" stroke-linejoin="round" />
+    </g>
   </svg>
 </template>
 
@@ -183,4 +234,8 @@ function eraseAt(point: Point): void {
 }
 .presentation-ink-overlay.drawing { pointer-events: auto; touch-action: none; cursor: crosshair; }
 .presentation-ink-overlay.erasing { cursor: cell; }
+.presentation-ink-glow-aura,
+.presentation-ink-glow-halo,
+.presentation-ink-glow-core,
+.presentation-ink-glow-sheen { transition: stroke-opacity 80ms linear; }
 </style>

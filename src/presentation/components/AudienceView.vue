@@ -73,21 +73,24 @@ function setInkState(strokes: PresentationInkStroke[]): void {
   inkStrokes.value = [];
   for (const stroke of strokes) retainInkStroke(stroke);
 }
-function drawInk(points: PresentationInkStroke['points']): void {
+function drawInk(id: string, points: PresentationInkStroke['points']): void {
   if (!currentSlideId.value || !audienceInkEnabled.value || inkTool.value === 'off' || inkTool.value === 'eraser') return;
-  const glow = inkTool.value === 'highlighter';
+  if (points.length < 2) return;
+  const existing = inkStrokes.value.find((stroke) => stroke.id === id);
+  const glow = existing?.glow ?? inkTool.value === 'highlighter';
   const duration = Math.max(1, Math.min(60, Number(highlighterSeconds.value) || 5));
   if (glow) highlighterSeconds.value = duration;
   const timedPoints = points.map((point) => ({ x: point.x, y: point.y, at: point.at ?? Date.now() }));
   const lastPointAt = timedPoints.at(-1)?.at ?? Date.now();
   const stroke: PresentationInkStroke = {
-    id: crypto.randomUUID(),
-    slideId: currentSlideId.value,
+    ...existing,
+    id,
+    slideId: existing?.slideId ?? currentSlideId.value,
     points: timedPoints,
-    color: inkColor.value,
-    width: activeInkWidth.value,
+    color: existing?.color ?? inkColor.value,
+    width: existing?.width ?? activeInkWidth.value,
     glow,
-    fadeAfterMs: glow ? duration * 1000 : undefined,
+    fadeAfterMs: glow ? existing?.fadeAfterMs ?? duration * 1000 : undefined,
     expiresAt: glow ? lastPointAt + duration * 1000 + presentationInkFadeDurationMs : undefined,
   };
   retainInkStroke(stroke);
@@ -201,7 +204,7 @@ onBeforeUnmount(() => {
         :class="`transition-${slide.transition.type}`"
         :style="{ animationDuration: `${slide.transition.duration}ms` }"
       />
-      <PresentationInkOverlay :strokes="currentInkStrokes" :tool="audienceInkEnabled ? inkTool : 'off'" :color="inkColor" :width="activeInkWidth" :zoom="audienceZoom" :fade-after-ms="highlighterSeconds * 1000" @draw="drawInk" @erase="eraseInk" />
+      <PresentationInkOverlay :strokes="currentInkStrokes" :tool="audienceInkEnabled ? inkTool : 'off'" :color="inkColor" :width="activeInkWidth" :zoom="audienceZoom" :fade-after-ms="highlighterSeconds * 1000" @ink="drawInk" @erase="eraseInk" />
     </div>
     <div v-if="audienceInkEnabled" class="audience-ink-tools" role="toolbar" aria-label="Zeichenwerkzeuge für das Präsentationsfenster">
       <span>Freigegeben:</span>

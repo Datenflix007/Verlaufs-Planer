@@ -51,6 +51,8 @@ describe("PresentationInkOverlay", () => {
             { x: 20, y: 40, at: now - 2_000 },
             { x: 80, y: 40, at: now - 2_000 },
             { x: 140, y: 40, at: now },
+            { x: 200, y: 90, at: now + 20 },
+            { x: 260, y: 40, at: now + 40 },
           ],
           color: "#f07d16",
           width: 18,
@@ -60,7 +62,15 @@ describe("PresentationInkOverlay", () => {
       },
     });
 
-    expect(wrapper.findAll(".presentation-ink-glow-segment")).toHaveLength(1);
+    expect(wrapper.find("filter").exists()).toBe(false);
+    const glowCores = wrapper.findAll(".presentation-ink-glow-core");
+    expect(glowCores.length).toBeGreaterThan(0);
+    expect(glowCores.every((core) => core.attributes("stroke-linecap") === "butt")).toBe(true);
+    expect(glowCores.some((core) => core.attributes("d")?.includes("Q"))).toBe(true);
+    expect(glowCores.every((core) => core.attributes("d")?.split("M").length === 2)).toBe(true);
+    expect(wrapper.findAll(".presentation-ink-glow-aura")).toHaveLength(glowCores.length);
+    expect(wrapper.findAll(".presentation-ink-glow-sheen")).toHaveLength(glowCores.length);
+    expect(wrapper.find(".presentation-ink-glow-sheen").attributes("stroke")).toBe("#fff");
     await vi.advanceTimersByTimeAsync(1_700);
     await nextTick();
     expect(wrapper.findAll(".presentation-ink-glow-segment")).toHaveLength(0);

@@ -1,5 +1,36 @@
 # TODO
 
+## Nahtlose und live synchronisierte Leuchtspur
+
+- [x] Fade-Fenster fuer eine optisch kontinuierliche Leuchtspur verdichten.
+- [x] Laufende Stiftzuege mit stabiler ID waehrend des Zeichnens zwischen Referenten- und Präsentationsfenster uebertragen.
+- [x] Komponenten-, Typ-, Gesamt-, Build- und Browserpruefungen ausfuehren.
+
+## Magic-Pen-Charakter fuer den Leuchtstift
+
+- [x] Bestehende lueckenlose Leuchtspur als Basis fuer eine mehrschichtige Lichtkante analysieren.
+- [x] Farbsaum, Tinten-Kern und dezente Lichtkante ohne Filterartefakte rendern.
+- [x] Komponenten-, Typ-, Gesamt-, Build- und Browserpruefungen ausfuehren.
+
+## Lueckenlose Leuchtspur ohne Farbverdichtung
+
+- [x] Teilpfade an gemeinsamen Kurvenpunkten statt an sichtbaren Referenzpunkten trennen.
+- [x] Ueberzeichnete Segmentueberlappungen entfernen und die Tablet-Optik testen.
+- [x] Komponenten-, Typ-, Gesamt-, Build- und Browserpruefungen ausfuehren.
+
+## Tabletartige, nahtlose Leuchtspur
+
+- [x] Bestehende getaktete Leuchtspur und die sichtbaren Kappen an Segmentgrenzen analysieren.
+- [x] Leuchtspurpfade zu einer glatten Handschriftkurve verbinden und Segmentkappen unsichtbar machen.
+- [x] Komponenten-, Typ-, Gesamt-, Build- und Browserpruefungen ausfuehren.
+
+## Elegante, getaktete Leuchtspur
+
+- [x] Aktuelles Segment-Rendering und Filterartefakte analysieren sowie Ausgangstests ausführen.
+- [x] Zeitlich getaktete, überlappende Leuchtspurabschnitte mit sanftem Ausfaden statt punktweiser Filterfragmente rendern.
+- [x] Leuchtspur ohne harte Filterkanten visuell sowie mit Komponenten- und Browserprüfungen absichern.
+- [x] Typprüfung, Gesamttests, Produktions-Build und Diff-Prüfung ausführen.
+
 ## Punktweises Verblassen des Leuchtstifts
 
 - [x] Bestehenden Leuchtstift-Datenfluss und Ablaufzeiten analysieren sowie Ausgangstests ausführen.
