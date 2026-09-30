@@ -2,7 +2,21 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { SqliteDigitalLearningMaterials, SqliteSchedulePatterns, SqliteWorkspaceSettings } from './sqlitePlans'
+import { SqliteDigitalLearningMaterials, SqlitePresentationMedia, SqliteSchedulePatterns, SqliteWorkspaceSettings } from './sqlitePlans'
+
+describe('SqlitePresentationMedia', () => {
+  it('legt planbezogene Bild- und Videokopien als BLOBs ab und entfernt sie mit dem Plan', () => {
+    const repository = new SqlitePresentationMedia(join(mkdtempSync(join(tmpdir(), 'verlaufsplaner-media-')), 'media.sqlite'))
+    const planId = '5b03b80b-7919-471d-9d7f-73ba08425017'
+    const image = repository.save({ planId, name: 'Wald.png', mimeType: 'image/png', content: Buffer.from([137, 80, 78, 71]) })
+    const video = repository.save({ planId, name: 'Wald.mp4', mimeType: 'video/mp4', content: Buffer.from([0, 0, 0, 24]) })
+
+    expect(repository.list(planId)).toEqual(expect.arrayContaining([expect.objectContaining({ id: image.id, mimeType: 'image/png', size: 4 }), expect.objectContaining({ id: video.id, mimeType: 'video/mp4', size: 4 })]))
+    expect(repository.get(image.id)?.content).toEqual(Buffer.from([137, 80, 78, 71]))
+    expect(repository.removeForPlan(planId)).toBe(2)
+    expect(repository.get(video.id)).toBeUndefined()
+  })
+})
 
 describe('SqliteDigitalLearningMaterials', () => {
   it('speichert, lädt, aktualisiert und entfernt wiederverwendbare Lernmaterialien', () => {

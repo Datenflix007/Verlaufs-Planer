@@ -6,6 +6,9 @@ export const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/materialien/:id', name: 'learning-material-edit', component: () => import('./views/LearningStudioView.vue') },
   { path: '/plan/:id', name: 'editor', component: () => import('./views/EditorView.vue') },
   { path: '/plan/:id/preview', name: 'preview', component: () => import('./views/PreviewView.vue') },
+  { path: '/plan/:id/presentation', name: 'presentation', component: () => import('./views/PresentationView.vue') },
+  { path: '/plan/:id/presentation/presenter', name: 'presentation-presenter', component: () => import('./views/PresentationView.vue'), meta: { presenter: true } },
+  { path: '/presentation/:presentationId/audience', name: 'presentation-audience', component: () => import('./presentation/components/AudienceView.vue') },
   { path: '/settings', component: () => import('./views/SettingsHubView.vue'), children: [
     { path: '', redirect: { name: 'workspace-settings' } },
     { path: 'workspace', name: 'workspace-settings', component: () => import('./views/WorkspaceSettingsView.vue') },
