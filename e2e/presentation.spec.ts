@@ -1,7 +1,26 @@
 import { expect, test } from '@playwright/test'
 import { createPlan } from '../src/domain/factories'
 import { copyFile, readFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { PDFDocument } from 'pdf-lib'
+
+test('übernimmt Lehrplan- und Kompetenzbezüge beim Anlegen einer Reihe', async ({ page, request }) => {
+  const stamp = new Date().toISOString()
+  const schoolYearId = randomUUID()
+  const classGroupId = randomUUID()
+  const assignmentId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${schoolYearId}`, { data: { id: schoolYearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/class-groups/${classGroupId}`, { data: { id: classGroupId, schoolYearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId, schoolYearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } })
+
+  await page.goto('/lehrplan')
+  await page.locator('.node-select').first().click()
+  await expect(page.locator('.competency-choice')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Gespeicherte Reihe anlegen' }).click()
+  await expect(page).toHaveURL(/\/reihen$/)
+  await expect(page.locator('.reference-chip')).toContainText('Zentrale Inhalte Klassenstufen 7/8')
+  await expect(page.locator('.competency-chip')).toHaveCount(2)
+})
 
 test('Mindmap bearbeiten, lokal speichern und auf dem Audience-Fenster zeigen', async ({ page, request, context }) => {
   const plan = createPlan('Mindmap Browserprüfung')
@@ -144,11 +163,11 @@ test('erstellt einen Zeitstrahl, bearbeitet Ereignisse und zeigt ihn im Präsent
 
   await page.getByTitle('Zeitstrahl').click()
   await expect(page.locator('.timeline-widget')).toBeVisible()
-  await expect(page.locator('.timeline-entry')).toHaveCount(3)
+  await expect(page.locator('.timeline-edit-card')).toHaveCount(3)
   await page.locator('.timeline-tools').getByRole('button', { name: '+ Ereignis' }).click()
-  await expect(page.locator('.timeline-entry')).toHaveCount(4)
-  await page.locator('.timeline-entry input').nth(1).fill('Auftakt')
-  await page.locator('.timeline-entry input').nth(1).press('Enter')
+  await expect(page.locator('.timeline-edit-card')).toHaveCount(4)
+  await page.locator('.timeline-title').nth(1).fill('Auftakt')
+  await page.locator('.timeline-title').nth(1).press('Enter')
   await page.locator('.timeline-tools').getByRole('button', { name: 'Bearbeitung beenden' }).click()
 
   await expect.poll(async () => {

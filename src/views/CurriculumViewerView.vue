@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCurriculum, getCurriculumTree } from '../data/curricula/registry'
+import { getCompetenciesForLearningArea, getCurriculum, getCurriculumTree } from '../data/curricula/registry'
 import { createId } from '../domain/factories'
 import type { CurriculumAnnotationStatus, CurriculumComment, SchoolPlanningSnapshot } from '../domain/schoolPlanning'
 import { SchoolPlanningRepository } from '../repositories/SchoolPlanningRepository'
@@ -20,6 +20,8 @@ const sequenceTitle = ref('')
 const sequenceQuestion = ref('')
 const sequenceStart = ref('')
 const sequenceEnd = ref('')
+const selectedCompetencyIds = ref<string[]>([])
+const competencyRoles = ref<Record<string, 'primary' | 'secondary' | 'supporting'>>({})
 
 const labels: Record<CurriculumAnnotationStatus, string> = {
   'rough-planned': '○ Vorgemerkt',
@@ -52,9 +54,16 @@ function nodeTitle(nodeId: string) {
   return 'Lehrplaninhalt'
 }
 const annualMarkers = computed(() => annotations.value.filter((item) => item.plannedWeek).map((item) => ({ ...item, title: nodeTitle(item.curriculumNodeId) })))
+const selectedAreaId = computed(() => tree.value.find((area) => area.id === selectedNodeId.value || area.contentPoints.some((point) => point.id === selectedNodeId.value))?.id)
+const selectableCompetencies = computed(() => curriculum.value && selectedAreaId.value ? getCompetenciesForLearningArea(curriculum.value.id, selectedAreaId.value) : [])
 
 function annotationFor(nodeId: string) { return annotations.value.find((item) => item.curriculumNodeId === nodeId) }
-function selectNode(nodeId: string, kind: NodeKind, title: string) { selectedNodeId.value = nodeId; selectedNodeKind.value = kind; sequenceTitle.value = `Reihe: ${title}` }
+function selectNode(nodeId: string, kind: NodeKind, title: string) {
+  selectedNodeId.value = nodeId; selectedNodeKind.value = kind; sequenceTitle.value = `Reihe: ${title}`
+  const area = tree.value.find((item) => item.id === nodeId || item.contentPoints.some((point) => point.id === nodeId))
+  selectedCompetencyIds.value = area?.competencyIds ?? []
+  competencyRoles.value = Object.fromEntries((area?.competencyIds ?? []).map((id, index) => [id, index === 0 ? 'primary' : 'secondary']))
+}
 async function load() { data.value = await repository.get(); if (!assignmentId.value && assignment.value) assignmentId.value = assignment.value.id }
 async function updateAnnotation(nodeId: string, kind: NodeKind, patch: Partial<{ status: CurriculumAnnotationStatus; plannedWeek: number | undefined; teachingSequenceId: string }>) {
   if (!assignment.value) return
@@ -72,6 +81,8 @@ async function createSequence() {
   if (!assignment.value || !selectedNodeId.value || !sequenceTitle.value.trim()) return
   const stamp = new Date().toISOString()
   const sequence = await repository.saveSequence({ id: createId(), classSubjectAssignmentId: assignment.value.id, title: sequenceTitle.value.trim(), overarchingQuestion: sequenceQuestion.value.trim() || undefined, startDate: sequenceStart.value || undefined, endDate: sequenceEnd.value || undefined, status: 'planned', createdAt: stamp, updatedAt: stamp })
+  await repository.saveSequenceCurriculumReference({ id: createId(), teachingSequenceId: sequence.id, curriculumNodeId: selectedNodeId.value, nodeKind: selectedNodeKind.value, relationType: 'primary', createdAt: stamp, updatedAt: stamp })
+  for (const competencyId of selectedCompetencyIds.value) await repository.saveSequenceCompetency({ id: createId(), teachingSequenceId: sequence.id, competencyId, role: competencyRoles.value[competencyId] ?? 'supporting', createdAt: stamp, updatedAt: stamp })
   await updateAnnotation(selectedNodeId.value, selectedNodeKind.value, { status: 'scheduled', teachingSequenceId: sequence.id })
   await router.push({ name: 'sequence-planning' })
 }
@@ -84,7 +95,7 @@ onMounted(() => void load())
     <label class="assignment-picker">Klasse &amp; Fach<select v-model="assignmentId"><option v-for="item in data?.assignments" :key="item.id" :value="item.id">{{ data?.classGroups.find((group) => group.id === item.classGroupId)?.name }} · {{ getCurriculum(item.curriculumId)?.subject.name.de }}</option></select></label>
     <section class="annual-plan" aria-label="Jahresplanung"><header><div><p class="eyebrow">Jahresplanung</p><h2>Lehrplanmarker nach Kalenderwoche</h2></div><p>{{ annualMarkers.length }} grobe Planung{{ annualMarkers.length === 1 ? '' : 'en' }}</p></header><div class="week-grid"><article v-for="week in calendarWeeks" :key="week" class="week-cell" :class="{ occupied: annualMarkers.some((marker) => marker.plannedWeek === week) }"><strong>KW {{ week }}</strong><span v-for="marker in annualMarkers.filter((item) => item.plannedWeek === week)" :key="marker.id" :class="`marker ${marker.status}`" :title="marker.title">{{ marker.title }}</span></article></div></section>
     <section class="layout"><article class="curriculum-panel"><h2>Lehrplanbereiche</h2><p class="source">Referenz: {{ curriculum?.sourceId }}</p><section v-for="area in tree" :key="area.id" class="area"><header><div><h3>{{ area.title }}</h3><p>{{ area.description }}</p></div><div class="statuses"><button v-for="(label, status) in labels" :key="status" :class="[`status-${status}`, { active: annotationFor(area.id)?.status === status }]" :aria-label="`${area.title}: ${label}`" :aria-pressed="annotationFor(area.id)?.status === status" @click="saveStatus(area.id, 'learning-area', status)">{{ label }}</button></div></header><button class="node-select" :class="{ selected: selectedNodeId === area.id }" @click="selectNode(area.id, 'learning-area', area.title)">Bereich für Jahresplanung / Reihe auswählen</button><article v-for="point in area.contentPoints" :key="point.id" class="point" :class="{ selected: selectedNodeId === point.id }"><div><strong>{{ point.title }}</strong><p v-if="point.description">{{ point.description }}</p></div><div class="point-actions"><span v-if="annotationFor(point.id)?.plannedWeek" class="week-chip">KW {{ annotationFor(point.id)?.plannedWeek }}</span><button v-for="(label, status) in labels" :key="status" :title="label" :class="[`status-${status}`, { active: annotationFor(point.id)?.status === status }]" :aria-label="`${point.title}: ${label}`" :aria-pressed="annotationFor(point.id)?.status === status" @click="saveStatus(point.id, 'content-point', status)">{{ label.slice(0, 1) }}</button><button @click="selectNode(point.id, 'content-point', point.title)">Planen</button></div></article></section></article>
-      <aside class="planning-sidebar"><template v-if="selectedNodeId"><p class="eyebrow">Ausgewählter Lehrplanknoten</p><h2>{{ selectedNodeTitle }}</h2><label>Kalenderwoche<input :value="selectedAnnotation?.plannedWeek ?? ''" type="number" min="1" max="53" placeholder="1–53" @change="setWeek"></label><p v-if="selectedAnnotation?.plannedWeek" class="hint">Für KW {{ selectedAnnotation.plannedWeek }} vorgemerkt.</p><section class="side-section"><h3>Kommentar</h3><textarea v-model="note" placeholder="Eigene Notiz zu diesem Lehrplaninhalt …"></textarea><div class="comment-compose"><button :disabled="!note.trim()" @click="saveComment">{{ editingCommentId ? 'Kommentar aktualisieren' : 'Kommentar speichern' }}</button><button v-if="editingCommentId" class="secondary" @click="editingCommentId = ''; note = ''">Abbrechen</button></div><article v-for="comment in comments" :key="comment.id" class="comment" :class="{ resolved: comment.resolved }"><p>{{ comment.comment }}</p><div class="comment-actions"><button class="secondary" @click="toggleComment(comment)">{{ comment.resolved ? 'Wieder öffnen' : 'Als erledigt markieren' }}</button><button class="secondary" @click="editComment(comment)">Bearbeiten</button><button class="danger" @click="removeComment(comment)">Löschen</button></div></article></section><section class="side-section"><h3>Reihe daraus erstellen</h3><label>Titel<input v-model="sequenceTitle" required></label><label>Leitfrage<input v-model="sequenceQuestion"></label><div class="date-grid"><label>Beginn<input v-model="sequenceStart" type="date"></label><label>Ende<input v-model="sequenceEnd" type="date"></label></div><button @click="createSequence">Gespeicherte Reihe anlegen</button></section></template><p v-else class="empty">Wähle einen Lehrplanbereich oder Inhaltspunkt aus. Wochenmarker, Kommentare und Reihen werden nur für diese Klasse und dieses Fach gespeichert.</p></aside></section>
+      <aside class="planning-sidebar"><template v-if="selectedNodeId"><p class="eyebrow">Ausgewählter Lehrplanknoten</p><h2>{{ selectedNodeTitle }}</h2><label>Kalenderwoche<input :value="selectedAnnotation?.plannedWeek ?? ''" type="number" min="1" max="53" placeholder="1–53" @change="setWeek"></label><p v-if="selectedAnnotation?.plannedWeek" class="hint">Für KW {{ selectedAnnotation.plannedWeek }} vorgemerkt.</p><section class="side-section"><h3>Kommentar</h3><textarea v-model="note" placeholder="Eigene Notiz zu diesem Lehrplaninhalt …"></textarea><div class="comment-compose"><button :disabled="!note.trim()" @click="saveComment">{{ editingCommentId ? 'Kommentar aktualisieren' : 'Kommentar speichern' }}</button><button v-if="editingCommentId" class="secondary" @click="editingCommentId = ''; note = ''">Abbrechen</button></div><article v-for="comment in comments" :key="comment.id" class="comment" :class="{ resolved: comment.resolved }"><p>{{ comment.comment }}</p><div class="comment-actions"><button class="secondary" @click="toggleComment(comment)">{{ comment.resolved ? 'Wieder öffnen' : 'Als erledigt markieren' }}</button><button class="secondary" @click="editComment(comment)">Bearbeiten</button><button class="danger" @click="removeComment(comment)">Löschen</button></div></article></section><section class="side-section"><h3>Reihe daraus erstellen</h3><label>Titel<input v-model="sequenceTitle" required></label><label>Leitfrage<input v-model="sequenceQuestion"></label><div class="date-grid"><label>Beginn<input v-model="sequenceStart" type="date"></label><label>Ende<input v-model="sequenceEnd" type="date"></label></div><fieldset v-if="selectableCompetencies.length" class="competency-picker"><legend>Kompetenzbezüge</legend><label v-for="competency in selectableCompetencies" :key="competency.id" class="competency-choice"><input v-model="selectedCompetencyIds" type="checkbox" :value="competency.id"><span>{{ competency.normalizedLabel ?? competency.text }}</span><select v-if="selectedCompetencyIds.includes(competency.id)" v-model="competencyRoles[competency.id]"><option value="primary">Primär</option><option value="secondary">Sekundär</option><option value="supporting">Unterstützend</option></select></label></fieldset><button @click="createSequence">Gespeicherte Reihe anlegen</button></section></template><p v-else class="empty">Wähle einen Lehrplanbereich oder Inhaltspunkt aus. Wochenmarker, Kommentare und Reihen werden nur für diese Klasse und dieses Fach gespeichert.</p></aside></section>
   </main>
 </template>
 
@@ -94,6 +105,7 @@ onMounted(() => void load())
 
 <style scoped>
 .comment-compose,.comment-actions{display:flex;gap:.4rem;flex-wrap:wrap}.comment-actions button{font-size:.75rem;padding:.3rem .4rem}
+.competency-picker{display:grid;gap:.45rem;margin:.85rem 0;padding:.7rem;border:1px solid #d3e2e3;border-radius:8px}.competency-picker legend{padding:0 .2rem;font-size:.82rem;font-weight:800}.competency-choice{grid-template-columns:auto 1fr auto!important;align-items:center;margin:0!important;font-size:.78rem!important;font-weight:600!important}.competency-choice select{font-size:.74rem}
 </style>
 
 <style scoped>

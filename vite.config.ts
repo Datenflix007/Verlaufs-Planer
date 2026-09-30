@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { SqliteDigitalLearningMaterials, SqlitePlans, SqlitePresentationMedia, SqliteSchedulePatterns, SqliteWorkspaceSettings } from './server/sqlitePlans'
 import { SqliteSchoolPlanning } from './server/schoolPlanning'
-import { CalendarExceptionSchema, ClassGroupSchema, ClassSubjectAssignmentSchema, CurriculumAnnotationSchema, CurriculumCommentSchema, LessonReflectionSchema, ScheduledLessonSchema, SchoolYearSchema, SequenceLessonSchema, TeachingSequenceSchema, TimetableSlotSchema, TimetableVersionSchema } from './src/schemas/schoolPlanning'
+import { CalendarExceptionSchema, ClassGroupSchema, ClassSubjectAssignmentSchema, CurriculumAnnotationSchema, CurriculumCommentSchema, LessonReflectionSchema, ScheduledLessonSchema, SchoolYearSchema, SequenceCompetencySchema, SequenceCurriculumReferenceSchema, SequenceLessonSchema, TeachingSequenceSchema, TimetableSlotSchema, TimetableVersionSchema } from './src/schemas/schoolPlanning'
 
 const json = (response: ServerResponse, status: number, body?: unknown): void => {
   response.statusCode = status
@@ -140,6 +140,8 @@ const sqliteApi = () => ({
                 : resource === 'annotations' ? schoolPlanning.saveAnnotation(CurriculumAnnotationSchema.parse(body))
                   : resource === 'comments' ? schoolPlanning.saveComment(CurriculumCommentSchema.parse(body))
                     : resource === 'sequences' ? schoolPlanning.saveSequence(TeachingSequenceSchema.parse(body))
+                      : resource === 'sequence-curriculum-references' ? schoolPlanning.saveSequenceCurriculumReference(SequenceCurriculumReferenceSchema.parse(body))
+                        : resource === 'sequence-competencies' ? schoolPlanning.saveSequenceCompetency(SequenceCompetencySchema.parse(body))
                       : resource === 'sequence-lessons' ? schoolPlanning.saveSequenceLesson(SequenceLessonSchema.parse(body))
                         : resource === 'scheduled-lessons' ? schoolPlanning.saveScheduledLesson(ScheduledLessonSchema.parse(body))
                           : resource === 'timetable-versions' ? schoolPlanning.saveTimetableVersion(TimetableVersionSchema.parse(body))
@@ -148,7 +150,7 @@ const sqliteApi = () => ({
                                 : resource === 'lesson-reflections' ? schoolPlanning.saveLessonReflection(LessonReflectionSchema.parse(body)) : undefined
           return saved ? json(response, 200, saved) : json(response, 404, { error: 'Unbekannte Planungsressource.' })
         }
-        const table = resource === 'school-years' ? 'school_years' : resource === 'class-groups' ? 'class_groups' : resource === 'assignments' ? 'class_subject_assignments' : resource === 'annotations' ? 'curriculum_annotations' : resource === 'comments' ? 'curriculum_comments' : resource === 'sequences' ? 'teaching_sequences' : resource === 'sequence-lessons' ? 'sequence_lessons' : resource === 'scheduled-lessons' ? 'scheduled_lessons' : resource === 'timetable-versions' ? 'timetable_versions' : resource === 'timetable-slots' ? 'timetable_slots' : resource === 'calendar-exceptions' ? 'calendar_exceptions' : undefined
+        const table = resource === 'school-years' ? 'school_years' : resource === 'class-groups' ? 'class_groups' : resource === 'assignments' ? 'class_subject_assignments' : resource === 'annotations' ? 'curriculum_annotations' : resource === 'comments' ? 'curriculum_comments' : resource === 'sequences' ? 'teaching_sequences' : resource === 'sequence-curriculum-references' ? 'sequence_curriculum_references' : resource === 'sequence-competencies' ? 'sequence_competencies' : resource === 'sequence-lessons' ? 'sequence_lessons' : resource === 'scheduled-lessons' ? 'scheduled_lessons' : resource === 'timetable-versions' ? 'timetable_versions' : resource === 'timetable-slots' ? 'timetable_slots' : resource === 'calendar-exceptions' ? 'calendar_exceptions' : undefined
         if (request.method === 'DELETE' && id && table) return json(response, schoolPlanning.remove(table, id) ? 204 : 404)
         return json(response, 405, { error: 'Methode nicht erlaubt.' })
       })().catch((error: unknown) => {

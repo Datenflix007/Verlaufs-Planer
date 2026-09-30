@@ -30,6 +30,13 @@ export interface TeachingSequence {
   id: string; classSubjectAssignmentId: string; title: string; description?: string; overarchingQuestion?: string; learningGoal?: string
   startDate?: string; endDate?: string; status: TeachingSequenceStatus; notes?: string; createdAt: string; updatedAt: string
 }
+export interface SequenceCurriculumReference {
+  id: string; teachingSequenceId: string; curriculumNodeId: string; nodeKind: 'learning-area' | 'competency' | 'content-point'
+  relationType: 'primary' | 'secondary' | 'supporting'; createdAt: string; updatedAt: string
+}
+export interface SequenceCompetency {
+  id: string; teachingSequenceId: string; competencyId: string; role: 'primary' | 'secondary' | 'supporting'; createdAt: string; updatedAt: string
+}
 export interface SequenceLesson {
   id: string; teachingSequenceId: string; position: number; scheduledLessonId?: string; planId?: string
   plannedDate?: string; plannedDuration?: number; title: string; guidingQuestion?: string; lessonObjective?: string
@@ -60,5 +67,5 @@ export interface ExistingPlanContext {
 
 export interface SchoolPlanningSnapshot {
   schoolYears: SchoolYear[]; classGroups: ClassGroup[]; assignments: ClassSubjectAssignment[]; annotations: CurriculumAnnotation[]
-  comments: CurriculumComment[]; sequences: TeachingSequence[]; sequenceLessons: SequenceLesson[]; scheduledLessons: ScheduledLesson[]; timetableVersions: TimetableVersion[]; timetableSlots: TimetableSlot[]; calendarExceptions: CalendarException[]; lessonReflections: LessonReflection[]; existingPlanContexts: ExistingPlanContext[]
+  comments: CurriculumComment[]; sequences: TeachingSequence[]; sequenceCurriculumReferences: SequenceCurriculumReference[]; sequenceCompetencies: SequenceCompetency[]; sequenceLessons: SequenceLesson[]; scheduledLessons: ScheduledLesson[]; timetableVersions: TimetableVersion[]; timetableSlots: TimetableSlot[]; calendarExceptions: CalendarException[]; lessonReflections: LessonReflection[]; existingPlanContexts: ExistingPlanContext[]
 }

@@ -4,4 +4,6 @@ Die drei committed Thüringer Referenzcurricula (Geschichte 2021, Informatik 201
 
 Ein Curriculum enthält Quelle, Fach, Geltung, Kompetenzbereiche, Lernbereiche, Kompetenzen und Inhaltspunkte. Neue relationale Tabellen speichern nur Benutzerdaten und Verweise auf stabile Referenz-IDs. Offizielle Inhalte werden niemals aus Demodaten rekonstruiert oder stillschweigend durch andere Fassungen ersetzt.
 
+Für eine Unterrichtsreihe speichern `sequence_curriculum_references` und `sequence_competencies` ausschließlich solche stabilen IDs. Die erste Tabelle hält den Lehrplananker samt Art und Relevanz fest; die zweite bewahrt Kompetenzrolle (`primary`, `secondary`, `supporting`) getrennt. Beide Tabellen sind an `teaching_sequences` kaskadierend gebunden, eindeutig pro Reihe und Referenz und verändern weder JSON-Referenzdaten noch den Originallehrplan.
+
 `CurriculumImporter` vereinheitlicht künftig `parseSource`, `extractStructure`, `extractCompetencies`, `extractReferences`, `validate` und `import`. Fehlende Quellen werden dokumentiert, nicht erfunden.

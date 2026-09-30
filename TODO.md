@@ -1,5 +1,15 @@
 # TODO
 
+## Aktuelle Iteration: relationale Reihenbezüge
+
+- [x] Die bestehende Schuljahres-, Curriculum-, Reihen- und Terminarchitektur gegen die Implementierung abgleichen und die fehlenden relationalen Reihenbezüge präzise erfassen.
+- [x] `SequenceCurriculumReference` und `SequenceCompetency` mit eindeutigen Schlüsseln, Fremdschlüsseln und Indizes in der bestehenden SQLite-Migration ergänzen.
+- [x] Typen, Zod-Validierung, Repository und HTTP-API für beide Join-Entitäten ergänzen.
+- [x] Beim Anlegen einer Reihe aus dem Lehrplan den ausgewählten Knoten und ausgewählte Kompetenzen als eigenständige Reihenbezüge speichern.
+- [x] Lehrplan- und Kompetenzbezüge in der Reihen-Timeline sichtbar machen, ohne Referenzcurricula zu ändern.
+- [x] SQLite-Regressionen für Persistenz, Kaskaden und die Trennung von Parallelklassen ergänzen.
+- [x] Architektur- und Abschlussdokumentation aktualisieren sowie Typprüfung, Tests und Produktions-Build ausführen.
+
 ## Schuljahres-, Lehrplan- und Sequenzplanung (Großauftrag)
 
 ### 0. Bestandsaufnahme und Architektur
