@@ -1,6 +1,6 @@
-import type { ClassGroup, ClassSubjectAssignment, CurriculumAnnotation, CurriculumComment, ScheduledLesson, SchoolPlanningSnapshot, SchoolYear, SequenceLesson, TeachingSequence } from '../domain/schoolPlanning'
+import type { CalendarException, ClassGroup, ClassSubjectAssignment, CurriculumAnnotation, CurriculumComment, LessonReflection, ScheduledLesson, SchoolPlanningSnapshot, SchoolYear, SequenceLesson, TeachingSequence, TimetableSlot, TimetableVersion } from '../domain/schoolPlanning'
 
-type Resource = 'school-years' | 'class-groups' | 'assignments' | 'annotations' | 'comments' | 'sequences' | 'sequence-lessons' | 'scheduled-lessons'
+type Resource = 'school-years' | 'class-groups' | 'assignments' | 'annotations' | 'comments' | 'sequences' | 'sequence-lessons' | 'scheduled-lessons' | 'timetable-versions' | 'timetable-slots' | 'calendar-exceptions'
 const request = async <T>(path = '', init?: RequestInit): Promise<T> => {
   const response = await fetch(`/api/school-planning${path}`, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } })
   if (!response.ok) throw new Error((await response.text()) || `Schuljahresplanung konnte nicht gespeichert werden (${response.status}).`)
@@ -17,5 +17,9 @@ export class SchoolPlanningRepository {
   saveSequence(value: TeachingSequence): Promise<TeachingSequence> { return request<TeachingSequence>(`/sequences/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
   saveSequenceLesson(value: SequenceLesson): Promise<SequenceLesson> { return request<SequenceLesson>(`/sequence-lessons/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
   saveScheduledLesson(value: ScheduledLesson): Promise<ScheduledLesson> { return request<ScheduledLesson>(`/scheduled-lessons/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
+  saveTimetableVersion(value: TimetableVersion): Promise<TimetableVersion> { return request<TimetableVersion>(`/timetable-versions/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
+  saveTimetableSlot(value: TimetableSlot): Promise<TimetableSlot> { return request<TimetableSlot>(`/timetable-slots/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
+  saveCalendarException(value: CalendarException): Promise<CalendarException> { return request<CalendarException>(`/calendar-exceptions/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
+  saveLessonReflection(value: LessonReflection): Promise<LessonReflection> { return request<LessonReflection>(`/lesson-reflections/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
   remove(resource: Resource, id: string): Promise<void> { return request<void>(`/${resource}/${id}`, { method: 'DELETE' }) }
 }

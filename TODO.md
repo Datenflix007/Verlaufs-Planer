@@ -23,11 +23,15 @@
 
 ### 2. Lehrplan-Annotation und Jahresplanung
 
+- [x] Pro Klassen-Fach-Zuordnung eine transparente Lehrplanabdeckung aus dokumentierten Statusmarkern anzeigen.
+- [x] Lehrplankommentare im persönlichen Layer bearbeiten und löschen können.
+- [x] Eine Jahresplanungsübersicht aus den gespeicherten Wochenmarkern im Curriculum-Viewer ableiten.
 - [x] Wochenmarker pro Lehrplanknoten im persönlichen Annotation-Layer erfassen und im Viewer sichtbar machen.
 - [ ] Klassenbezogenen Fortschritts-, Wochenmarker- und Kommentar-Layer getrennt von den unveränderlichen Referenzcurricula implementieren.
 - [x] Curriculum-Status semantisch (vorgemerkt, geplant, behandelt, erneut aufgreifen) inklusive Text, Icon, ARIA und zentraler Farbtokens ableiten.
-- [ ] Curriculum-Viewer mit Quellenreferenz, Annotationsrandspalte, Jahresplanung und interaktiven Wochenmarkern implementieren.
+- [x] Curriculum-Viewer mit Quellenreferenz, Annotationsrandspalte, Jahresplanung und interaktiven Wochenmarkern implementieren.
 - [ ] Tests für Parallelklassen-Trennung, Kommentare, Marker und Statusableitung ergänzen.
+  - [x] SQLite-Regression für unabhängige Parallelklassen-Marker und editierbare Kommentare absichern.
 
 ### 3. Reihen- und Sequenzplanung
 
@@ -51,12 +55,15 @@
 
 - [x] Sequenzstunden direkt mit einem gespeicherten Unterrichtstermin (Datum, Zeit, Unterrichtskontext) verknüpfen und Verschiebungen am Termin sichtbar machen.
 - [ ] Versionierbaren Stundenplan, Kalenderausnahmen, Feiertage, Ferien, geplante Termine und Vertretungen modellieren.
+  - [x] Relationale Grundlage für Stundenplanversionen und datumsbezogene Kalenderausnahmen implementieren.
 - [ ] Sequenzstunden mit dem Kalender verbinden, Terminverschiebungen sichtbar machen und kalenderlesbare Daten bereitstellen.
 - [x] Kalender- und Dashboardansichten um Klassen-, Fach-, Reihen- und Terminbezug erweitern.
 - [ ] Tests für Stundenplanwechsel, Ausnahmen, Ferien und Terminzuordnungen ergänzen.
 
 ### 5. Durchführung, Reflexion und Verlaufsplan
 
+- [x] Abschluss einer Sequenzstunde auf den verknüpften persönlichen Lehrplanstatus zurückführen.
+- [x] Für eine Sequenzstunde den tatsächlichen Durchführungsstatus mit kurzer Reflexionsnotiz speichern.
 - [ ] Abschlussstatus, Stunden- und Reihenreflexion sowie nachvollziehbare Auswirkungen auf den Lehrplanstatus implementieren.
 - [ ] Bestehende Verlaufsplanung als zugängliche Kompakt-/Detail-Timeline weiterentwickeln, ohne Workshop- und Präsentationsabläufe zu brechen.
 - [ ] Didaktische Hinweise, technische Voraussetzungen, Differenzierung, digitale Tools und Fallback-Plan schrittweise als optionale Daten ergänzen.

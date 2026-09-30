@@ -24,6 +24,10 @@ describe('relationale Schuljahresplanung', () => {
     const sequenceLesson = database.saveSequenceLesson({ id: randomUUID(), teachingSequenceId: sequence.id, position: 1, plannedDate: '2026-09-04', plannedDuration: 45, title: 'Historische Lieder', status: 'planned', createdAt: stamp, updatedAt: stamp })
     const scheduledLesson = database.saveScheduledLesson({ id: randomUUID(), classSubjectAssignmentId: firstAssignment.id, sequenceLessonId: sequenceLesson.id, date: '2026-09-04', startTime: '08:00', endTime: '08:45', contextType: 'REGULAR_LESSON', status: 'planned', createdAt: stamp, updatedAt: stamp })
     database.saveScheduledLesson({ ...scheduledLesson, date: '2026-09-05', startTime: '09:00', updatedAt: stamp })
+    const timetableVersion = database.saveTimetableVersion({ id: randomUUID(), schoolYearId: year.id, name: 'Regelstundenplan ab Herbstferien', validFrom: '2026-10-12', active: true, createdAt: stamp, updatedAt: stamp })
+    const timetableSlot = database.saveTimetableSlot({ id: randomUUID(), timetableVersionId: timetableVersion.id, classSubjectAssignmentId: firstAssignment.id, weekday: 2, startTime: '08:00', endTime: '08:45', room: 'R 204', contextType: 'REGULAR_LESSON', createdAt: stamp, updatedAt: stamp })
+    database.saveCalendarException({ id: randomUUID(), schoolYearId: year.id, classSubjectAssignmentId: firstAssignment.id, timetableSlotId: timetableSlot.id, date: '2026-10-20', type: 'CANCELLATION', title: 'Wandertag 8a', note: 'Keine Geschichtsstunde.', createdAt: stamp, updatedAt: stamp })
+    database.saveLessonReflection({ id: randomUUID(), sequenceLessonId: sequenceLesson.id, outcome: 'needs-revisit', note: 'Zu wenig Zeit für die Sicherung.', repeatNeeded: true, createdAt: stamp, updatedAt: stamp })
     const copiedSequence = database.saveSequence({ ...sequence, id: randomUUID(), classSubjectAssignmentId: secondAssignment.id, title: 'Kopie für 8b', status: 'draft', createdAt: stamp, updatedAt: stamp })
     database.saveSequenceLesson({ ...sequenceLesson, id: randomUUID(), teachingSequenceId: copiedSequence.id, scheduledLessonId: undefined, planId: undefined, plannedDate: undefined, status: 'draft', createdAt: stamp, updatedAt: stamp })
 
@@ -35,6 +39,10 @@ describe('relationale Schuljahresplanung', () => {
     expect(snapshot.sequences.filter((item) => item.classSubjectAssignmentId === firstAssignment.id)).toMatchObject([{ title: 'Vormärz – Freiheit und nationale Einheit', status: 'planned' }])
     expect(snapshot.sequenceLessons.filter((item) => item.teachingSequenceId === sequence.id)).toMatchObject([{ title: 'Historische Lieder', plannedDuration: 45 }])
     expect(snapshot.scheduledLessons).toMatchObject([{ date: '2026-09-05', startTime: '09:00', contextType: 'REGULAR_LESSON' }])
+    expect(snapshot.timetableVersions).toMatchObject([{ id: timetableVersion.id, validFrom: '2026-10-12', active: true }])
+    expect(snapshot.timetableSlots).toMatchObject([{ timetableVersionId: timetableVersion.id, weekday: 2, room: 'R 204' }])
+    expect(snapshot.calendarExceptions).toMatchObject([{ timetableSlotId: timetableSlot.id, date: '2026-10-20', type: 'CANCELLATION' }])
+    expect(snapshot.lessonReflections).toMatchObject([{ sequenceLessonId: sequenceLesson.id, outcome: 'needs-revisit', repeatNeeded: true }])
     expect(snapshot.sequences.filter((item) => item.classSubjectAssignmentId === secondAssignment.id)).toMatchObject([{ title: 'Kopie für 8b', status: 'draft' }])
     expect(snapshot.sequenceLessons.filter((item) => item.teachingSequenceId === copiedSequence.id)).toMatchObject([{ title: 'Historische Lieder', scheduledLessonId: undefined, plannedDate: undefined, status: 'draft' }])
   })
@@ -49,6 +57,25 @@ describe('relationale Schuljahresplanung', () => {
     expect(database.remove('class_subject_assignments', assignment.id)).toBe(true)
     expect(database.snapshot().comments).toHaveLength(0)
     expect(database.snapshot().schoolYears).toHaveLength(1)
+  })
+
+  it('keeps markers and edited comments separate for parallel classes', () => {
+    const database = new SqliteSchoolPlanning(join(mkdtempSync(join(tmpdir(), 'verlaufsplaner-school-planning-')), 'planning.sqlite'))
+    const year = database.saveSchoolYear(schoolYear())
+    const firstClass = database.saveClassGroup({ id: randomUUID(), schoolYearId: year.id, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp })
+    const secondClass = database.saveClassGroup({ id: randomUUID(), schoolYearId: year.id, name: '8b', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp })
+    const firstAssignment = database.saveAssignment({ id: randomUUID(), classGroupId: firstClass.id, schoolYearId: year.id, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp })
+    const secondAssignment = database.saveAssignment({ id: randomUUID(), classGroupId: secondClass.id, schoolYearId: year.id, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp })
+    database.saveAnnotation({ id: randomUUID(), classSubjectAssignmentId: firstAssignment.id, curriculumNodeId: 'history-vormaerz', nodeKind: 'content-point', status: 'completed', plannedWeek: 42, createdAt: stamp, updatedAt: stamp })
+    database.saveAnnotation({ id: randomUUID(), classSubjectAssignmentId: secondAssignment.id, curriculumNodeId: 'history-vormaerz', nodeKind: 'content-point', status: 'needs-revisit', plannedWeek: 8, createdAt: stamp, updatedAt: stamp })
+    const comment = database.saveComment({ id: randomUUID(), classSubjectAssignmentId: firstAssignment.id, curriculumNodeId: 'history-vormaerz', comment: 'Add image analysis.', resolved: false, createdAt: stamp, updatedAt: stamp })
+    database.saveComment({ ...comment, comment: 'Add image analysis and source criticism.', resolved: true, updatedAt: stamp })
+
+    const snapshot = database.snapshot()
+    expect(snapshot.annotations.filter((annotation) => annotation.classSubjectAssignmentId === firstAssignment.id)).toMatchObject([{ status: 'completed', plannedWeek: 42 }])
+    expect(snapshot.annotations.filter((annotation) => annotation.classSubjectAssignmentId === secondAssignment.id)).toMatchObject([{ status: 'needs-revisit', plannedWeek: 8 }])
+    expect(snapshot.comments.filter((entry) => entry.classSubjectAssignmentId === firstAssignment.id)).toMatchObject([{ id: comment.id, comment: 'Add image analysis and source criticism.', resolved: true }])
+    expect(snapshot.comments.filter((entry) => entry.classSubjectAssignmentId === secondAssignment.id)).toEqual([])
   })
 
   it('ordnet vorhandene Plan-Payloads rückwärtskompatibel als Workshop ein, ohne sie zu verändern', () => {

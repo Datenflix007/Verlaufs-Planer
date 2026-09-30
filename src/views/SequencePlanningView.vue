@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { createId, createPlan, richTextFromPlain } from '../domain/factories'
-import type { SequenceLesson, SchoolPlanningSnapshot } from '../domain/schoolPlanning'
+import type { LessonReflection, SequenceLesson, SchoolPlanningSnapshot } from '../domain/schoolPlanning'
 import { SchoolPlanningRepository } from '../repositories/SchoolPlanningRepository'
 import { SqlitePlanRepository } from '../repositories/SqlitePlanRepository'
 import type { PlanSummary } from '../repositories/PlanRepository'
@@ -22,6 +22,8 @@ const copyTargetAssignmentId = ref('')
 const copyNotice = ref('')
 const existingPlanId = ref('')
 const detailedPlans = ref<PlanSummary[]>([])
+const reflectionOutcome = ref<LessonReflection['outcome']>('completed')
+const reflectionNote = ref('')
 const date = ref('')
 const startTime = ref('')
 const endTime = ref('')
@@ -31,6 +33,7 @@ const assignment = computed(() => data.value?.assignments.find((item) => item.id
 const sequences = computed(() => data.value?.sequences.filter((item) => item.classSubjectAssignmentId === assignment.value?.id) ?? [])
 const lessons = computed(() => data.value?.sequenceLessons.filter((item) => item.teachingSequenceId === selectedSequenceId.value) ?? [])
 const selectedLesson = computed(() => lessons.value.find((item) => item.id === selectedLessonId.value))
+const selectedReflection = computed(() => data.value?.lessonReflections.find((item) => item.sequenceLessonId === selectedLessonId.value))
 const scheduleFor = (lessonId: string) => data.value?.scheduledLessons.find((item) => item.sequenceLessonId === lessonId)
 const copyTargets = computed(() => data.value?.assignments.filter((item) => item.id !== assignment.value?.id && item.subjectId === assignment.value?.subjectId) ?? [])
 
@@ -56,6 +59,8 @@ function selectLesson(lesson: SequenceLesson) {
   startTime.value = scheduled?.startTime ?? ''
   endTime.value = scheduled?.endTime ?? ''
   contextType.value = scheduled?.contextType === 'DOUBLE_LESSON' ? 'DOUBLE_LESSON' : 'REGULAR_LESSON'
+  reflectionOutcome.value = selectedReflection.value?.outcome ?? 'completed'
+  reflectionNote.value = selectedReflection.value?.note ?? ''
 }
 async function scheduleLesson() {
   if (!assignment.value || !selectedLesson.value || !date.value) return
@@ -99,6 +104,21 @@ async function linkExistingPlan() {
   await repository.saveSequenceLesson({ ...lesson, planId: plan.id, updatedAt: new Date().toISOString() })
   await router.push({ name: 'editor', params: { id: plan.id } })
 }
+async function saveReflection() {
+  if (!selectedLesson.value) return
+  const lesson = selectedLesson.value
+  const stamp = new Date().toISOString()
+  const reflection = selectedReflection.value
+  await repository.saveLessonReflection({ id: reflection?.id ?? createId(), sequenceLessonId: lesson.id, outcome: reflectionOutcome.value, note: reflectionNote.value.trim() || undefined, repeatNeeded: reflectionOutcome.value === 'needs-revisit', createdAt: reflection?.createdAt ?? stamp, updatedAt: stamp })
+  const status = reflectionOutcome.value === 'completed' ? 'completed' : reflectionOutcome.value
+  await repository.saveSequenceLesson({ ...lesson, status, updatedAt: stamp })
+  const sequence = data.value?.sequences.find((item) => item.id === lesson.teachingSequenceId)
+  const annotation = data.value?.annotations.find((item) => item.teachingSequenceId === sequence?.id)
+  if (annotation && (reflectionOutcome.value === 'completed' || reflectionOutcome.value === 'needs-revisit')) {
+    await repository.saveAnnotation({ ...annotation, status: reflectionOutcome.value === 'completed' ? 'completed' : 'needs-revisit', updatedAt: stamp })
+  }
+  await load()
+}
 onMounted(() => void load())
 </script>
 
@@ -108,12 +128,16 @@ onMounted(() => void load())
     <label class="assignment-picker">Klasse &amp; Fach<select v-model="assignmentId"><option v-for="item in data?.assignments" :key="item.id" :value="item.id">{{ data?.classGroups.find((group) => group.id === item.classGroupId)?.name }} · {{ item.subjectId }}</option></select></label>
     <form class="sequence-form" @submit.prevent="createSequence"><label>Titel<input v-model="title" required></label><label>Leitfrage<input v-model="question"></label><label>Beginn<input v-model="start" type="date"></label><label>Ende<input v-model="end" type="date"></label><button>Reihe anlegen</button></form>
     <section v-for="sequence in sequences" :key="sequence.id" class="sequence-card"><header><div><p class="eyebrow">{{ sequence.startDate || 'ohne Beginn' }} – {{ sequence.endDate || 'ohne Ende' }}</p><h2>{{ sequence.title }}</h2><p>{{ sequence.overarchingQuestion || 'Keine Leitfrage hinterlegt.' }}</p></div><button @click="selectedSequenceId = sequence.id">{{ selectedSequenceId === sequence.id ? 'Geöffnet' : 'Öffnen' }}</button></header><template v-if="selectedSequenceId === sequence.id"><div class="sequence-timeline" role="list" aria-label="Sequenzstunden"><button v-for="lesson in lessons" :key="lesson.id" class="timeline-item" :class="{ selected: lesson.id === selectedLessonId, gap: !scheduleFor(lesson.id) }" role="listitem" @click="selectLesson(lesson)"><span class="timeline-node" :class="lesson.status" aria-hidden="true"></span><span class="timeline-copy"><strong>{{ lesson.position }}. {{ lesson.title }}</strong><small v-if="scheduleFor(lesson.id)">{{ scheduleFor(lesson.id)?.date }} · {{ scheduleFor(lesson.id)?.startTime || 'Zeit offen' }} · {{ lesson.status }}</small><small v-else>Planungslücke: Termin offen</small></span><span v-if="lesson.planId" class="plan-badge">Plan</span></button><p v-if="!lessons.length" class="timeline-empty">Noch keine Stunde angelegt.</p></div><div class="lesson-list"><button v-for="lesson in lessons" :key="lesson.id" class="lesson-row" :class="{ selected: lesson.id === selectedLessonId }" @click="selectLesson(lesson)"><strong>{{ lesson.position }}. {{ lesson.title }}</strong><span v-if="scheduleFor(lesson.id)">{{ scheduleFor(lesson.id)?.date }} · {{ scheduleFor(lesson.id)?.startTime || 'Zeit offen' }}</span><span v-else>Termin offen</span></button></div><div class="sequence-actions"><button class="secondary" @click="addLesson">+ Sequenzstunde</button><label v-if="copyTargets.length">In Parallelklasse kopieren<select v-model="copyTargetAssignmentId"><option value="" disabled>Zielklasse auswählen</option><option v-for="target in copyTargets" :key="target.id" :value="target.id">{{ data?.classGroups.find((group) => group.id === target.classGroupId)?.name }}</option></select></label><button v-if="copyTargets.length" :disabled="!copyTargetAssignmentId" @click="copySequence">Reihe kopieren</button></div><p v-if="copyNotice" class="copy-notice">{{ copyNotice }}</p></template></section>
-    <aside v-if="selectedLesson" class="schedule-editor"><div><p class="eyebrow">Stunde {{ selectedLesson.position }}</p><h2>{{ selectedLesson.title }}</h2><p>Ein gespeicherter Termin ist die verbindliche Kalenderreferenz dieser Stunde.</p><button class="secondary" @click="createDetailedPlan">{{ selectedLesson.planId ? 'Verlaufsplan neu erstellen' : 'Detaillierten Verlaufsplan erstellen' }}</button><label class="existing-plan-picker">In vorhandenen Plan übernehmen<select v-model="existingPlanId"><option value="">Plan auswählen</option><option v-for="plan in detailedPlans" :key="plan.id" :value="plan.id">{{ plan.title }} · {{ plan.dateRange || 'ohne Termin' }}</option></select></label><button class="secondary" :disabled="!existingPlanId" @click="linkExistingPlan">Mit bestehendem Plan verknüpfen</button></div><form @submit.prevent="scheduleLesson"><label>Datum<input v-model="date" type="date" required></label><label>Beginn<input v-model="startTime" type="time"></label><label>Ende<input v-model="endTime" type="time"></label><label>Unterrichtsform<select v-model="contextType"><option value="REGULAR_LESSON">Einzelstunde</option><option value="DOUBLE_LESSON">Doppelstunde</option></select></label><button>Termin speichern</button></form></aside>
+    <aside v-if="selectedLesson" class="schedule-editor"><div><p class="eyebrow">Stunde {{ selectedLesson.position }}</p><h2>{{ selectedLesson.title }}</h2><p>Ein gespeicherter Termin ist die verbindliche Kalenderreferenz dieser Stunde.</p><button class="secondary" @click="createDetailedPlan">{{ selectedLesson.planId ? 'Verlaufsplan neu erstellen' : 'Detaillierten Verlaufsplan erstellen' }}</button><label class="existing-plan-picker">In vorhandenen Plan übernehmen<select v-model="existingPlanId"><option value="">Plan auswählen</option><option v-for="plan in detailedPlans" :key="plan.id" :value="plan.id">{{ plan.title }} · {{ plan.dateRange || 'ohne Termin' }}</option></select></label><button class="secondary" :disabled="!existingPlanId" @click="linkExistingPlan">Mit bestehendem Plan verknüpfen</button><section class="reflection"><h3>Stunde abschließen</h3><label>Durchführung<select v-model="reflectionOutcome"><option value="completed">Wie geplant durchgeführt</option><option value="partial">Teilweise durchgeführt</option><option value="needs-revisit">Erneut aufgreifen</option><option value="cancelled">Ausgefallen</option></select></label><label>Reflexion<textarea v-model="reflectionNote" placeholder="z. B. Gruppenarbeit dauerte länger …"></textarea></label><button @click="saveReflection">Durchführung speichern</button></section></div><form @submit.prevent="scheduleLesson"><label>Datum<input v-model="date" type="date" required></label><label>Beginn<input v-model="startTime" type="time"></label><label>Ende<input v-model="endTime" type="time"></label><label>Unterrichtsform<select v-model="contextType"><option value="REGULAR_LESSON">Einzelstunde</option><option value="DOUBLE_LESSON">Doppelstunde</option></select></label><button>Termin speichern</button></form></aside>
   </main>
 </template>
 
 <style scoped>
 .sequence{max-width:1040px;margin:auto;padding:clamp(1.2rem,3vw,3rem)}.sequence>header,.sequence-card>header{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start}.sequence>header{border-bottom:1px solid #cad8da;padding-bottom:1.3rem}.sequence>header p,.sequence-card p{color:#5f7277}.sequence nav{display:flex;gap:.55rem}.assignment-picker{display:grid;max-width:440px;gap:.3rem;margin:1rem 0}.sequence-form{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;padding:1rem;border:1px solid #cad8da;border-radius:12px;background:#fff}.sequence-form label,.schedule-editor label{display:grid;gap:.3rem;font-weight:700;font-size:.86rem}.sequence-form button{grid-column:1/-1}.sequence-card,.schedule-editor{margin:1rem 0;padding:1rem;border:1px solid #cad8da;border-radius:12px;background:#fff;box-shadow:0 2px 12px #1833380d}.lesson-list{display:grid;gap:.45rem;margin:1rem 0}.lesson-row{display:flex;justify-content:space-between;gap:.75rem;text-align:left;background:#f4f9f9;color:#2c555b;border:1px solid #d4e3e4}.lesson-row.selected{outline:2px solid #26a5a9;outline-offset:1px}.lesson-row span{font-size:.82rem;color:#60777b}.schedule-editor{display:grid;grid-template-columns:minmax(0,1fr) 1fr;gap:1rem;background:#f4fbfb}.schedule-editor h2{margin:.15rem 0}.schedule-editor form{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}.schedule-editor form button{grid-column:1/-1}@media(max-width:700px){.sequence-form,.schedule-editor,.schedule-editor form{grid-template-columns:1fr}.sequence>header,.sequence-card>header,.lesson-row{flex-direction:column}}
+</style>
+
+<style scoped>
+.reflection{display:grid;gap:.45rem;margin-top:1rem;padding-top:1rem;border-top:1px solid #cfe1e2}.reflection h3{margin:0}.reflection label{display:grid;gap:.3rem;font-size:.82rem;font-weight:800}.reflection textarea{min-height:70px;resize:vertical}
 </style>
 
 <style scoped>

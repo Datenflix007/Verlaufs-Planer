@@ -1,5 +1,6 @@
 export type FederalStateCode = 'TH'
 export type TeachingContextType = 'REGULAR_LESSON' | 'DOUBLE_LESSON' | 'SUBSTITUTION' | 'WORKSHOP' | 'PROJECT' | 'EXCURSION' | 'OTHER'
+export type CalendarExceptionType = 'HOLIDAY' | 'VACATION' | 'CANCELLATION' | 'SUBSTITUTION' | 'OTHER'
 export type CurriculumAnnotationStatus = 'rough-planned' | 'scheduled' | 'completed' | 'needs-revisit'
 export type TeachingSequenceStatus = 'draft' | 'planned' | 'active' | 'completed' | 'archived'
 export type SequenceLessonStatus = 'draft' | 'planned' | 'completed' | 'partial' | 'cancelled' | 'needs-revisit'
@@ -39,11 +40,25 @@ export interface ScheduledLesson {
   id: string; classSubjectAssignmentId: string; sequenceLessonId?: string; planId?: string; date: string
   startTime?: string; endTime?: string; status: SequenceLessonStatus; contextType: TeachingContextType; createdAt: string; updatedAt: string
 }
+export interface TimetableVersion {
+  id: string; schoolYearId: string; name: string; validFrom: string; validUntil?: string; active: boolean; createdAt: string; updatedAt: string
+}
+export interface TimetableSlot {
+  id: string; timetableVersionId: string; classSubjectAssignmentId: string; weekday: number; startTime: string; endTime: string
+  room?: string; contextType: TeachingContextType; createdAt: string; updatedAt: string
+}
+export interface CalendarException {
+  id: string; schoolYearId: string; classSubjectAssignmentId?: string; timetableSlotId?: string; date: string; type: CalendarExceptionType
+  title: string; replacementStartTime?: string; replacementEndTime?: string; note?: string; createdAt: string; updatedAt: string
+}
+export interface LessonReflection {
+  id: string; sequenceLessonId: string; outcome: 'completed' | 'partial' | 'cancelled' | 'needs-revisit'; note?: string; repeatNeeded: boolean; createdAt: string; updatedAt: string
+}
 export interface ExistingPlanContext {
   planId: string; contextType: TeachingContextType; createdAt: string; updatedAt: string
 }
 
 export interface SchoolPlanningSnapshot {
   schoolYears: SchoolYear[]; classGroups: ClassGroup[]; assignments: ClassSubjectAssignment[]; annotations: CurriculumAnnotation[]
-  comments: CurriculumComment[]; sequences: TeachingSequence[]; sequenceLessons: SequenceLesson[]; scheduledLessons: ScheduledLesson[]; existingPlanContexts: ExistingPlanContext[]
+  comments: CurriculumComment[]; sequences: TeachingSequence[]; sequenceLessons: SequenceLesson[]; scheduledLessons: ScheduledLesson[]; timetableVersions: TimetableVersion[]; timetableSlots: TimetableSlot[]; calendarExceptions: CalendarException[]; lessonReflections: LessonReflection[]; existingPlanContexts: ExistingPlanContext[]
 }
