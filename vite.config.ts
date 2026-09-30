@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { SqliteDigitalLearningMaterials, SqlitePlans, SqlitePresentationMedia, SqliteSchedulePatterns, SqliteWorkspaceSettings } from './server/sqlitePlans'
 import { SqliteSchoolPlanning } from './server/schoolPlanning'
-import { CalendarExceptionSchema, ClassGroupSchema, ClassSubjectAssignmentSchema, CurriculumAnnotationSchema, CurriculumCommentSchema, LessonReflectionSchema, ScheduledLessonSchema, SchoolYearSchema, SequenceCompetencySchema, SequenceCurriculumReferenceSchema, SequenceLessonSchema, TeachingSequenceSchema, TimetableSlotSchema, TimetableVersionSchema } from './src/schemas/schoolPlanning'
+import { CalendarExceptionSchema, ClassGroupSchema, ClassSubjectAssignmentSchema, CurriculumAnnotationSchema, CurriculumCommentSchema, LessonReflectionSchema, ScheduledLessonSchema, SchoolYearSchema, SequenceCompetencySchema, SequenceCurriculumReferenceSchema, SequenceLessonSchema, SequenceReflectionSchema, TeachingSequenceSchema, TimetableSlotSchema, TimetableVersionSchema } from './src/schemas/schoolPlanning'
 
 const json = (response: ServerResponse, status: number, body?: unknown): void => {
   response.statusCode = status
@@ -147,7 +147,8 @@ const sqliteApi = () => ({
                           : resource === 'timetable-versions' ? schoolPlanning.saveTimetableVersion(TimetableVersionSchema.parse(body))
                             : resource === 'timetable-slots' ? schoolPlanning.saveTimetableSlot(TimetableSlotSchema.parse(body))
                               : resource === 'calendar-exceptions' ? schoolPlanning.saveCalendarException(CalendarExceptionSchema.parse(body))
-                                : resource === 'lesson-reflections' ? schoolPlanning.saveLessonReflection(LessonReflectionSchema.parse(body)) : undefined
+                                : resource === 'lesson-reflections' ? schoolPlanning.saveLessonReflection(LessonReflectionSchema.parse(body))
+                                  : resource === 'sequence-reflections' ? schoolPlanning.saveSequenceReflection(SequenceReflectionSchema.parse(body)) : undefined
           return saved ? json(response, 200, saved) : json(response, 404, { error: 'Unbekannte Planungsressource.' })
         }
         const table = resource === 'school-years' ? 'school_years' : resource === 'class-groups' ? 'class_groups' : resource === 'assignments' ? 'class_subject_assignments' : resource === 'annotations' ? 'curriculum_annotations' : resource === 'comments' ? 'curriculum_comments' : resource === 'sequences' ? 'teaching_sequences' : resource === 'sequence-curriculum-references' ? 'sequence_curriculum_references' : resource === 'sequence-competencies' ? 'sequence_competencies' : resource === 'sequence-lessons' ? 'sequence_lessons' : resource === 'scheduled-lessons' ? 'scheduled_lessons' : resource === 'timetable-versions' ? 'timetable_versions' : resource === 'timetable-slots' ? 'timetable_slots' : resource === 'calendar-exceptions' ? 'calendar_exceptions' : undefined

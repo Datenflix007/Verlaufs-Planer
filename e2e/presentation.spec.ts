@@ -4,6 +4,110 @@ import { copyFile, readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { PDFDocument } from 'pdf-lib'
 
+test('derives the curriculum status from completed scheduled lessons', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const schoolYearId = randomUUID(); const classGroupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID(); const lessonId = randomUUID(); const annotationId = randomUUID(); const referenceId = randomUUID(); const scheduledId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${schoolYearId}`, { data: { id: schoolYearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/class-groups/${classGroupId}`, { data: { id: classGroupId, schoolYearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId, schoolYearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/annotations/${annotationId}`, { data: { id: annotationId, classSubjectAssignmentId: assignmentId, curriculumNodeId: 'th-gym-history-2021-g7-french-revolution', nodeKind: 'content-point', status: 'rough-planned', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/sequences/${sequenceId}`, { data: { id: sequenceId, classSubjectAssignmentId: assignmentId, title: 'Französische Revolution', status: 'planned', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/sequence-curriculum-references/${referenceId}`, { data: { id: referenceId, teachingSequenceId: sequenceId, curriculumNodeId: 'th-gym-history-2021-g7-french-revolution', nodeKind: 'content-point', relationType: 'primary', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/sequence-lessons/${lessonId}`, { data: { id: lessonId, teachingSequenceId: sequenceId, position: 1, title: '1789', status: 'completed', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/scheduled-lessons/${scheduledId}`, { data: { id: scheduledId, classSubjectAssignmentId: assignmentId, sequenceLessonId: lessonId, date: '2026-10-08', status: 'completed', contextType: 'REGULAR_LESSON', createdAt: stamp, updatedAt: stamp } })
+
+  await page.goto('/lehrplan')
+  await page.locator('.assignment-picker select').selectOption(assignmentId)
+  await expect(page.getByLabel(/Auf dem Weg in die Moderne.*Behandelt/)).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('shows timetable cancellations, substitutions, and standalone exceptions on the dashboard', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const schoolYearId = randomUUID(); const classGroupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID(); const lessonId = randomUUID()
+  const today = new Date().toISOString().slice(0, 10); const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+  await request.put(`/api/school-planning/school-years/${schoolYearId}`, { data: { id: schoolYearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/class-groups/${classGroupId}`, { data: { id: classGroupId, schoolYearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId, schoolYearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/sequences/${sequenceId}`, { data: { id: sequenceId, classSubjectAssignmentId: assignmentId, title: 'Quellenarbeit', status: 'planned', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/sequence-lessons/${lessonId}`, { data: { id: lessonId, teachingSequenceId: sequenceId, position: 1, title: 'Quellenarbeit', status: 'planned', createdAt: stamp, updatedAt: stamp } })
+  const cancelledLessonId = randomUUID()
+  await request.put(`/api/school-planning/scheduled-lessons/${cancelledLessonId}`, { data: { id: cancelledLessonId, classSubjectAssignmentId: assignmentId, sequenceLessonId: lessonId, date: today, startTime: '08:00', endTime: '08:45', status: 'planned', contextType: 'REGULAR_LESSON', createdAt: stamp, updatedAt: stamp } })
+  const substitutedLessonId = randomUUID()
+  await request.put(`/api/school-planning/scheduled-lessons/${substitutedLessonId}`, { data: { id: substitutedLessonId, classSubjectAssignmentId: assignmentId, sequenceLessonId: lessonId, date: tomorrow, startTime: '08:00', endTime: '08:45', status: 'planned', contextType: 'REGULAR_LESSON', createdAt: stamp, updatedAt: stamp } })
+  const cancellationId = randomUUID()
+  await request.put(`/api/school-planning/calendar-exceptions/${cancellationId}`, { data: { id: cancellationId, schoolYearId, classSubjectAssignmentId: assignmentId, date: today, type: 'CANCELLATION', title: 'Klassenfahrt', createdAt: stamp, updatedAt: stamp } })
+  const substitutionExceptionId = randomUUID()
+  await request.put(`/api/school-planning/calendar-exceptions/${substitutionExceptionId}`, { data: { id: substitutionExceptionId, schoolYearId, classSubjectAssignmentId: assignmentId, date: tomorrow, type: 'SUBSTITUTION', title: 'Vertretung durch Frau Meyer', replacementStartTime: '09:00', replacementEndTime: '09:45', createdAt: stamp, updatedAt: stamp } })
+  const standaloneId = randomUUID()
+  await request.put(`/api/school-planning/calendar-exceptions/${standaloneId}`, { data: { id: standaloneId, schoolYearId, date: today, type: 'OTHER', title: 'Projekttag', createdAt: stamp, updatedAt: stamp } })
+
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Unterricht & Planungen' })).toBeVisible()
+  await expect(page.getByText('8a · Geschichte · Quellenarbeit')).toBeVisible()
+  await expect(page.getByText('1 von 1 Sequenzstunden geplant')).toBeVisible()
+  await expect(page.locator('.timed-event.school.cancelled', { hasText: 'Quellenarbeit' })).toBeVisible()
+  await expect(page.locator('.timed-event.school.substitution', { hasText: '09:00' })).toBeVisible()
+  await expect(page.locator('.all-day-event.exception', { hasText: 'Projekttag' })).toBeVisible()
+  await page.locator('.timed-event.school.cancelled', { hasText: 'Quellenarbeit' }).click()
+  await expect(page).toHaveURL(new RegExp(`/reihen\\?sequenceId=${sequenceId}`))
+  await expect(page.locator('.sequence-timeline')).toBeVisible()
+})
+
+test('führt vom Dashboard durch die erste Schuljahreseinstellung', async ({ page, request }) => {
+  await page.goto('/'); await page.getByRole('button', { name: 'Einrichtung' }).click(); await expect(page).toHaveURL(/\/einrichtung$/)
+  await page.getByRole('button', { name: 'Weiter' }).click(); await page.getByLabel('Name').fill('8a'); await page.getByRole('button', { name: 'Weiter' }).click(); await expect(page.getByText('Verifiziert verfügbar')).toBeVisible(); await page.getByRole('button', { name: 'Weiter' }).click(); await page.getByRole('button', { name: 'Einrichtung abschließen' }).click()
+  await expect(page.getByText(/sind eingerichtet/)).toBeVisible(); await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).assignments.length).toBe(1)
+})
+
+test('schließt eine Reihe mit persönlicher Reihenreflexion ab', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const yearId = randomUUID(); const groupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${yearId}`, { data: { id: yearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/class-groups/${groupId}`, { data: { id: groupId, schoolYearId: yearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId: groupId, schoolYearId: yearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequences/${sequenceId}`, { data: { id: sequenceId, classSubjectAssignmentId: assignmentId, title: 'Vormärz', status: 'planned', createdAt: stamp, updatedAt: stamp } })
+  await page.goto('/reihen'); await page.getByRole('button', { name: 'Öffnen' }).click(); await page.getByLabel('Behandelte Inhalte').fill('Vormärz und nationale Einheit'); await page.getByLabel('Offene Inhalte').fill('Revolution 1848/49'); await page.getByLabel('Kompetenzen erneut aufgreifen').fill('Quellenkritik'); await page.getByLabel('Material im nächsten Schuljahr wiederverwenden').check(); await page.getByRole('button', { name: 'Reihenreflexion speichern und Reihe abschließen' }).click()
+  await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).sequenceReflections.find((reflection: { teachingSequenceId: string }) => reflection.teachingSequenceId === sequenceId)).toMatchObject({ openTopics: 'Revolution 1848/49', competenciesToRevisit: 'Quellenkritik', reuseMaterials: true })
+  await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).sequences.find((sequence: { id: string }) => sequence.id === sequenceId)?.status).toBe('completed')
+})
+
+test('speichert didaktische Hinweise an einer Sequenzstunde', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const yearId = randomUUID(); const groupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID(); const lessonId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${yearId}`, { data: { id: yearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/class-groups/${groupId}`, { data: { id: groupId, schoolYearId: yearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId: groupId, schoolYearId: yearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequences/${sequenceId}`, { data: { id: sequenceId, classSubjectAssignmentId: assignmentId, title: 'Vormärz', status: 'planned', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequence-lessons/${lessonId}`, { data: { id: lessonId, teachingSequenceId: sequenceId, position: 1, title: 'Historische Lieder', status: 'planned', createdAt: stamp, updatedAt: stamp } })
+  await page.goto('/reihen'); await page.getByRole('button', { name: 'Öffnen' }).click(); await page.getByText('1. Historische Lieder').first().click(); await page.getByLabel('Digitale Werkzeuge').fill('Quellenboard'); await page.getByLabel('Technische Voraussetzungen').fill('Beamer und WLAN'); await page.getByLabel('Offline-Fallback').fill('Ausgedruckte Quellen'); await page.getByRole('button', { name: 'Didaktische Hinweise speichern' }).click()
+  await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).sequenceLessons.find((lesson: { id: string }) => lesson.id === lessonId)).toMatchObject({ digitalTools: 'Quellenboard', technicalRequirements: 'Beamer und WLAN', fallbackPlan: 'Ausgedruckte Quellen' })
+})
+
+test('zeigt den fehlenden Offline-Fallback als Didaktik-Hinweis', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const yearId = randomUUID(); const groupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID(); const lessonId = randomUUID(); const referenceId = randomUUID(); const competencyId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${yearId}`, { data: { id: yearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/class-groups/${groupId}`, { data: { id: groupId, schoolYearId: yearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId: groupId, schoolYearId: yearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequences/${sequenceId}`, { data: { id: sequenceId, classSubjectAssignmentId: assignmentId, title: 'Vormärz', status: 'planned', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequence-curriculum-references/${referenceId}`, { data: { id: referenceId, teachingSequenceId: sequenceId, curriculumNodeId: 'history-vormaerz', nodeKind: 'content-point', relationType: 'primary', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequence-competencies/${competencyId}`, { data: { id: competencyId, teachingSequenceId: sequenceId, competencyId: 'history-method', role: 'primary', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequence-lessons/${lessonId}`, { data: { id: lessonId, teachingSequenceId: sequenceId, position: 1, title: 'Historische Lieder', lessonObjective: 'Quellen einordnen', competenceFocus: 'Quellenkritik', digitalTools: 'Quellenboard', status: 'planned', createdAt: stamp, updatedAt: stamp } })
+  await page.goto('/reihen'); await page.getByRole('button', { name: 'Öffnen' }).click(); await expect(page.getByText('Ein digitales Werkzeug hat noch keine Offline-Alternative.')).toBeVisible(); await page.getByText('1. Historische Lieder').first().click(); await page.getByLabel('Offline-Fallback').fill('Ausgedruckte Quellen'); await page.getByRole('button', { name: 'Didaktische Hinweise speichern' }).click(); await expect(page.getByText('Alle derzeit prüfbaren didaktischen Bezüge dieser Reihe sind dokumentiert.')).toBeVisible()
+})
+
+test('speichert und verwendet eine lokale Reihenvorlage ohne persönliche Termindaten', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const yearId = randomUUID(); const groupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID(); const lessonId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${yearId}`, { data: { id: yearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/class-groups/${groupId}`, { data: { id: groupId, schoolYearId: yearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId: groupId, schoolYearId: yearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequences/${sequenceId}`, { data: { id: sequenceId, classSubjectAssignmentId: assignmentId, title: 'Vormärz', status: 'planned', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequence-lessons/${lessonId}`, { data: { id: lessonId, teachingSequenceId: sequenceId, position: 1, title: 'Historische Lieder', digitalTools: 'Quellenboard', fallbackPlan: 'Ausdrucke', status: 'planned', createdAt: stamp, updatedAt: stamp } })
+  await page.goto('/reihen'); await page.getByRole('button', { name: 'Öffnen' }).click(); await page.getByRole('button', { name: 'Reihe als Vorlage speichern' }).click(); await expect(page.getByText(/nur in diesem Browser gespeichert/)).toBeVisible(); await page.getByRole('button', { name: 'Vorlage verwenden' }).click()
+  await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).sequences.filter((sequence: { classSubjectAssignmentId: string; title: string }) => sequence.classSubjectAssignmentId === assignmentId && sequence.title === 'Vormärz').length).toBe(2)
+  await expect.poll(async () => { const lesson = (await (await request.get('/api/school-planning')).json()).sequenceLessons.find((item: { teachingSequenceId: string; title: string; scheduledLessonId?: string; planId?: string; digitalTools?: string; fallbackPlan?: string }) => item.teachingSequenceId !== sequenceId && item.title === 'Historische Lieder'); return Boolean(lesson && lesson.scheduledLessonId === undefined && lesson.planId === undefined && lesson.digitalTools === 'Quellenboard' && lesson.fallbackPlan === 'Ausdrucke') }).toBe(true)
+})
+
+test('speichert strukturierte Stundenreflexionen', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const yearId = randomUUID(); const groupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID(); const lessonId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${yearId}`, { data: { id: yearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/class-groups/${groupId}`, { data: { id: groupId, schoolYearId: yearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId: groupId, schoolYearId: yearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequences/${sequenceId}`, { data: { id: sequenceId, classSubjectAssignmentId: assignmentId, title: 'Vormärz', status: 'planned', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequence-lessons/${lessonId}`, { data: { id: lessonId, teachingSequenceId: sequenceId, position: 1, title: 'Historische Lieder', status: 'planned', createdAt: stamp, updatedAt: stamp } })
+  await page.goto('/reihen'); await page.getByRole('button', { name: 'Öffnen' }).click(); await page.getByText('1. Historische Lieder').first().click(); await page.getByLabel('Ziele erreicht?').selectOption('false'); await page.getByLabel('Abweichungen').fill('Sicherung verkürzt.'); await page.getByLabel('Nächste Stunde anpassen').fill('Einstieg kürzen.'); await page.getByRole('button', { name: 'Durchführung speichern' }).click()
+  await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).lessonReflections[0]?.nextLessonAdjustment).toBe('Einstieg kürzen.')
+  await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).scheduledLessons.find((item: { sequenceLessonId: string }) => item.sequenceLessonId === lessonId)?.status).toBe('completed')
+})
+
+test('verwaltet Stundenplan-Slots und Kalenderausnahmen', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const schoolYearId = randomUUID(); const classGroupId = randomUUID(); const assignmentId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${schoolYearId}`, { data: { id: schoolYearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/class-groups/${classGroupId}`, { data: { id: classGroupId, schoolYearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId, schoolYearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } })
+  await page.goto('/stundenplan')
+  await page.getByRole('button', { name: 'Version speichern' }).click()
+  await page.getByRole('button', { name: 'Slot hinzufügen' }).click()
+  await expect(page.getByText('Montag · 08:00–08:45')).toBeVisible()
+  await page.getByLabel('Titel').fill('Herbstferien')
+  await page.getByRole('button', { name: 'Ausnahme speichern' }).click()
+  await expect(page.getByText('Herbstferien')).toBeVisible()
+})
+
 test('übernimmt Lehrplan- und Kompetenzbezüge beim Anlegen einer Reihe', async ({ page, request }) => {
   const stamp = new Date().toISOString()
   const schoolYearId = randomUUID()

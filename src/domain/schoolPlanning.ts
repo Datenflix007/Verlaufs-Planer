@@ -41,7 +41,7 @@ export interface SequenceLesson {
   id: string; teachingSequenceId: string; position: number; scheduledLessonId?: string; planId?: string
   plannedDate?: string; plannedDuration?: number; title: string; guidingQuestion?: string; lessonObjective?: string
   contentSummary?: string; competenceFocus?: string; curriculumNodeId?: string; methodsSummary?: string
-  materialsSummary?: string; didacticNote?: string; status: SequenceLessonStatus; createdAt: string; updatedAt: string
+  materialsSummary?: string; didacticNote?: string; differentiation?: string; digitalTools?: string; technicalRequirements?: string; fallbackPlan?: string; status: SequenceLessonStatus; createdAt: string; updatedAt: string
 }
 export interface ScheduledLesson {
   id: string; classSubjectAssignmentId: string; sequenceLessonId?: string; planId?: string; date: string
@@ -60,6 +60,11 @@ export interface CalendarException {
 }
 export interface LessonReflection {
   id: string; sequenceLessonId: string; outcome: 'completed' | 'partial' | 'cancelled' | 'needs-revisit'; note?: string; repeatNeeded: boolean; createdAt: string; updatedAt: string
+  objectivesReached?: boolean; deviations?: string; timingNotes?: string; classNotes?: string; sequenceImpact?: string; nextLessonAdjustment?: string
+}
+export interface SequenceReflection {
+  id: string; teachingSequenceId: string; coveredTopics?: string; curriculumAreas?: string; openTopics?: string
+  competenciesToRevisit?: string; lessonsToAdjust?: string; reuseMaterials?: boolean; note?: string; createdAt: string; updatedAt: string
 }
 export interface ExistingPlanContext {
   planId: string; contextType: TeachingContextType; createdAt: string; updatedAt: string
@@ -67,5 +72,5 @@ export interface ExistingPlanContext {
 
 export interface SchoolPlanningSnapshot {
   schoolYears: SchoolYear[]; classGroups: ClassGroup[]; assignments: ClassSubjectAssignment[]; annotations: CurriculumAnnotation[]
-  comments: CurriculumComment[]; sequences: TeachingSequence[]; sequenceCurriculumReferences: SequenceCurriculumReference[]; sequenceCompetencies: SequenceCompetency[]; sequenceLessons: SequenceLesson[]; scheduledLessons: ScheduledLesson[]; timetableVersions: TimetableVersion[]; timetableSlots: TimetableSlot[]; calendarExceptions: CalendarException[]; lessonReflections: LessonReflection[]; existingPlanContexts: ExistingPlanContext[]
+  comments: CurriculumComment[]; sequences: TeachingSequence[]; sequenceCurriculumReferences: SequenceCurriculumReference[]; sequenceCompetencies: SequenceCompetency[]; sequenceLessons: SequenceLesson[]; scheduledLessons: ScheduledLesson[]; timetableVersions: TimetableVersion[]; timetableSlots: TimetableSlot[]; calendarExceptions: CalendarException[]; lessonReflections: LessonReflection[]; sequenceReflections: SequenceReflection[]; existingPlanContexts: ExistingPlanContext[]
 }

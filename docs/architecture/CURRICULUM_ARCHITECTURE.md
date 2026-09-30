@@ -7,3 +7,5 @@ Ein Curriculum enthält Quelle, Fach, Geltung, Kompetenzbereiche, Lernbereiche, 
 Für eine Unterrichtsreihe speichern `sequence_curriculum_references` und `sequence_competencies` ausschließlich solche stabilen IDs. Die erste Tabelle hält den Lehrplananker samt Art und Relevanz fest; die zweite bewahrt Kompetenzrolle (`primary`, `secondary`, `supporting`) getrennt. Beide Tabellen sind an `teaching_sequences` kaskadierend gebunden, eindeutig pro Reihe und Referenz und verändern weder JSON-Referenzdaten noch den Originallehrplan.
 
 `CurriculumImporter` vereinheitlicht künftig `parseSource`, `extractStructure`, `extractCompetencies`, `extractReferences`, `validate` und `import`. Fehlende Quellen werden dokumentiert, nicht erfunden.
+
+`JsonCurriculumImporter` ist die aktuelle Importgrenze für strukturierte Referenzdaten: Jede Quelle benötigt URL und Inhalt, anschließend erzwingt die bestehende Zod-Validierung die Referenzstruktur. Fehlende oder ungültige Quellen liefern einen expliziten Fehler statt eines Ersatzcurriculums.

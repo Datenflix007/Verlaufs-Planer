@@ -18,7 +18,7 @@ type CalendarView = 'day' | 'week' | 'month'
 type CalendarEvent = {
   id: string
   date: string
-  type: 'plan' | 'todo' | 'school'
+  type: 'plan' | 'todo' | 'school' | 'exception'
   title: string
   detail: string
   planId?: string
@@ -26,6 +26,7 @@ type CalendarEvent = {
   startTime?: string
   endTime?: string
   sequenceId?: string
+  calendarState?: 'cancelled' | 'substitution'
 }
 
 const store = useProjectStore()
@@ -97,22 +98,7 @@ const allEvents = computed<CalendarEvent[]>(() => [
       }
     }),
   ),
-  ...(schoolPlanning.value?.scheduledLessons.map((scheduled) => {
-    const lesson = schoolPlanning.value?.sequenceLessons.find((item) => item.id === scheduled.sequenceLessonId)
-    const sequence = schoolPlanning.value?.sequences.find((item) => item.id === lesson?.teachingSequenceId)
-    const assignment = schoolPlanning.value?.assignments.find((item) => item.id === scheduled.classSubjectAssignmentId)
-    const group = schoolPlanning.value?.classGroups.find((item) => item.id === assignment?.classGroupId)
-    return {
-      id: `school-${scheduled.id}`,
-      date: scheduled.date,
-      type: 'school' as const,
-      title: `${group?.name ?? 'Klasse'} · ${lesson?.title ?? sequence?.title ?? 'Unterrichtsstunde'}`,
-      detail: [assignment?.subjectId, sequence?.title, scheduled.contextType === 'DOUBLE_LESSON' ? 'Doppelstunde' : 'Einzelstunde'].filter(Boolean).join(' · '),
-      startTime: scheduled.startTime,
-      endTime: scheduled.endTime,
-      sequenceId: sequence?.id,
-    }
-  }) ?? []),
+  ...schoolCalendarEvents.value,
   ...(workspace.value?.todos ?? [])
     .filter((todo) => todo.dueDate)
     .map((todo) => ({
@@ -125,11 +111,86 @@ const allEvents = computed<CalendarEvent[]>(() => [
     })),
 ])
 
+const schoolCalendarEvents = computed<CalendarEvent[]>(() => {
+  const snapshot = schoolPlanning.value
+  if (!snapshot) return []
+
+  const appliesToScheduledLesson = (exception: typeof snapshot.calendarExceptions[number], scheduled: typeof snapshot.scheduledLessons[number]): boolean => {
+    if (exception.date !== scheduled.date) return false
+    if (exception.classSubjectAssignmentId && exception.classSubjectAssignmentId !== scheduled.classSubjectAssignmentId) return false
+    if (!exception.timetableSlotId) return true
+    const slot = snapshot.timetableSlots.find((item) => item.id === exception.timetableSlotId)
+    return Boolean(slot
+      && slot.classSubjectAssignmentId === scheduled.classSubjectAssignmentId
+      && slot.startTime === scheduled.startTime
+      && slot.endTime === scheduled.endTime)
+  }
+
+  const scheduledEvents = snapshot.scheduledLessons.map((scheduled) => {
+    const lesson = snapshot.sequenceLessons.find((item) => item.id === scheduled.sequenceLessonId)
+    const sequence = snapshot.sequences.find((item) => item.id === lesson?.teachingSequenceId)
+    const assignment = snapshot.assignments.find((item) => item.id === scheduled.classSubjectAssignmentId)
+    const group = snapshot.classGroups.find((item) => item.id === assignment?.classGroupId)
+    const exceptions = snapshot.calendarExceptions.filter((item) => appliesToScheduledLesson(item, scheduled))
+    const cancellation = exceptions.find((item) => ['HOLIDAY', 'VACATION', 'CANCELLATION'].includes(item.type))
+    const substitution = !cancellation ? exceptions.find((item) => item.type === 'SUBSTITUTION') : undefined
+    const title = `${group?.name ?? 'Klasse'} · ${lesson?.title ?? sequence?.title ?? 'Unterrichtsstunde'}`
+    const context = [assignment?.subjectId, sequence?.title, scheduled.contextType === 'DOUBLE_LESSON' ? 'Doppelstunde' : 'Einzelstunde']
+      .filter(Boolean)
+      .join(' · ')
+
+    return {
+      id: `school-${scheduled.id}`,
+      date: scheduled.date,
+      type: 'school' as const,
+      title: cancellation ? `${title} (entfällt)` : substitution ? `${title} (Vertretung)` : title,
+      detail: [context, cancellation ? cancellation.title : substitution ? `Vertretung: ${substitution.title}` : undefined].filter(Boolean).join(' · '),
+      startTime: substitution?.replacementStartTime ?? scheduled.startTime,
+      endTime: substitution?.replacementEndTime ?? scheduled.endTime,
+      sequenceId: sequence?.id,
+      calendarState: cancellation ? 'cancelled' as const : substitution ? 'substitution' as const : undefined,
+    }
+  })
+
+  const unprojectedExceptions = snapshot.calendarExceptions
+    .filter((exception) => exception.type === 'OTHER' || !snapshot.scheduledLessons.some((scheduled) => appliesToScheduledLesson(exception, scheduled)))
+    .map((exception) => ({
+      id: `exception-${exception.id}`,
+      date: exception.date,
+      type: 'exception' as const,
+      title: exception.title,
+      detail: exception.note ?? exception.type,
+      calendarState: exception.type === 'SUBSTITUTION' ? 'substitution' as const : undefined,
+    }))
+
+  return [...scheduledEvents, ...unprojectedExceptions]
+})
+
 const upcomingPlans = computed(() =>
   allEvents.value
-    .filter((event) => event.type === 'plan' && event.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date)),
+    .filter((event) => (event.type === 'plan' || event.type === 'school') && event.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime ?? '').localeCompare(b.startTime ?? '')),
 )
+const sequenceProgress = computed(() => {
+  const snapshot = schoolPlanning.value
+  if (!snapshot) return []
+  const scheduledLessonIds = new Set(snapshot.scheduledLessons.map((item) => item.sequenceLessonId).filter((id): id is string => Boolean(id)))
+  return snapshot.sequences
+    .filter((sequence) => sequence.status === 'planned' || sequence.status === 'active')
+    .map((sequence) => {
+      const assignment = snapshot.assignments.find((item) => item.id === sequence.classSubjectAssignmentId)
+      const group = snapshot.classGroups.find((item) => item.id === assignment?.classGroupId)
+      const lessons = snapshot.sequenceLessons.filter((lesson) => lesson.teachingSequenceId === sequence.id)
+      return {
+        id: sequence.id,
+        title: sequence.title,
+        context: `${group?.name ?? 'Klasse'} · ${subjectLabel(assignment?.subjectId)}`,
+        plannedLessons: lessons.filter((lesson) => Boolean(lesson.plannedDate || lesson.scheduledLessonId || scheduledLessonIds.has(lesson.id))).length,
+        totalLessons: lessons.length,
+      }
+    })
+    .filter((sequence) => sequence.totalLessons > 0)
+})
 const upcomingTodos = computed(() =>
   allEvents.value
     .filter((event) => event.type === 'todo' && !event.completed && event.date >= today)
@@ -223,6 +284,9 @@ function dayNumber(date: string): string {
 function weekday(date: string): string {
   return asDate(date).toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '')
 }
+function subjectLabel(id?: string): string {
+  return ({ 'subject-history': 'Geschichte', 'subject-informatics': 'Informatik', 'subject-media-informatics': 'Medienbildung und Informatik' } as Record<string, string>)[id ?? ''] ?? id ?? 'Fach'
+}
 function eventsFor(date: string): CalendarEvent[] {
   return allEvents.value.filter((event) => event.date === date)
 }
@@ -308,7 +372,7 @@ function openEvent(event: CalendarEvent): void {
     return
   }
   if (event.type === 'school' && event.sequenceId) {
-    void router.push({ name: 'sequence-planning' })
+    void router.push({ name: 'sequence-planning', query: { sequenceId: event.sequenceId } })
     return
   }
   void router.push({ name: 'workspace-settings' })
@@ -373,6 +437,7 @@ async function open(id: string): Promise<void> {
       </div>
       <div class="home-actions">
         <button type="button" class="new-planning-trigger" @click="openNewPlanningMenu">Neue Planung</button>
+        <button type="button" class="secondary" @click="router.push({ name: 'school-onboarding' })">Einrichtung</button>
         <button type="button" class="secondary" @click="router.push({ name: 'school-planning' })">Schuljahr</button>
         <button type="button" class="secondary" @click="router.push({ name: 'sequence-planning' })">Reihen</button>
         <button type="button" class="new-todo-trigger" @click="openQuickCreate(today, 'todo')">Neues TODO</button>
@@ -424,7 +489,7 @@ async function open(id: string): Promise<void> {
               @click="openQuickCreate(date, 'choice')"
             >
               <strong>{{ dayNumber(date) }}</strong>
-              <button v-for="event in eventsFor(date)" :key="event.id" type="button" class="month-event" :class="event.type" @click.stop="openEvent(event)">
+              <button v-for="event in eventsFor(date)" :key="event.id" type="button" class="month-event" :class="[event.type, event.calendarState]" @click.stop="openEvent(event)">
                 <span v-if="event.startTime">{{ event.startTime }}</span>{{ event.title }}
               </button>
             </section>
@@ -449,10 +514,10 @@ async function open(id: string): Promise<void> {
                   <strong>{{ dayNumber(date) }}</strong>
                 </header>
                 <div class="all-day">
-                  <button v-for="event in allDayEvents(date)" :key="event.id" type="button" class="all-day-event" :class="event.type" @click.stop="openEvent(event)">{{ event.title }}</button>
+                  <button v-for="event in allDayEvents(date)" :key="event.id" type="button" class="all-day-event" :class="[event.type, event.calendarState]" @click.stop="openEvent(event)">{{ event.title }}</button>
                 </div>
                 <div class="slots">
-                  <button v-for="event in timedEvents(date)" :key="event.id" type="button" class="timed-event" :style="eventStyle(event)" @click.stop="openEvent(event)">
+                  <button v-for="event in timedEvents(date)" :key="event.id" type="button" class="timed-event" :class="[event.type, event.calendarState]" :style="eventStyle(event)" @click.stop="openEvent(event)">
                     <strong>{{ event.title }}</strong>
                     <small>{{ eventTime(event) }}</small>
                   </button>
@@ -463,7 +528,7 @@ async function open(id: string): Promise<void> {
         </template>
 
         <template v-else-if="widget.id === 'upcoming-plans'">
-          <div class="widget-heading"><h2>Verlaufspläne</h2><span>{{ widget.limit ?? 5 }}</span></div>
+          <div class="widget-heading"><h2>Unterricht &amp; Planungen</h2><span>{{ widget.limit ?? 5 }}</span></div>
           <ol class="dashboard-list">
             <li v-for="event in upcomingPlans.slice(0, widget.limit ?? 5)" :key="event.id">
               <button type="button" @click="openEvent(event)">
@@ -471,8 +536,11 @@ async function open(id: string): Promise<void> {
                 <small>{{ formatDate(event.date) }}{{ event.detail ? ` · ${event.detail}` : '' }}</small>
               </button>
             </li>
-            <li v-if="!upcomingPlans.length" class="empty-state">Keine kommenden Planungen.</li>
+            <li v-if="!upcomingPlans.length" class="empty-state">Keine kommenden Unterrichtsstunden oder Planungen.</li>
           </ol>
+          <div v-if="sequenceProgress.length" class="sequence-progress" aria-label="Fortschritt laufender Reihen">
+            <p v-for="sequence in sequenceProgress.slice(0, 3)" :key="sequence.id"><strong>{{ sequence.context }} · {{ sequence.title }}</strong><span>{{ sequence.plannedLessons }} von {{ sequence.totalLessons }} Sequenzstunden geplant</span></p>
+          </div>
         </template>
 
         <template v-else-if="widget.id === 'upcoming-todos'">
@@ -661,6 +729,9 @@ async function open(id: string): Promise<void> {
 .month-event, .all-day-event, .timed-event { display: block; width: 100%; overflow: hidden; border: 0; border-radius: 3px; text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; margin-top: .2rem; padding: .17rem .3rem; color: #124f57; background: #dbeff1 }
 .month-event.todo, .all-day-event.todo { color: #734d19; background: #f8e8c9 }
 .month-event.school, .all-day-event.school { color: #24496d; background: #dbeafe }
+.month-event.exception, .all-day-event.exception { color: #6c3d10; background: #ffefd2 }
+.month-event.cancelled, .all-day-event.cancelled { color: #87322c; background: #fde2df; text-decoration: line-through }
+.month-event.substitution, .all-day-event.substitution { color: #4d3979; background: #e9e2ff }
 .month-event span { margin-right: .2rem; font-weight: 800 }
 .time-scroll { overflow: auto; border: 1px solid #d4dfe1; border-radius: 7px }
 .time-grid { display: grid; min-width: 340px; background: #fff }
@@ -676,8 +747,13 @@ async function open(id: string): Promise<void> {
 .slots { position: relative; min-height: 672px; background: repeating-linear-gradient(to bottom, transparent 0, transparent 55px, #e1e9ea 56px) }
 .timed-event { position: absolute; z-index: 1; left: .18rem; right: .18rem; width: auto; min-height: 32px; white-space: normal; color: #fff; background: #1d777f; box-shadow: 0 1px 2px #16383c2b }
 .timed-event.school { color: #fff; background: #3266b0 }
+.timed-event.school.cancelled { color: #7f2924; background: #fde2df; box-shadow: inset 0 0 0 1px #e3a19a; text-decoration: line-through }
+.timed-event.school.substitution { background: #6951a5 }
 .timed-event strong, .timed-event small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .timed-event small { margin-top: .1rem; opacity: .9 }
+.sequence-progress { display: grid; gap: .35rem; margin-top: .7rem; padding-top: .65rem; border-top: 1px solid #dce5e6 }
+.sequence-progress p { display: grid; gap: .08rem; margin: 0; font-size: .78rem }
+.sequence-progress span { color: #587078 }
 @media (max-width: 760px) {
   .dashboard-grid .dashboard-widget { grid-column: var(--widget-grid-column) !important; grid-row: var(--widget-grid-row) !important }
   .calendar-heading { align-items: stretch; flex-direction: column }

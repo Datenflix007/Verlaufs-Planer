@@ -1,5 +1,87 @@
 # TODO
 
+## Aktuelle Iteration: Abgeleiteter Lehrplanstatus
+
+- [ ] Reine, nachvollziehbare Statusableitung aus Reihenbezug, terminierten und durchgeführten Sequenzstunden modellieren.
+- [ ] Den abgeleiteten Status im Lehrplanviewer darstellen, ohne persönliche Lehrplanmarker stillschweigend umzuschreiben.
+- [ ] Die Durchführung auf Sequenzstunde und zugehörigen Termin konsistent fortschreiben sowie Domain-, Browser- und Build-Prüfungen ergänzen.
+
+## Aktuelle Iteration: Kalender-Navigation zur Reihe
+
+- [x] Die gewählte Sequenz-ID beim Öffnen einer Unterrichtsstunde aus dem Dashboard an die Reihenplanung übergeben.
+- [x] Die Reihenansicht auf die übergebene Klasse/Fach-Reihe einstellen und deren Details öffnen.
+- [x] Den navigierbaren Kalenderfluss im Browser sowie durch Typ- und Build-Prüfung absichern.
+
+## Aktuelle Iteration: Unterrichtsübersicht im Dashboard
+
+- [x] Kommende geplante Unterrichtsstunden neben bestehenden Verlaufsplänen im vorhandenen Dashboard-Widget ausweisen.
+- [x] Den Fortschritt laufender Reihen anhand geplanter Sequenzstunden für Klasse und Fach sichtbar machen.
+- [x] Browser-, Unit- und Build-Prüfung für die Schuljahresübersicht ergänzen.
+
+## Aktuelle Iteration: Kalenderausnahmen im Dashboard
+
+- [x] Geplante Sequenzstunden im Dashboard gegen fach- und slotbezogene Kalenderausnahmen projizieren.
+- [x] Ausfälle sichtbar als entfallende Stunde, Vertretungen mit Ersatzzeit und übrige Ausnahmen ganztägig darstellen.
+- [x] Dashboard-Kalender, Browser-Regression und Kalenderarchitektur nachvollziehbar prüfen.
+
+## Aktuelle Iteration: Schuljahres-Onboarding
+
+- [x] Geführten Einstieg für Bundesland, Schulart, Schuljahr, Klasse und Fachlehrplan auf der bestehenden Schulplanungs-API modellieren.
+- [x] Nur verifizierte, zur Klassenstufe passende Thüringer Curricula zur Zuordnung anbieten und den Abschluss in Stundenplan oder Dashboard führen.
+- [x] Wizard über Routing und Dashboard erreichbar machen, ohne die bestehende Schuljahresverwaltung zu ersetzen.
+- [x] Browser- und Architekturprüfung ergänzen.
+
+## Aktuelle Iteration: Lokale Reihenvorlagen
+
+- [x] Lokales Vorlagenformat für Reihen, Lehrplan-/Kompetenzbezüge und didaktische Stundenstruktur definieren; Reflexionen, Termine und persönliche Detailpläne bewusst ausschließen.
+- [x] Browser-lokale Speicherung und Wiederverwendung einer Reihenvorlage ergänzen, ohne Referenzcurricula oder lokale SQLite-Planbestände zu kopieren.
+- [x] Die Aktionen „Reihe als Vorlage speichern“ und „Vorlage verwenden“ in der Reihenplanung zugänglich machen.
+- [x] Domain-, Browser- und Architekturprüfung ergänzen und lokale Datenhaltung dokumentieren.
+
+## Aktuelle Iteration: Transparenter Didaktik-Check
+
+- [x] Reine, nachvollziehbare Regelprüfung für Lehrplanbezug, Kompetenzkonkretisierung, Stundenziel und digitalen Offline-Fallback modellieren.
+- [x] Hinweise der geöffneten Reihe sichtbar und ohne automatische Qualitätsbewertung darstellen.
+- [x] Domain- und Browser-Regressionen für Hinweise und erfüllte Bedingungen ergänzen.
+- [x] Didaktikarchitektur und Qualitätsprüfung aktualisieren.
+
+## Aktuelle Iteration: Didaktische Stundenhinweise
+
+- [x] Optionale Daten für Differenzierung, digitale Werkzeuge, technische Voraussetzungen und Offline-Fallback an einer Sequenzstunde migrationssicher ergänzen.
+- [x] Schema, Snapshot, Repository und HTTP-Validierung auf die neuen Daten ausrichten, ohne bestehende Verlaufsplan-JSONs anzutasten.
+- [x] Die Angaben im Reihenplan bearbeiten, sichtbar zusammenfassen und beim Erstellen eines detaillierten Plans als didaktische Notiz übernehmen.
+- [x] SQLite-, Browser- und Architekturprüfung ergänzen.
+
+## Aktuelle Iteration: Reihenreflexion
+
+- [x] Einen eigenständigen, migrationssicheren `SequenceReflection`-Datensatz für behandelte Inhalte, offene Bereiche, erneut aufzugreifende Kompetenzen, anzupassende Stunden und Materialhinweise modellieren.
+- [x] Snapshot, Repository und validierte HTTP-Schnittstelle ergänzen, ohne Referenzcurricula oder vorhandene Reihen zu verändern.
+- [x] Den Reihenabschluss in der Reihenplanung mit einer kompakten, zugänglichen Eingabemaske und Statusfortschreibung verfügbar machen.
+- [x] SQLite- und Browser-Regressionen sowie die Reihenarchitektur dokumentieren und prüfen.
+
+## Aktuelle Iteration: Curriculum-Importgrenze
+
+- [x] Importvertrag für Quellen, Struktur, Kompetenzen, Referenzen und Validierung definieren.
+- [x] Fehlende oder ungültige Quellen als nachvollziehbare Fehler melden, ohne Ersatzcurriculum zu erzeugen.
+- [x] Bestehende verifizierte Thüringer Registry gegen den Importvertrag prüfen.
+- [x] Tests und Architektur-Dokumentation ergänzen.
+
+## Aktuelle Iteration: Durchführung und Reflexion
+
+- [x] Bestehenden Abschluss- und Reflexionsfluss gegen die geforderten Reflexionsdimensionen abgleichen.
+- [x] Strukturierte Felder für Zielerreichung, Abweichungen, Zeit, Klassennotizen, Wiederholung, Reihenwirkung und nächste Stunde migrationssicher ergänzen.
+- [x] Abschlusswirkung auf Sequenz-, Termin- und persönlichen Lehrplanstatus nachvollziehbar speichern.
+- [x] SQLite- und Browser-Regressionen sowie Architektur- und Qualitätsprüfung ergänzen.
+
+## Aktuelle Iteration: Stundenplan und Kalenderausnahmen
+
+- [x] Die vorhandenen relationalen Stundenplan-, Termin- und Ausnahme-Tabellen sowie Dashboard-Projektionen abgleichen.
+- [x] Eine zugängliche Verwaltungsansicht für versionierte Stundenpläne, Fach-Slots und Kalenderausnahmen erstellen.
+- [x] Änderungen ab Stichtag als neue Stundenplanversion anlegen, ohne vorhandene Termine umzuschreiben.
+- [x] Ferien, Feiertage, Ausfälle und Vertretungen als explizite Kalenderausnahmen erfassbar machen.
+- [x] Den Einstieg über Schuljahresverwaltung und Routing sichtbar machen, ohne Dashboard-Widget-Einstellungen zu duplizieren.
+- [x] SQLite- und Browser-Regressionen für Version, Slot und Ausnahme ergänzen; Dokumentation und Prüfläufe aktualisieren.
+
 ## Aktuelle Iteration: relationale Reihenbezüge
 
 - [x] Die bestehende Schuljahres-, Curriculum-, Reihen- und Terminarchitektur gegen die Implementierung abgleichen und die fehlenden relationalen Reihenbezüge präzise erfassen.

@@ -1,4 +1,4 @@
-import type { CalendarException, ClassGroup, ClassSubjectAssignment, CurriculumAnnotation, CurriculumComment, LessonReflection, ScheduledLesson, SchoolPlanningSnapshot, SchoolYear, SequenceCompetency, SequenceCurriculumReference, SequenceLesson, TeachingSequence, TimetableSlot, TimetableVersion } from '../domain/schoolPlanning'
+import type { CalendarException, ClassGroup, ClassSubjectAssignment, CurriculumAnnotation, CurriculumComment, LessonReflection, ScheduledLesson, SchoolPlanningSnapshot, SchoolYear, SequenceCompetency, SequenceCurriculumReference, SequenceLesson, SequenceReflection, TeachingSequence, TimetableSlot, TimetableVersion } from '../domain/schoolPlanning'
 
 type Resource = 'school-years' | 'class-groups' | 'assignments' | 'annotations' | 'comments' | 'sequences' | 'sequence-curriculum-references' | 'sequence-competencies' | 'sequence-lessons' | 'scheduled-lessons' | 'timetable-versions' | 'timetable-slots' | 'calendar-exceptions'
 const request = async <T>(path = '', init?: RequestInit): Promise<T> => {
@@ -23,5 +23,6 @@ export class SchoolPlanningRepository {
   saveTimetableSlot(value: TimetableSlot): Promise<TimetableSlot> { return request<TimetableSlot>(`/timetable-slots/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
   saveCalendarException(value: CalendarException): Promise<CalendarException> { return request<CalendarException>(`/calendar-exceptions/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
   saveLessonReflection(value: LessonReflection): Promise<LessonReflection> { return request<LessonReflection>(`/lesson-reflections/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
+  saveSequenceReflection(value: SequenceReflection): Promise<SequenceReflection> { return request<SequenceReflection>(`/sequence-reflections/${value.id}`, { method: 'PUT', body: JSON.stringify(value) }) }
   remove(resource: Resource, id: string): Promise<void> { return request<void>(`/${resource}/${id}`, { method: 'DELETE' }) }
 }
