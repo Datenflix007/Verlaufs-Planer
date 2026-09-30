@@ -7,7 +7,9 @@ import { aggregateMaterials } from '../domain/materials'
 import type { DashboardBreakpoint, DashboardWidget, Room, WorkshopPlan, WorkspaceSettings } from '../domain/types'
 import { getWidgetLayout } from '../data/dashboardWidgets'
 import type { DigitalLearningMaterial } from '../domain/types'
+import type { SchoolPlanningSnapshot } from '../domain/schoolPlanning'
 import { LearningMaterialRepository } from '../repositories/LearningMaterialRepository'
+import { SchoolPlanningRepository } from '../repositories/SchoolPlanningRepository'
 import { SqlitePlanRepository } from '../repositories/SqlitePlanRepository'
 import { WorkspaceRepository } from '../repositories/WorkspaceRepository'
 import { useProjectStore } from '../stores/projectStore'
@@ -16,13 +18,14 @@ type CalendarView = 'day' | 'week' | 'month'
 type CalendarEvent = {
   id: string
   date: string
-  type: 'plan' | 'todo'
+  type: 'plan' | 'todo' | 'school'
   title: string
   detail: string
   planId?: string
   completed?: boolean
   startTime?: string
   endTime?: string
+  sequenceId?: string
 }
 
 const store = useProjectStore()
@@ -30,6 +33,7 @@ const router = useRouter()
 const plans = new SqlitePlanRepository()
 const learningMaterialRepository = new LearningMaterialRepository()
 const workspaceRepository = new WorkspaceRepository()
+const schoolPlanningRepository = new SchoolPlanningRepository()
 const today = new Date().toISOString().slice(0, 10)
 const nextDay = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 
@@ -41,6 +45,7 @@ const importError = ref('')
 const workspace = ref<WorkspaceSettings>()
 const planDetails = ref<WorkshopPlan[]>([])
 const learningMaterials = ref<DigitalLearningMaterial[]>([])
+const schoolPlanning = ref<SchoolPlanningSnapshot>()
 const newPlanningMenuOpen = ref(false)
 const planningStep = ref<'choice' | 'single'>('choice')
 const quickCreateOpen = ref(false)
@@ -92,6 +97,22 @@ const allEvents = computed<CalendarEvent[]>(() => [
       }
     }),
   ),
+  ...(schoolPlanning.value?.scheduledLessons.map((scheduled) => {
+    const lesson = schoolPlanning.value?.sequenceLessons.find((item) => item.id === scheduled.sequenceLessonId)
+    const sequence = schoolPlanning.value?.sequences.find((item) => item.id === lesson?.teachingSequenceId)
+    const assignment = schoolPlanning.value?.assignments.find((item) => item.id === scheduled.classSubjectAssignmentId)
+    const group = schoolPlanning.value?.classGroups.find((item) => item.id === assignment?.classGroupId)
+    return {
+      id: `school-${scheduled.id}`,
+      date: scheduled.date,
+      type: 'school' as const,
+      title: `${group?.name ?? 'Klasse'} · ${lesson?.title ?? sequence?.title ?? 'Unterrichtsstunde'}`,
+      detail: [assignment?.subjectId, sequence?.title, scheduled.contextType === 'DOUBLE_LESSON' ? 'Doppelstunde' : 'Einzelstunde'].filter(Boolean).join(' · '),
+      startTime: scheduled.startTime,
+      endTime: scheduled.endTime,
+      sequenceId: sequence?.id,
+    }
+  }) ?? []),
   ...(workspace.value?.todos ?? [])
     .filter((todo) => todo.dueDate)
     .map((todo) => ({
@@ -286,12 +307,17 @@ function openEvent(event: CalendarEvent): void {
     void open(event.planId)
     return
   }
+  if (event.type === 'school' && event.sequenceId) {
+    void router.push({ name: 'sequence-planning' })
+    return
+  }
   void router.push({ name: 'workspace-settings' })
 }
 
 async function refresh(): Promise<void> {
   await store.refresh()
   planDetails.value = (await Promise.all(store.plans.map((plan) => plans.get(plan.id)))).filter((plan): plan is WorkshopPlan => Boolean(plan))
+  schoolPlanning.value = await schoolPlanningRepository.get()
 }
 
 onMounted(async () => {
@@ -347,6 +373,8 @@ async function open(id: string): Promise<void> {
       </div>
       <div class="home-actions">
         <button type="button" class="new-planning-trigger" @click="openNewPlanningMenu">Neue Planung</button>
+        <button type="button" class="secondary" @click="router.push({ name: 'school-planning' })">Schuljahr</button>
+        <button type="button" class="secondary" @click="router.push({ name: 'sequence-planning' })">Reihen</button>
         <button type="button" class="new-todo-trigger" @click="openQuickCreate(today, 'todo')">Neues TODO</button>
         <button type="button" class="secondary plan-overview-trigger" @click="router.push({ name: 'plan-overview' })">Alle Planungen</button>
         <button type="button" class="settings-trigger" aria-label="Einstellungen öffnen" title="Einstellungen" @click="router.push({ name: 'workspace-settings' })">⚙</button>
@@ -632,6 +660,7 @@ async function open(id: string): Promise<void> {
 .month-day.muted { background: #f7f9f9; color: #94a4a8 }
 .month-event, .all-day-event, .timed-event { display: block; width: 100%; overflow: hidden; border: 0; border-radius: 3px; text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; margin-top: .2rem; padding: .17rem .3rem; color: #124f57; background: #dbeff1 }
 .month-event.todo, .all-day-event.todo { color: #734d19; background: #f8e8c9 }
+.month-event.school, .all-day-event.school { color: #24496d; background: #dbeafe }
 .month-event span { margin-right: .2rem; font-weight: 800 }
 .time-scroll { overflow: auto; border: 1px solid #d4dfe1; border-radius: 7px }
 .time-grid { display: grid; min-width: 340px; background: #fff }
@@ -646,6 +675,7 @@ async function open(id: string): Promise<void> {
 .all-day { min-height: 28px; padding: .12rem; border-bottom: 1px solid #dce5e6 }
 .slots { position: relative; min-height: 672px; background: repeating-linear-gradient(to bottom, transparent 0, transparent 55px, #e1e9ea 56px) }
 .timed-event { position: absolute; z-index: 1; left: .18rem; right: .18rem; width: auto; min-height: 32px; white-space: normal; color: #fff; background: #1d777f; box-shadow: 0 1px 2px #16383c2b }
+.timed-event.school { color: #fff; background: #3266b0 }
 .timed-event strong, .timed-event small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .timed-event small { margin-top: .1rem; opacity: .9 }
 @media (max-width: 760px) {

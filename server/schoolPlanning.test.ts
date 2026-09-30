@@ -1,0 +1,61 @@
+import { randomUUID } from 'node:crypto'
+import { mkdtempSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { describe, expect, it } from 'vitest'
+import { SqliteSchoolPlanning } from './schoolPlanning'
+import { SqlitePlans } from './sqlitePlans'
+
+const stamp = '2026-09-30T12:00:00.000Z'
+const schoolYear = (id = randomUUID()) => ({ id, name: '2026/27', federalState: 'TH' as const, schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp })
+
+describe('relationale Schuljahresplanung', () => {
+  it('speichert Schuljahr, Parallelklassen, Fachzuordnungen und getrennte Lehrplanmarker', () => {
+    const database = new SqliteSchoolPlanning(join(mkdtempSync(join(tmpdir(), 'verlaufsplaner-school-planning-')), 'planning.sqlite'))
+    const year = database.saveSchoolYear(schoolYear())
+    const firstClass = database.saveClassGroup({ id: randomUUID(), schoolYearId: year.id, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp })
+    const secondClass = database.saveClassGroup({ id: randomUUID(), schoolYearId: year.id, name: '8b', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp })
+    const firstAssignment = database.saveAssignment({ id: randomUUID(), classGroupId: firstClass.id, schoolYearId: year.id, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp })
+    const secondAssignment = database.saveAssignment({ id: randomUUID(), classGroupId: secondClass.id, schoolYearId: year.id, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp })
+    const firstAnnotation = database.saveAnnotation({ id: randomUUID(), classSubjectAssignmentId: firstAssignment.id, curriculumNodeId: 'history-vormaerz', nodeKind: 'content-point', status: 'rough-planned', plannedWeek: 36, createdAt: stamp, updatedAt: stamp })
+    database.saveAnnotation({ id: randomUUID(), classSubjectAssignmentId: secondAssignment.id, curriculumNodeId: 'history-vormaerz', nodeKind: 'content-point', status: 'completed', createdAt: stamp, updatedAt: stamp })
+    const sequence = database.saveSequence({ id: randomUUID(), classSubjectAssignmentId: firstAssignment.id, title: 'Vormärz – Freiheit und nationale Einheit', status: 'planned', startDate: '2026-09-04', endDate: '2026-09-26', createdAt: stamp, updatedAt: stamp })
+    database.saveAnnotation({ ...firstAnnotation, status: 'scheduled', teachingSequenceId: sequence.id, updatedAt: stamp })
+    const sequenceLesson = database.saveSequenceLesson({ id: randomUUID(), teachingSequenceId: sequence.id, position: 1, plannedDate: '2026-09-04', plannedDuration: 45, title: 'Historische Lieder', status: 'planned', createdAt: stamp, updatedAt: stamp })
+    const scheduledLesson = database.saveScheduledLesson({ id: randomUUID(), classSubjectAssignmentId: firstAssignment.id, sequenceLessonId: sequenceLesson.id, date: '2026-09-04', startTime: '08:00', endTime: '08:45', contextType: 'REGULAR_LESSON', status: 'planned', createdAt: stamp, updatedAt: stamp })
+    database.saveScheduledLesson({ ...scheduledLesson, date: '2026-09-05', startTime: '09:00', updatedAt: stamp })
+    const copiedSequence = database.saveSequence({ ...sequence, id: randomUUID(), classSubjectAssignmentId: secondAssignment.id, title: 'Kopie für 8b', status: 'draft', createdAt: stamp, updatedAt: stamp })
+    database.saveSequenceLesson({ ...sequenceLesson, id: randomUUID(), teachingSequenceId: copiedSequence.id, scheduledLessonId: undefined, planId: undefined, plannedDate: undefined, status: 'draft', createdAt: stamp, updatedAt: stamp })
+
+    const snapshot = database.snapshot()
+    expect(snapshot.schoolYears).toHaveLength(1)
+    expect(snapshot.classGroups.map((group) => group.name)).toEqual(['8a', '8b'])
+    expect(snapshot.annotations.filter((annotation) => annotation.classSubjectAssignmentId === firstAssignment.id)).toMatchObject([{ status: 'scheduled', plannedWeek: 36, teachingSequenceId: sequence.id }])
+    expect(snapshot.annotations.filter((annotation) => annotation.classSubjectAssignmentId === secondAssignment.id)).toMatchObject([{ status: 'completed' }])
+    expect(snapshot.sequences.filter((item) => item.classSubjectAssignmentId === firstAssignment.id)).toMatchObject([{ title: 'Vormärz – Freiheit und nationale Einheit', status: 'planned' }])
+    expect(snapshot.sequenceLessons.filter((item) => item.teachingSequenceId === sequence.id)).toMatchObject([{ title: 'Historische Lieder', plannedDuration: 45 }])
+    expect(snapshot.scheduledLessons).toMatchObject([{ date: '2026-09-05', startTime: '09:00', contextType: 'REGULAR_LESSON' }])
+    expect(snapshot.sequences.filter((item) => item.classSubjectAssignmentId === secondAssignment.id)).toMatchObject([{ title: 'Kopie für 8b', status: 'draft' }])
+    expect(snapshot.sequenceLessons.filter((item) => item.teachingSequenceId === copiedSequence.id)).toMatchObject([{ title: 'Historische Lieder', scheduledLessonId: undefined, plannedDate: undefined, status: 'draft' }])
+  })
+
+  it('kaskadiert persönliche Annotationen mit ihrer Klassen-Fach-Zuordnung statt Referenzcurricula zu verändern', () => {
+    const database = new SqliteSchoolPlanning(join(mkdtempSync(join(tmpdir(), 'verlaufsplaner-school-planning-')), 'planning.sqlite'))
+    const year = database.saveSchoolYear(schoolYear())
+    const group = database.saveClassGroup({ id: randomUUID(), schoolYearId: year.id, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp })
+    const assignment = database.saveAssignment({ id: randomUUID(), classGroupId: group.id, schoolYearId: year.id, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp })
+    database.saveComment({ id: randomUUID(), classSubjectAssignmentId: assignment.id, curriculumNodeId: 'history-vormaerz', comment: 'Bildanalyse einplanen.', resolved: false, createdAt: stamp, updatedAt: stamp })
+    expect(database.snapshot().comments).toHaveLength(1)
+    expect(database.remove('class_subject_assignments', assignment.id)).toBe(true)
+    expect(database.snapshot().comments).toHaveLength(0)
+    expect(database.snapshot().schoolYears).toHaveLength(1)
+  })
+
+  it('ordnet vorhandene Plan-Payloads rückwärtskompatibel als Workshop ein, ohne sie zu verändern', () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'verlaufsplaner-school-planning-')), 'planning.sqlite')
+    const planId = randomUUID()
+    new SqlitePlans(path).save({ id: planId, metadata: { title: 'Bestehender Workshop' }, updatedAt: stamp, days: [{ date: '2026-09-04' }] })
+    const database = new SqliteSchoolPlanning(path)
+    expect(database.snapshot().existingPlanContexts).toMatchObject([{ planId, contextType: 'WORKSHOP' }])
+  })
+})

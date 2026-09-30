@@ -1,5 +1,78 @@
 # TODO
 
+## Schuljahres-, Lehrplan- und Sequenzplanung (Großauftrag)
+
+### 0. Bestandsaufnahme und Architektur
+
+- [x] Vue/Vite-, Pinia-, Routing-, SQLite-, Dashboard-, Kalender-, Material- und Präsentationsarchitektur sowie bestehende Datenmigrationen analysieren.
+- [x] Die vorhandenen, Zod-validierten Thüringer Referenzcurricula für Geschichte, Informatik und Medienbildung/Informatik einschließlich Quellen- und Importreport identifizieren.
+- [x] Architekturentscheidungen und Abgrenzungen in den neun angeforderten `docs/architecture/`-Dokumenten festhalten.
+
+### 1. Relationale Planungsgrundlage und Migration
+
+- [x] Separaten relationalen SQLite-Bereich für Schuljahre, Klassen/Kurse, Fachzuordnungen, Annotationen, Reihen, Sequenzstunden und geplante Termine anlegen; bestehende Plan-JSONs unverändert erhalten.
+- [x] Strikte TypeScript- und Zod-Domainmodelle für die neue Ebene sowie eine rückwärtskompatible Zuordnung vorhandener Workshops als `WORKSHOP`/`OTHER` implementieren.
+- [x] Repositories, API-Routen, Indizes und migrationssichere Defaults implementieren.
+- [x] Unit- und SQLite-Tests für Schuljahr, Klasse/Fach/Lehrplan-Zuordnung und Migration ergänzen.
+
+#### 1.1 Bedienbare Schuljahresverwaltung
+
+- [x] Eine zugängliche Oberfläche für Schuljahr, Klasse/Kurs und Fachlehrplan-Zuordnung auf Grundlage der neuen API implementieren.
+- [x] Die verfügbaren verifizierten Curricula passend zu Klassenstufe, Fach und Thüringen zur Auswahl anbieten; nicht verfügbare Lehrpläne nicht vortäuschen.
+- [ ] Die Verwaltungsoberfläche über Routing und Dashboard erreichbar machen und mit einer Komponentenprüfung absichern.
+
+### 2. Lehrplan-Annotation und Jahresplanung
+
+- [x] Wochenmarker pro Lehrplanknoten im persönlichen Annotation-Layer erfassen und im Viewer sichtbar machen.
+- [ ] Klassenbezogenen Fortschritts-, Wochenmarker- und Kommentar-Layer getrennt von den unveränderlichen Referenzcurricula implementieren.
+- [x] Curriculum-Status semantisch (vorgemerkt, geplant, behandelt, erneut aufgreifen) inklusive Text, Icon, ARIA und zentraler Farbtokens ableiten.
+- [ ] Curriculum-Viewer mit Quellenreferenz, Annotationsrandspalte, Jahresplanung und interaktiven Wochenmarkern implementieren.
+- [ ] Tests für Parallelklassen-Trennung, Kommentare, Marker und Statusableitung ergänzen.
+
+### 3. Reihen- und Sequenzplanung
+
+#### 3.1 Reihe aus Lehrplanbereich
+
+- [x] Eine Sequenzstunde gezielt mit einem bestehenden detaillierten Verlaufsplan verknüpfen und ihre Planungsdaten übernehmen.
+- [x] Reihenstunden als visuelle Sequenz-Timeline mit Terminstatus und offenen Planungslücken darstellen.
+- [x] Eine Sequenzstunde in einen neuen detaillierten Verlaufsplan überführen und die Rückreferenz speichern.
+- [x] Gespeicherte Reihen inklusive Sequenzstunden in einen anderen Klassen-Fachbereich kopieren.
+- [x] Aus dem Curriculum-Viewer direkt eine Reihe erstellen und die Lehrplanmarkierung mit der gespeicherten Reihe verknüpfen.
+- [x] Aus einer Lehrplanmarkierung eine gespeicherte Unterrichtsreihe mit Titel, Zeitraum, Leitfrage und Lehrplanreferenz anlegen.
+- [x] Eine Sequenzansicht mit tatsächlich gespeicherten SequenceLessons und direktem Hinzufügen von Stunden bereitstellen.
+- [ ] Reihenanlage und Sequenzstunden mit Domain- und Komponentenprüfungen absichern.
+
+- [ ] TeachingSequence, Curriculum-/Kompetenzreferenzen und SequenceLesson als relationale Datenmodelle implementieren.
+- [ ] Lehrplan-zu-Reihe-Workflow, hochwertige Sequenz-Timeline, Matrix-Ansicht und Klassenkopie implementieren.
+- [x] Übernahme einer SequenceLesson in einen bestehenden detaillierten Verlaufsplan implementieren.
+- [ ] Domain-, Repository- und Komponentenprüfungen für Reihen, Sequenzstunden und Datenübernahme ergänzen.
+
+### 4. Stundenplan und Kalender
+
+- [x] Sequenzstunden direkt mit einem gespeicherten Unterrichtstermin (Datum, Zeit, Unterrichtskontext) verknüpfen und Verschiebungen am Termin sichtbar machen.
+- [ ] Versionierbaren Stundenplan, Kalenderausnahmen, Feiertage, Ferien, geplante Termine und Vertretungen modellieren.
+- [ ] Sequenzstunden mit dem Kalender verbinden, Terminverschiebungen sichtbar machen und kalenderlesbare Daten bereitstellen.
+- [x] Kalender- und Dashboardansichten um Klassen-, Fach-, Reihen- und Terminbezug erweitern.
+- [ ] Tests für Stundenplanwechsel, Ausnahmen, Ferien und Terminzuordnungen ergänzen.
+
+### 5. Durchführung, Reflexion und Verlaufsplan
+
+- [ ] Abschlussstatus, Stunden- und Reihenreflexion sowie nachvollziehbare Auswirkungen auf den Lehrplanstatus implementieren.
+- [ ] Bestehende Verlaufsplanung als zugängliche Kompakt-/Detail-Timeline weiterentwickeln, ohne Workshop- und Präsentationsabläufe zu brechen.
+- [ ] Didaktische Hinweise, technische Voraussetzungen, Differenzierung, digitale Tools und Fallback-Plan schrittweise als optionale Daten ergänzen.
+
+### 6. Import, Einstellungen und Onboarding
+
+- [ ] CurriculumImporter-Schnittstelle, Quellennachweis und Fehlermeldung für nicht vorhandene offizielle Curricula vorbereiten, ohne Inhalte zu erfinden.
+- [ ] Einstellungen für Schule, Bundesland, Schuljahr, Klassen, Fächer, Curricula und Stundenplan ergänzen.
+- [ ] Onboarding-Workflow für die erste Schuljahresplanung ergänzen.
+
+### 7. Abschluss, Qualität und Dokumentation
+
+- [ ] Responsive, tastaturbedienbare und kontrastreiche UI mit reduzierter Bewegung umsetzen; Farbe nie als alleiniges Signal verwenden.
+- [ ] Vollständige Typ-, Unit-, SQLite-, Browser- und Build-Prüfungen je Phase durchführen und TODO-Status erst danach aktualisieren.
+- [ ] `IMPLEMENTATION_SUMMARY.md` mit Architektur, Migration, Tests, Einschränkungen und Roadmap vervollständigen.
+
 ## Widget-Vorlagen, Farbsets und elegante Zeitstrahlbearbeitung
 
 - [ ] Bestehende Widget-Datenmodelle, Editor- und Präsentationsrenderstrecken sowie Tests analysieren und Ausgangsprüfungen ausführen.

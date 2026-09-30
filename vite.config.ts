@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { SqliteDigitalLearningMaterials, SqlitePlans, SqlitePresentationMedia, SqliteSchedulePatterns, SqliteWorkspaceSettings } from './server/sqlitePlans'
+import { SqliteSchoolPlanning } from './server/schoolPlanning'
+import { ClassGroupSchema, ClassSubjectAssignmentSchema, CurriculumAnnotationSchema, CurriculumCommentSchema, ScheduledLessonSchema, SchoolYearSchema, SequenceLessonSchema, TeachingSequenceSchema } from './src/schemas/schoolPlanning'
 
 const json = (response: ServerResponse, status: number, body?: unknown): void => {
   response.statusCode = status
@@ -33,6 +35,7 @@ const sqliteApi = () => ({
     const learningMaterials = new SqliteDigitalLearningMaterials()
     const schedulePatterns = new SqliteSchedulePatterns()
     const workspace = new SqliteWorkspaceSettings()
+    const schoolPlanning = new SqliteSchoolPlanning()
     server.middlewares.use('/api/plans', (request, response, next) => {
       void (async () => {
         const path = new URL(request.url ?? '/', 'http://localhost').pathname
@@ -122,6 +125,31 @@ const sqliteApi = () => ({
       })().catch((error: unknown) => {
         if (error instanceof SyntaxError) return json(response, 400, { error: 'Ungültiges JSON.' })
         next(error instanceof Error ? error : new Error(String(error)))
+      })
+    })
+    server.middlewares.use('/api/school-planning', (request, response, next) => {
+      void (async () => {
+        const path = new URL(request.url ?? '/', 'http://localhost').pathname
+        const [resource, id] = path.split('/').filter(Boolean)
+        if (request.method === 'GET' && !resource) return json(response, 200, schoolPlanning.snapshot())
+        if (request.method === 'PUT' && id) {
+          const body = await readBody(request)
+          const saved = resource === 'school-years' ? schoolPlanning.saveSchoolYear(SchoolYearSchema.parse(body))
+            : resource === 'class-groups' ? schoolPlanning.saveClassGroup(ClassGroupSchema.parse(body))
+              : resource === 'assignments' ? schoolPlanning.saveAssignment(ClassSubjectAssignmentSchema.parse(body))
+                : resource === 'annotations' ? schoolPlanning.saveAnnotation(CurriculumAnnotationSchema.parse(body))
+                  : resource === 'comments' ? schoolPlanning.saveComment(CurriculumCommentSchema.parse(body))
+                    : resource === 'sequences' ? schoolPlanning.saveSequence(TeachingSequenceSchema.parse(body))
+                      : resource === 'sequence-lessons' ? schoolPlanning.saveSequenceLesson(SequenceLessonSchema.parse(body))
+                        : resource === 'scheduled-lessons' ? schoolPlanning.saveScheduledLesson(ScheduledLessonSchema.parse(body)) : undefined
+          return saved ? json(response, 200, saved) : json(response, 404, { error: 'Unbekannte Planungsressource.' })
+        }
+        const table = resource === 'school-years' ? 'school_years' : resource === 'class-groups' ? 'class_groups' : resource === 'assignments' ? 'class_subject_assignments' : resource === 'annotations' ? 'curriculum_annotations' : resource === 'comments' ? 'curriculum_comments' : resource === 'sequences' ? 'teaching_sequences' : resource === 'sequence-lessons' ? 'sequence_lessons' : resource === 'scheduled-lessons' ? 'scheduled_lessons' : undefined
+        if (request.method === 'DELETE' && id && table) return json(response, schoolPlanning.remove(table, id) ? 204 : 404)
+        return json(response, 405, { error: 'Methode nicht erlaubt.' })
+      })().catch((error: unknown) => {
+        if (error instanceof SyntaxError || error instanceof Error) return json(response, 400, { error: error.message || 'Ungültige Planungsdaten.' })
+        next(new Error(String(error)))
       })
     })
   },
