@@ -1,5 +1,12 @@
 # TODO
 
+## Aktuelle Iteration: Durchscrollbares Planungsdokument
+
+- [x] Bestehenden Planeditor, Abschnittsnavigation, Vorlagenfilter und automatisches Speichern für einen rückwärtskompatiblen Dokumentfluss erfassen; Typ- und Test-Baseline ausführen.
+- [x] Alle aktivierten Planungsabschnitte als fortlaufendes, visuell dokumentartiges Formular mit klarer Lesereihenfolge rendern.
+- [x] Linke Sprungmarken mit sanftem Zielscrollen, sichtbarem aktivem Abschnitt und Scroll-Spy für Vor- und Rückwärtsnavigation verbinden.
+- [x] Responsive Ansicht, Tastaturfokus und reduzierter Bewegungsmodus absichern sowie Browser-, Typ-, Test-, Build- und Diff-Prüfungen ausführen.
+
 ## Aktuelle Iteration: Geführte Planung für Schule und Workshop
 
 - [x] Bestehenden Aufsetzungs-, Reihen- und Einzelplanungsfluss sowie Datenmodell für Klassen, Workshop-Teilnehmende, Fächer und Lehrpläne erfassen und mit lokalen Beispieldaten durchspielen.

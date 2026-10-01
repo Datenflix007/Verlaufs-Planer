@@ -199,14 +199,19 @@ test('übernimmt Lehrplan- und Kompetenzbezüge beim Anlegen einer Reihe', async
   await expect(page.locator('.competency-chip')).toHaveCount(2)
 })
 
-test('trennt Planungsablauf, Materialliste, digitalen Baukasten und Präsentation', async ({ page, request }) => {
+test('führt durch das Planungsdokument und trennt Materialliste, Baukasten und Präsentation', async ({ page, request }) => {
   const plan = createPlan('Getrennte Arbeitsansichten')
   await request.put(`/api/plans/${plan.id}`, { data: plan })
   await page.goto(`/plan/${plan.id}`)
-  const navigation = page.getByRole('navigation', { name: 'Planungsabschnitte' })
+  const navigation = page.getByRole('navigation', { name: 'Sprungmarken im Planungsdokument' })
   await expect(navigation.getByRole('button', { name: 'Verlaufsplan' })).toBeVisible()
   await expect(navigation.getByRole('button', { name: 'Material' })).toHaveCount(0)
   await expect(navigation.getByRole('button', { name: 'Präsentation' })).toHaveCount(0)
+  await expect(page.locator('#planning-section-general')).toHaveCount(1)
+  await expect(page.locator('#planning-section-schedule')).toHaveCount(1)
+  await navigation.getByRole('button', { name: 'Verlaufsplan' }).click()
+  await expect(navigation.getByRole('button', { name: 'Verlaufsplan' })).toHaveAttribute('aria-current', 'step')
+  await expect.poll(() => page.locator('.editor-content').evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
   await expect(page.getByRole('button', { name: 'Materialliste' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Digitaler Baukasten' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Präsentation' })).toBeVisible()
