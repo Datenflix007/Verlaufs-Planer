@@ -54,7 +54,7 @@ export interface TeachingContext { id: string; schoolYear: string; state: 'TH'; 
 export interface CurriculumProgressEntry { id: string; teachingContextId: string; curriculumNodeId: string; status: CurriculumProgressStatus; firstTaughtAt?: string; lastTaughtAt?: string; lessonPlanIds?: string[]; notes?: string }
 export interface WorkshopPlan {
   schemaVersion: number; id: string
-  metadata: { title: string; subtitle?: string; subject?: string; targetGroup?: string; institution?: string; location?: string; buildingId?: string; roomId?: string; priorityId?: string; authors: string[]; description?: string }
+  metadata: { title: string; subtitle?: string; subject?: string; targetGroup?: string; institution?: string; location?: string; buildingId?: string; roomId?: string; priorityId?: string; authors: string[]; description?: string; planningContext?: 'school' | 'workshop'; classSubjectAssignmentId?: string; participants?: string[] }
   days: WorkshopDay[]; learningObjectives: LearningObjective[]; competencies: CompetencyReference[]
   contentAnalysis: RichTextDocument; didacticAnalysis: RichTextDocument; schedule: ScheduleEntry[]; materials: Material[]
   /** The plan-owned presentation is persisted with the plan's SQLite payload. */

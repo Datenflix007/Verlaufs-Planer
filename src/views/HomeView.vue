@@ -48,7 +48,11 @@ const planDetails = ref<WorkshopPlan[]>([])
 const learningMaterials = ref<DigitalLearningMaterial[]>([])
 const schoolPlanning = ref<SchoolPlanningSnapshot>()
 const newPlanningMenuOpen = ref(false)
-const planningStep = ref<'choice' | 'single'>('choice')
+const planningStep = ref<'choice' | 'school' | 'workshop' | 'series'>('choice')
+const assignmentId = ref('')
+const planningDate = ref(today)
+const workshopGroup = ref('')
+const workshopParticipants = ref('')
 const quickCreateOpen = ref(false)
 const quickCreateDate = ref(today)
 const quickCreateTone = ref<'choice' | 'term' | 'todo'>('choice')
@@ -59,6 +63,15 @@ const dashboardBreakpoint = ref<DashboardBreakpoint>('laptop')
 const timeSlots = Array.from({ length: 12 }, (_, index) => index + 7)
 
 const templates = computed(() => getPlanningTemplates())
+const planningAssignments = computed(() => schoolPlanning.value?.assignments ?? [])
+const selectedAssignment = computed(() => planningAssignments.value.find((item) => item.id === assignmentId.value))
+const selectedClassGroup = computed(() => schoolPlanning.value?.classGroups.find((item) => item.id === selectedAssignment.value?.classGroupId))
+const selectedSubject = computed(() => selectedAssignment.value ? subjectLabel(selectedAssignment.value.subjectId) : '')
+const assignmentLabel = (id: string) => {
+  const assignment = schoolPlanning.value?.assignments.find((item) => item.id === id)
+  const group = schoolPlanning.value?.classGroups.find((item) => item.id === assignment?.classGroupId)
+  return `${group?.name ?? 'Lerngruppe'} · ${subjectLabel(assignment?.subjectId)}`
+}
 const rooms = computed<Room[]>(() =>
   (workspace.value?.rooms ?? []).filter((room) => !buildingId.value || room.buildingId === buildingId.value),
 )
@@ -311,14 +324,20 @@ function eventTime(event: CalendarEvent): string {
 
 function openNewPlanningMenu(): void {
   planningStep.value = 'choice'
+  assignmentId.value = planningAssignments.value[0]?.id ?? ''
+  planningDate.value = today
+  workshopGroup.value = ''
+  workshopParticipants.value = ''
+  newTitle.value = ''
   newPlanningMenuOpen.value = true
 }
 
 function closeNewPlanningMenu(): void {
   newPlanningMenuOpen.value = false
 }
-function selectSinglePlanning(): void {
-  planningStep.value = 'single'
+function selectPlanningStep(step: 'school' | 'workshop' | 'series'): void {
+  planningStep.value = step
+  if (step !== 'workshop' && !assignmentId.value) assignmentId.value = planningAssignments.value[0]?.id ?? ''
 }
 
 function openQuickCreate(date: string = today, tone: 'choice' | 'term' | 'todo' = 'choice'): void {
@@ -405,17 +424,42 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => window.removeEventListener('resize', updateDashboardBreakpoint))
 
-async function create(): Promise<void> {
+function selectedLocation() {
   const room = workspace.value?.rooms.find((item) => item.id === roomId.value)
   const building = workspace.value?.buildings.find((item) => item.id === (room?.buildingId ?? buildingId.value))
-  const location = room
+  return room
     ? { buildingId: room.buildingId, roomId: room.id, label: `${building?.name ?? ''} · ${room.name}` }
     : building
       ? { buildingId: building.id, label: building.name }
       : undefined
+}
 
+async function createPlanning(): Promise<void> {
+  if (planningStep.value === 'series') {
+    if (!selectedAssignment.value) { importError.value = 'Bitte wählen Sie zuerst Klasse und Fach aus oder richten Sie diese im Schuljahr ein.'; return }
+    const stamp = new Date().toISOString()
+    const sequence = await schoolPlanningRepository.saveSequence({ id: createId(), classSubjectAssignmentId: selectedAssignment.value.id, title: newTitle.value.trim() || `Neue Reihe ${selectedSubject.value}`, startDate: planningDate.value || undefined, status: 'planned', createdAt: stamp, updatedAt: stamp })
+    closeNewPlanningMenu()
+    await router.push({ name: 'sequence-planning', query: { assignmentId: selectedAssignment.value.id, sequenceId: sequence.id } })
+    return
+  }
+
+  if (planningStep.value === 'school' && !selectedAssignment.value) { importError.value = 'Bitte wählen Sie zuerst Klasse und Fach aus oder richten Sie diese im Schuljahr ein.'; return }
+  if (planningStep.value === 'workshop' && !workshopGroup.value.trim()) { importError.value = 'Bitte geben Sie eine Workshop-Lerngruppe an.'; return }
   try {
-    const plan = await store.create(newTitle.value.trim() || 'Neue Planung', getPlanningTemplate(templateId.value), location)
+    const plan = await store.create(newTitle.value.trim() || (planningStep.value === 'workshop' ? 'Neuer Workshop' : 'Neue Unterrichtsstunde'), getPlanningTemplate(templateId.value), selectedLocation())
+    plan.days[0]!.date = planningDate.value || today
+    if (planningStep.value === 'school' && selectedAssignment.value) {
+      plan.metadata.planningContext = 'school'
+      plan.metadata.classSubjectAssignmentId = selectedAssignment.value.id
+      plan.metadata.targetGroup = selectedClassGroup.value?.name
+      plan.metadata.subject = selectedSubject.value
+    } else {
+      plan.metadata.planningContext = 'workshop'
+      plan.metadata.targetGroup = workshopGroup.value.trim()
+      plan.metadata.participants = workshopParticipants.value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
+    }
+    await store.save()
     closeNewPlanningMenu()
     await router.push({ name: 'editor', params: { id: plan.id } })
   } catch (cause) {
@@ -603,32 +647,56 @@ async function open(id: string): Promise<void> {
         <header class="planning-menu-header">
           <div>
             <p class="eyebrow">Neue Planung</p>
-            <h2 id="planning-menu-title">{{ planningStep === 'choice' ? 'Planungsart wählen' : 'Einzelplanung anlegen' }}</h2>
+            <h2 id="planning-menu-title">{{ planningStep === 'choice' ? 'Was möchten Sie vorbereiten?' : planningStep === 'series' ? 'Unterrichtsreihe anlegen' : planningStep === 'workshop' ? 'Workshop planen' : 'Unterrichtsstunde anlegen' }}</h2>
           </div>
           <button type="button" class="dialog-close" aria-label="Menü schließen" @click="closeNewPlanningMenu">×</button>
         </header>
 
         <div v-if="planningStep === 'choice'" class="planning-type-cards">
-          <button type="button" class="planning-type-card" disabled>
+          <button type="button" class="planning-type-card" :disabled="!planningAssignments.length" @click="selectPlanningStep('series')">
             <span class="planning-type-icon">▤</span>
             <strong>Reihenplanung</strong>
-            <small>Kommt später: mehrere zusammenhängende Planungen anlegen und verbinden.</small>
-            <em>Noch nicht verfügbar</em>
+            <small>Eine Unterrichtsreihe für Klasse, Fach und Fachlehrplan anlegen. Danach folgen die einzelnen Stunden.</small>
+            <em>{{ planningAssignments.length ? 'Reihe starten' : 'Zuerst Klasse & Fach einrichten' }}</em>
           </button>
-          <button type="button" class="planning-type-card" @click="selectSinglePlanning">
+          <button type="button" class="planning-type-card" :disabled="!planningAssignments.length" @click="selectPlanningStep('school')">
             <span class="planning-type-icon">▧</span>
-            <strong>Einzelplanung</strong>
-            <small>Eine einzelne Planung erstellen und direkt im bestehenden Editor weiterarbeiten.</small>
-            <em>Auswählen</em>
+            <strong>Unterrichtsstunde</strong>
+            <small>Eine einzelne Stunde mit Klasse, Fach und zugehörigem Lehrplan vorbereiten.</small>
+            <em>{{ planningAssignments.length ? 'Stunde planen' : 'Zuerst Klasse & Fach einrichten' }}</em>
+          </button>
+          <button type="button" class="planning-type-card" @click="selectPlanningStep('workshop')">
+            <span class="planning-type-icon">✦</span>
+            <strong>Workshop</strong>
+            <small>Eine unabhängige Planung für eine Workshop-Lerngruppe und ihre Teilnehmenden erstellen.</small>
+            <em>Workshop planen</em>
           </button>
         </div>
 
-        <form v-else class="single-planning-form" @submit.prevent="create">
+        <div v-if="planningStep === 'choice' && !planningAssignments.length" class="planning-setup-hint"><strong>Für Unterrichtsstunden fehlt noch ein Planungsraum.</strong><span>Richten Sie einmal Klasse und Fachlehrplan ein. Workshops können Sie sofort planen.</span><button type="button" class="secondary" @click="router.push({ name: 'school-onboarding' }); closeNewPlanningMenu()">Schule einrichten</button></div>
+
+        <form v-else-if="planningStep !== 'choice'" class="single-planning-form" @submit.prevent="createPlanning">
           <button type="button" class="back-to-cards" @click="planningStep = 'choice'">‹ Planungsart ändern</button>
+          <template v-if="planningStep === 'school' || planningStep === 'series'">
+            <label>
+              Klasse, Fach und Lehrplan
+              <select v-model="assignmentId" required>
+                <option value="" disabled>Planungsraum auswählen</option>
+                <option v-for="assignment in planningAssignments" :key="assignment.id" :value="assignment.id">{{ assignmentLabel(assignment.id) }}</option>
+              </select>
+              <small v-if="selectedAssignment">{{ selectedClassGroup?.name }} · {{ selectedSubject }} · Der verifizierte Fachlehrplan wird für diese Planung mitgeführt.</small>
+            </label>
+          </template>
+          <template v-else>
+            <label>Workshop-Lerngruppe<input v-model="workshopGroup" autofocus required placeholder="z. B. Fortbildungsteam Geschichte"></label>
+            <label>Teilnehmende<textarea v-model="workshopParticipants" rows="3" placeholder="Namen durch Komma oder Zeilen trennen (optional)"></textarea><small>Die Teilnehmenden bleiben nur in dieser Workshop-Planung gespeichert.</small></label>
+          </template>
           <label>
-            Titel
-            <input v-model="newTitle" autofocus placeholder="Titel der neuen Planung" />
+            {{ planningStep === 'series' ? 'Titel der Reihe' : 'Titel der Planung' }}
+            <input v-model="newTitle" :autofocus="planningStep !== 'workshop'" :placeholder="planningStep === 'series' ? 'z. B. Vormärz und Revolution 1848/49' : planningStep === 'workshop' ? 'z. B. Quellenwerkstatt' : 'z. B. Vormärz: Historische Lieder'" />
           </label>
+          <label>{{ planningStep === 'series' ? 'Geplanter Beginn' : 'Datum der Stunde' }}<input v-model="planningDate" type="date"></label>
+          <template v-if="planningStep !== 'series'">
           <label>
             Vorlage
             <select v-model="templateId">
@@ -652,9 +720,10 @@ async function open(id: string): Promise<void> {
               </select>
             </label>
           </div>
+          </template>
           <div class="planning-menu-actions">
             <button type="button" class="secondary" @click="closeNewPlanningMenu">Abbrechen</button>
-            <button type="submit">Planung anlegen</button>
+            <button type="submit">{{ planningStep === 'series' ? 'Reihe anlegen und Stunden planen' : planningStep === 'workshop' ? 'Workshop anlegen' : 'Stunde anlegen' }}</button>
           </div>
         </form>
       </section>

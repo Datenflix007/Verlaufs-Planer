@@ -1,5 +1,39 @@
 # TODO
 
+## Aktuelle Iteration: Geführte Planung für Schule und Workshop
+
+- [x] Bestehenden Aufsetzungs-, Reihen- und Einzelplanungsfluss sowie Datenmodell für Klassen, Workshop-Teilnehmende, Fächer und Lehrpläne erfassen und mit lokalen Beispieldaten durchspielen.
+- [x] Einzelplanungen um einen kontextabhängigen Lern- bzw. Workshop-Kontext ergänzen und die Auswahl von Klasse/Lerngruppe, Fach sowie passendem Lehrplan ermöglichen.
+- [x] Den gewählten Kontext von der Schuljahres- bzw. Reihenplanung bis in die Einzelplanung sichtbar übergeben und die nächste sinnvolle Aktion pro Schritt anbieten.
+- [x] Den End-to-End-Ablauf für Workshop und Geschichte 8a/Vormärz automatisiert absichern sowie Typ-, Unit-, Browser-, Build- und Diff-Prüfungen ausführen.
+
+## Aktuelle Iteration: Getrennte Arbeitsansichten am Verlaufsplan
+
+- [x] Bestehende Planseitenleiste, Materialliste, eingebetteten Baukasten und Präsentationseinstiege auf ihren Moduswechsel prüfen.
+- [x] Die linke Navigation auf Sprungmarken des Planungsablaufs reduzieren und die Materialliste als eigenständige Planfunktion erreichbar halten.
+- [x] Digitalen Baukasten als separate, planbezogen gefilterte Ansicht öffnen und die Rückkehr zur Verlaufsplanung sichtbar machen.
+- [x] Vorschau, Baukasten und Präsentation gegen Planungsmodus abgrenzen; Typ-, Unit-, Browser-, Build- und Diff-Prüfungen ausführen.
+
+## Aktuelle Iteration: Natürlicher Verlaufsplan-Editor
+
+- [x] Bestehende Tabellenstruktur, Layoutvarianten und Theme-Verhalten des Verlaufsplans gegen die sichtbaren Dichte- und Kontrastprobleme prüfen.
+- [x] Den Verlaufsplan als klar gegliederte, phasenorientierte Arbeitsfläche polieren, ohne Zeit-, Phasen-, Handlungs- oder Materialdaten zu verändern.
+- [x] Responsivität und Dark-Mode-Kontrast für Tabellenkopf, Zeilen, Eingabefelder und Aktionen angleichen.
+- [x] Typ-, Unit-, Browser-, Build- und Diff-Prüfungen ausführen und die sichtbare Planbearbeitung absichern.
+
+## Aktuelle Iteration: Mehrklassen- und Fachlehrplanfluss
+
+- [x] Bestehende Klassen-Fach-Zuordnungen, Lehrplan-Layer und Reihenbezüge auf Mehrklassenfähigkeit prüfen.
+- [x] Schuljahresplanung so erweitern, dass Klassen und Fachlehrpläne eindeutig klassenbezogen ergänzt und geöffnet werden können.
+- [x] Lehrplan- und Reihenplanung mit klaren Klasse-Fach-Kontexten sowie Wechsel- und Rücksprungpfaden verbinden.
+- [x] Mehrklassen- und Mehrfach-Zuordnung im Browser absichern; Typ-, Unit-, Build- und Diff-Prüfungen ausführen.
+
+## Aktuelle Iteration: Kontrastpolitur im Schuljahres-Onboarding
+
+- [x] Onboarding und vorhandene Appearance-Tokens gegen die sichtbaren Kontrastbrüche prüfen.
+- [x] Onboarding-Oberflächen, Texte, Formulare, Fortschrittsanzeige und Statushinweise konsequent an die Theme-Tokens anbinden.
+- [x] Typprüfung, Tests und Produktions-Build ausführen; Kontrastpolitur im Diff prüfen.
+
 ## Aktuelle Iteration: Anpassbare Arbeitsbereich-Prioritäten
 
 - [ ] Bestehende Aufgaben-, Planungs- und Arbeitsbereichsdaten, Persistenzpfade sowie Dashboard-Widgets analysieren und die Typ-/Test-Baseline ausführen.

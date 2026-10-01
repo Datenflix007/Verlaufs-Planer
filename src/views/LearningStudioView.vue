@@ -11,6 +11,7 @@ import type { PlanSummary } from '../repositories/PlanRepository'
 const route = useRoute()
 const router = useRouter()
 const props = defineProps<{ planId?: string; embedded?: boolean }>()
+const planContextId = computed(() => props.planId ?? (typeof route.query.planId === 'string' ? route.query.planId : undefined))
 const emit = defineEmits<{ exitPlan: [] }>()
 const repository = new LearningMaterialRepository()
 const planRepository = new SqlitePlanRepository()
@@ -103,7 +104,7 @@ function createMaterial(kind: DigitalLearningMaterial['kind']): DigitalLearningM
 
 async function openNew(kind: DigitalLearningMaterial['kind']): Promise<void> {
   const created = createMaterial(kind)
-  created.planId = props.planId
+  created.planId = planContextId.value
   try {
     await repository.save(created)
     if (props.embedded) {
@@ -121,7 +122,7 @@ async function openNew(kind: DigitalLearningMaterial['kind']): Promise<void> {
 async function loadCollection(): Promise<void> {
   try {
     const savedMaterials = await repository.list()
-    materials.value = props.embedded && props.planId ? savedMaterials.filter((item) => item.planId === props.planId) : savedMaterials
+    materials.value = planContextId.value ? savedMaterials.filter((item) => item.planId === planContextId.value) : savedMaterials
     plans.value = await planRepository.list()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Materialbibliothek konnte nicht geladen werden.'
@@ -305,7 +306,7 @@ async function duplicate(materialToCopy: DigitalLearningMaterial): Promise<void>
   const oldIds = new Map(copy.blocks.map((block) => [block.id, createId()]))
   copy.id = createId()
   copy.title = `${copy.title} (Kopie)`
-  copy.planId = props.planId ?? copy.planId
+  copy.planId = planContextId.value ?? copy.planId
   copy.createdAt = new Date().toISOString()
   copy.updatedAt = copy.createdAt
   copy.blocks = copy.blocks.map((block) => ({ ...block, id: oldIds.get(block.id)! }))
@@ -490,6 +491,7 @@ onBeforeUnmount(() => {
     <header v-if="!presentation" class="studio-topbar" :class="{ embedded: props.embedded }">
       <button v-if="props.embedded" type="button" class="studio-brand" @click="exitPlanMaterials"><span aria-hidden="true">◇</span> Verlaufsplaner</button>
       <RouterLink v-else class="studio-brand" :to="{ name: 'home' }"><span aria-hidden="true">◇</span> Lernstudio</RouterLink>
+      <RouterLink v-if="!props.embedded && planContextId" class="studio-plan-back" :to="{ name: 'editor', params: { id: planContextId } }">← Zum Verlaufsplan</RouterLink>
       <span class="studio-spacer" />
       <span v-if="material" class="studio-status" :class="{ live: liveSession }"><i />{{ liveSession ? 'Live geteilt' : status || 'Entwurf' }}</span>
       <button v-if="material" type="button" class="studio-quiet" @click="toggleLiveSession">{{ liveSession ? 'Link beenden' : 'Live teilen' }}</button>
@@ -504,7 +506,7 @@ onBeforeUnmount(() => {
     <p v-if="error" class="studio-alert">{{ error }}</p>
     <template v-if="!material && !presentation">
       <section class="library-header">
-        <div><p class="studio-kicker">Bibliothek · wiederverwendbare Bausteine</p><h1>Digitale Lernmaterialien</h1><p>Erstellen, erneut einsetzen, anpassen und gemeinsam präsentieren.</p></div>
+        <div><p class="studio-kicker">{{ planContextId ? 'Zum Verlaufsplan gehörend' : 'Bibliothek · wiederverwendbare Bausteine' }}</p><h1>{{ planContextId ? 'Digitaler Baukasten für diese Planung' : 'Digitale Lernmaterialien' }}</h1><p>{{ planContextId ? 'Erstelle und bearbeite digitale Materialien getrennt von der Verlaufsplanung. Sie bleiben mit dieser Stunde verknüpft.' : 'Erstellen, erneut einsetzen, anpassen und gemeinsam präsentieren.' }}</p></div>
         <div class="library-create-actions">
           <button type="button" @click="openNew('presentation')">+ Präsentation</button>
           <button type="button" @click="openNew('worksheet')">+ Arbeitsblatt</button>
@@ -589,6 +591,7 @@ onBeforeUnmount(() => {
 .learning-studio.embedded .material-library-grid { padding: .5rem 1.4rem 1.5rem }
 .studio-topbar { position: sticky; z-index: 15; top: 0; display: flex; align-items: center; gap: .55rem; min-height: 58px; padding: .55rem 1rem; border-bottom: 1px solid #263849; background: #111d29 }
 .studio-brand { display: inline-flex; align-items: center; gap: .6rem; padding: 0 .9rem 0 .35rem; color: #e7eff0; font-size: 1rem; font-weight: 800; text-decoration: none }
+.studio-plan-back { padding: .4rem .65rem; border: 1px solid #35505e; border-radius: 5px; color: #b7ccd3; font-size: .8rem; font-weight: 700; text-decoration: none }.studio-plan-back:hover { color: #efffff; border-color: #57cfc1; background: #18323b }
 .studio-brand span { color: #43d5c3; font-size: 1.6rem }
 .studio-nav { display: flex; align-items: center; gap: .2rem; height: 100% }
 .studio-nav a, .studio-nav button, .studio-quiet { padding: .48rem .7rem; border: 1px solid transparent; border-radius: 6px; color: #afc0cc; background: transparent; font-size: .84rem; text-decoration: none }

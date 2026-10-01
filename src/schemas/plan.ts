@@ -57,7 +57,7 @@ const PresentationEntryPointSchema = z.object({ id: IdSchema, slideId: IdSchema,
 
 export const WorkshopPlanSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION), id: IdSchema,
-  metadata: z.object({ title: z.string().min(1), subtitle: z.string().optional(), subject: z.string().optional(), targetGroup: z.string().optional(), institution: z.string().optional(), location: z.string().optional(), buildingId: z.string().uuid().optional(), roomId: z.string().uuid().optional(), priorityId: z.string().min(1).optional(), authors: z.array(z.string()), description: z.string().optional() }),
+  metadata: z.object({ title: z.string().min(1), subtitle: z.string().optional(), subject: z.string().optional(), targetGroup: z.string().optional(), institution: z.string().optional(), location: z.string().optional(), buildingId: z.string().uuid().optional(), roomId: z.string().uuid().optional(), priorityId: z.string().min(1).optional(), authors: z.array(z.string()), description: z.string().optional(), planningContext: z.enum(['school', 'workshop']).optional(), classSubjectAssignmentId: z.string().uuid().optional(), participants: z.array(z.string().min(1)).optional() }),
   days: z.array(z.object({ id: IdSchema, date: z.string().date(), title: z.string().optional(), startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(), endTime: z.string().regex(/^\d{2}:\d{2}$/).optional() })).min(1),
   learningObjectives: z.array(z.object({ id: IdSchema, text: z.string(), level: z.string().optional(), competencyIds: z.array(z.string()) })),
   competencies: z.array(z.object({ id: IdSchema, catalogId: z.string(), competencyId: z.string(), note: z.string().optional() })),

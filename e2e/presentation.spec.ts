@@ -69,6 +69,57 @@ test('führt vom Dashboard durch die erste Schuljahreseinstellung', async ({ pag
   await page.goto('/'); await page.getByRole('button', { name: 'Einrichtung' }).click(); await expect(page).toHaveURL(/\/einrichtung$/)
   await page.getByRole('button', { name: 'Weiter' }).click(); await page.getByLabel('Name').fill('8a'); await page.getByRole('button', { name: 'Weiter' }).click(); await expect(page.getByText('Verifiziert verfügbar')).toBeVisible(); await page.getByRole('button', { name: 'Weiter' }).click(); await page.getByRole('button', { name: 'Einrichtung abschließen' }).click()
   await expect(page.getByText(/sind eingerichtet/)).toBeVisible(); await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).assignments.length).toBe(1)
+  await page.getByRole('button', { name: 'Klassen & Fächer verwalten' }).click(); await expect(page).toHaveURL(/\/schuljahr$/)
+  await page.getByLabel('Name').fill('8b'); await page.getByRole('button', { name: 'Klasse anlegen' }).click()
+  await page.getByLabel('Klasse oder Kurs').selectOption({ label: '8b · Klassenstufe 8' }); await page.getByRole('button', { name: 'Fachlehrplan zuordnen' }).click()
+  await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).assignments.length).toBe(2)
+  await page.locator('.class-row', { hasText: '8b' }).getByRole('button', { name: 'Reihen planen' }).click()
+  await expect(page.getByText('Diese Reihen, Stunden und Lehrplanbezüge gehören nur zu diesem Planungsraum.')).toBeVisible()
+  await expect(page.locator('.assignment-context')).toContainText('8b · Geschichte')
+})
+
+test('führt vom Dashboard durch Workshop, 8a Geschichte und die Reihe Vormärz', async ({ page, request }) => {
+  const stamp = new Date().toISOString(); const yearId = randomUUID(); const groupId = randomUUID(); const assignmentId = randomUUID()
+  await request.put(`/api/school-planning/school-years/${yearId}`, { data: { id: yearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/class-groups/${groupId}`, { data: { id: groupId, schoolYearId: yearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } })
+  await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId: groupId, schoolYearId: yearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Neue Planung' }).click()
+  await page.getByRole('button', { name: 'Reihenplanung' }).click()
+  await page.getByLabel('Klasse, Fach und Lehrplan').selectOption(assignmentId)
+  await page.getByLabel('Titel der Reihe').fill('Vormärz')
+  await page.getByRole('button', { name: 'Reihe anlegen und Stunden planen' }).click()
+  await expect(page).toHaveURL(/\/reihen/)
+  expect(new URL(page.url()).searchParams.get('assignmentId')).toBe(assignmentId)
+  expect(new URL(page.url()).searchParams.get('sequenceId')).toBeTruthy()
+  await expect(page.locator('.assignment-context')).toContainText('8a · Geschichte')
+  await expect(page.getByText('Vormärz')).toBeVisible()
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Neue Planung' }).click()
+  await page.getByRole('button', { name: 'Unterrichtsstunde' }).click()
+  await page.getByLabel('Klasse, Fach und Lehrplan').selectOption(assignmentId)
+  await page.getByLabel('Titel der Planung').fill('Vormärz: Quellen untersuchen')
+  await page.getByRole('button', { name: 'Stunde anlegen' }).click()
+  await expect(page).toHaveURL(/\/plan\//)
+  await expect(page.locator('.editor-school-context')).toContainText('8a · Geschichte')
+  await expect(page.getByRole('button', { name: 'Zur Reihenplanung' })).toBeVisible()
+  const schoolPlan = await (await request.get('/api/plans')).json() as Array<{ id: string }>
+  const savedSchoolPlan = await (await request.get(`/api/plans/${schoolPlan[0]!.id}`)).json() as { metadata: { planningContext?: string; classSubjectAssignmentId?: string; targetGroup?: string; subject?: string } }
+  expect(savedSchoolPlan.metadata).toMatchObject({ planningContext: 'school', classSubjectAssignmentId: assignmentId, targetGroup: '8a', subject: 'Geschichte' })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Neue Planung' }).click()
+  await page.getByRole('button', { name: 'Workshop' }).click()
+  await page.getByLabel('Workshop-Lerngruppe').fill('Fortbildung Geschichte')
+  await page.getByLabel('Teilnehmende').fill('Ada, Ben\nCem')
+  await page.getByLabel('Titel der Planung').fill('Quellenwerkstatt')
+  await page.getByRole('button', { name: 'Workshop anlegen' }).click()
+  await expect(page).toHaveURL(/\/plan\//)
+  const workshopPlanId = new URL(page.url()).pathname.split('/').at(-1)!
+  const savedWorkshopPlan = await (await request.get(`/api/plans/${workshopPlanId}`)).json() as { metadata: { planningContext?: string; targetGroup?: string; participants?: string[] } }
+  expect(savedWorkshopPlan.metadata).toMatchObject({ planningContext: 'workshop', targetGroup: 'Fortbildung Geschichte', participants: ['Ada', 'Ben', 'Cem'] })
 })
 
 test('schließt eine Reihe mit persönlicher Reihenreflexion ab', async ({ page, request }) => {
@@ -143,9 +194,26 @@ test('übernimmt Lehrplan- und Kompetenzbezüge beim Anlegen einer Reihe', async
   await page.locator('.node-select').first().click()
   await expect(page.locator('.competency-choice')).toHaveCount(2)
   await page.getByRole('button', { name: 'Gespeicherte Reihe anlegen' }).click()
-  await expect(page).toHaveURL(/\/reihen$/)
+  await expect(page).toHaveURL(new RegExp(`/reihen\\?assignmentId=${assignmentId}`))
   await expect(page.locator('.reference-chip')).toContainText('Zentrale Inhalte Klassenstufen 7/8')
   await expect(page.locator('.competency-chip')).toHaveCount(2)
+})
+
+test('trennt Planungsablauf, Materialliste, digitalen Baukasten und Präsentation', async ({ page, request }) => {
+  const plan = createPlan('Getrennte Arbeitsansichten')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}`)
+  const navigation = page.getByRole('navigation', { name: 'Planungsabschnitte' })
+  await expect(navigation.getByRole('button', { name: 'Verlaufsplan' })).toBeVisible()
+  await expect(navigation.getByRole('button', { name: 'Material' })).toHaveCount(0)
+  await expect(navigation.getByRole('button', { name: 'Präsentation' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Materialliste' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Digitaler Baukasten' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Präsentation' })).toBeVisible()
+  await page.getByRole('button', { name: 'Digitaler Baukasten' }).click()
+  await expect(page).toHaveURL(new RegExp(`/materialien\\?planId=${plan.id}`))
+  await expect(page.getByRole('link', { name: '← Zum Verlaufsplan' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Digitaler Baukasten für diese Planung' })).toBeVisible()
 })
 
 test('Mindmap bearbeiten, lokal speichern und auf dem Audience-Fenster zeigen', async ({ page, request, context }) => {
