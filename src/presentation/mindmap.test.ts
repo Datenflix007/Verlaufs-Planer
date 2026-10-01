@@ -9,7 +9,9 @@ import {
   addMindmapChild,
   addMindmapSibling,
   branchIds,
+  childrenOf,
   colorForNode,
+  copyMindmapBranch,
   createMindmap,
   createMindmapElement,
   deleteMindmapBranch,
@@ -17,6 +19,7 @@ import {
   duplicateMindmapBranch,
   layoutMindmap,
   moveMindmapNode,
+  pasteMindmapBranch,
 } from "./mindmap";
 import { duplicateSlide, ensurePresentation } from "./presentation";
 
@@ -174,6 +177,27 @@ describe("Mindmap als Präsentationselement", () => {
     expect(new Set(map.nodes.map((node) => node.id)).size).toBe(
       map.nodes.length,
     );
+  });
+
+  it("kopiert einen Ast ohne UUIDs und fügt ihn mit Stil, Bild, Kante und Collapse neu ein", () => {
+    const map = createMindmap();
+    const branch = addMindmapChild(map, map.rootNodeId, "Quelle")!;
+    const leaf = addMindmapChild(map, branch.id, "Autor")!;
+    branch.style = { backgroundColor: "#123456", branchColor: "#abcdef" };
+    branch.image = { source: "data:image/png;base64,AA==", fit: "contain" };
+    branch.collapsed = true;
+    map.edges.find((edge) => edge.targetNodeId === branch.id)!.style = { curve: "straight", width: 5, color: "#123456" };
+    const clipboard = copyMindmapBranch(map, branch.id)!;
+
+    expect(JSON.stringify(clipboard)).not.toContain(branch.id);
+    const pasted = pasteMindmapBranch(map, map.rootNodeId, clipboard)!;
+    const pastedLeaf = childrenOf(map, pasted.id)[0]!;
+
+    expect(pasted).toMatchObject({ text: "Quelle", parentId: map.rootNodeId, collapsed: true, style: branch.style, image: branch.image });
+    expect(pasted.id).not.toBe(branch.id);
+    expect(pastedLeaf).toMatchObject({ text: "Autor", parentId: pasted.id });
+    expect(map.edges.find((edge) => edge.targetNodeId === pasted.id)?.style).toEqual({ curve: "straight", width: 5, color: "#123456" });
+    expect(new Set(map.nodes.map((node) => node.id)).size).toBe(map.nodes.length);
   });
 
   it("speichert eine Mindmap im vorhandenen SQLite-Plan-Payload und lädt sie unverändert", () => {

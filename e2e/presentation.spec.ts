@@ -4,6 +4,20 @@ import { copyFile, readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { PDFDocument } from 'pdf-lib'
 
+test.afterEach(async ({ request }) => {
+  const [schoolPlanningResponse, plansResponse] = await Promise.all([
+    request.get('/api/school-planning'),
+    request.get('/api/plans'),
+  ])
+  const [schoolPlanning, plans] = await Promise.all([
+    schoolPlanningResponse.json() as Promise<{ schoolYears: Array<{ id: string }> }>,
+    plansResponse.json() as Promise<Array<{ id: string }>>,
+  ])
+
+  await Promise.all(plans.map((plan) => request.delete(`/api/plans/${plan.id}`)))
+  await Promise.all(schoolPlanning.schoolYears.map((schoolYear) => request.delete(`/api/school-planning/school-years/${schoolYear.id}`)))
+})
+
 test('derives the curriculum status from completed scheduled lessons', async ({ page, request }) => {
   const stamp = new Date().toISOString(); const schoolYearId = randomUUID(); const classGroupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID(); const lessonId = randomUUID(); const annotationId = randomUUID(); const referenceId = randomUUID(); const scheduledId = randomUUID()
   await request.put(`/api/school-planning/school-years/${schoolYearId}`, { data: { id: schoolYearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } })
@@ -89,7 +103,15 @@ test('speichert und verwendet eine lokale Reihenvorlage ohne persönliche Termin
 test('speichert strukturierte Stundenreflexionen', async ({ page, request }) => {
   const stamp = new Date().toISOString(); const yearId = randomUUID(); const groupId = randomUUID(); const assignmentId = randomUUID(); const sequenceId = randomUUID(); const lessonId = randomUUID()
   await request.put(`/api/school-planning/school-years/${yearId}`, { data: { id: yearId, name: '2026/27', federalState: 'TH', schoolType: 'Gymnasium', startDate: '2026-08-01', endDate: '2027-07-31', active: true, createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/class-groups/${groupId}`, { data: { id: groupId, schoolYearId: yearId, name: '8a', grade: 8, schoolType: 'Gymnasium', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/assignments/${assignmentId}`, { data: { id: assignmentId, classGroupId: groupId, schoolYearId: yearId, subjectId: 'subject-history', curriculumId: 'th-gym-history-2021', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequences/${sequenceId}`, { data: { id: sequenceId, classSubjectAssignmentId: assignmentId, title: 'Vormärz', status: 'planned', createdAt: stamp, updatedAt: stamp } }); await request.put(`/api/school-planning/sequence-lessons/${lessonId}`, { data: { id: lessonId, teachingSequenceId: sequenceId, position: 1, title: 'Historische Lieder', status: 'planned', createdAt: stamp, updatedAt: stamp } })
-  await page.goto('/reihen'); await page.getByRole('button', { name: 'Öffnen' }).click(); await page.getByText('1. Historische Lieder').first().click(); await page.getByLabel('Ziele erreicht?').selectOption('false'); await page.getByLabel('Abweichungen').fill('Sicherung verkürzt.'); await page.getByLabel('Nächste Stunde anpassen').fill('Einstieg kürzen.'); await page.getByRole('button', { name: 'Durchführung speichern' }).click()
+  const scheduledLessonId = randomUUID()
+  await request.put(`/api/school-planning/scheduled-lessons/${scheduledLessonId}`, { data: { id: scheduledLessonId, classSubjectAssignmentId: assignmentId, sequenceLessonId: lessonId, date: '2026-10-08', status: 'planned', contextType: 'REGULAR_LESSON', createdAt: stamp, updatedAt: stamp } })
+  await page.goto('/reihen'); await page.getByRole('button', { name: 'Öffnen' }).click(); await page.getByText('1. Historische Lieder').first().click(); await page.getByLabel('Ziele erreicht?').selectOption('false'); await page.getByLabel('Abweichungen').fill('Sicherung verkürzt.'); await page.getByLabel('Nächste Stunde anpassen').fill('Einstieg kürzen.')
+  const sequenceUpdate = page.waitForResponse((response) => response.request().method() === 'PUT' && response.url().endsWith(`/api/school-planning/sequence-lessons/${lessonId}`))
+  const scheduleUpdate = page.waitForResponse((response) => response.request().method() === 'PUT' && response.url().endsWith(`/api/school-planning/scheduled-lessons/${scheduledLessonId}`))
+  await page.getByRole('button', { name: 'Durchführung speichern' }).click()
+  expect((await sequenceUpdate).ok()).toBeTruthy()
+  const scheduleResponse = await scheduleUpdate
+  expect(scheduleResponse.ok()).toBeTruthy()
   await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).lessonReflections[0]?.nextLessonAdjustment).toBe('Einstieg kürzen.')
   await expect.poll(async () => (await (await request.get('/api/school-planning')).json()).scheduledLessons.find((item: { sequenceLessonId: string }) => item.sequenceLessonId === lessonId)?.status).toBe('completed')
 })
@@ -260,6 +282,126 @@ test('Mindmap bearbeiten, lokal speichern und auf dem Audience-Fenster zeigen', 
   await expect(audience.getByText('Präsentation beendet.')).toBeVisible()
 })
 
+test('klappt Mindmap-Äste im Vortrag ein und synchronisiert sie live', async ({ page, request, context }) => {
+  const plan = createPlan('Mindmap Collapse Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+  await page.getByTitle('Mindmap').click()
+  await page.locator('.map-node input').fill('Thema')
+  await page.locator('.map-node input').press('Enter')
+  await page.getByRole('button', { name: '+ Unterast' }).click()
+  await page.locator('.map-node input').fill('Ast')
+  await page.locator('.map-node input').press('Enter')
+  await page.getByRole('button', { name: '+ Unterast' }).click()
+  await page.locator('.map-node input').fill('Unterast')
+  await page.locator('.map-node input').press('Enter')
+  await page.getByRole('button', { name: 'Bearbeitung beenden' }).last().click()
+
+  const popupPromise = context.waitForEvent('page')
+  await page.getByRole('button', { name: 'Präsentieren' }).click()
+  const audience = await popupPromise
+  await expect(audience.locator('.map-node')).toHaveCount(3)
+  await page.getByRole('button', { name: 'Mindmap bearbeiten' }).click()
+  const panel = page.locator('.live-mindmap-panel')
+  await panel.getByRole('button', { name: 'Ast einklappen' }).last().click()
+  await expect(audience.locator('.map-node')).toHaveCount(2)
+  await expect.poll(async () => {
+    const saved = await (await request.get(`/api/plans/${plan.id}`)).json()
+    return saved.presentation.slides[0].elements[0].content.mindmap.nodes.find((node: { text: string }) => node.text === 'Ast')?.collapsed
+  }).toBe(true)
+  await panel.getByRole('button', { name: 'Ast aufklappen' }).click()
+  await expect(audience.locator('.map-node')).toHaveCount(3)
+})
+
+test('kopiert Mindmap-Äste mit Unterästen und speichert neue Knoten-IDs', async ({ page, request }) => {
+  const plan = createPlan('Mindmap Zwischenablage Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+  await page.getByTitle('Mindmap').click()
+  await page.locator('.map-node input').fill('Thema')
+  await page.locator('.map-node input').press('Enter')
+  await page.getByRole('button', { name: '+ Unterast' }).click()
+  await page.locator('.map-node input').fill('Quelle')
+  await page.locator('.map-node input').press('Enter')
+  await page.getByRole('button', { name: '+ Unterast' }).click()
+  await page.locator('.map-node input').fill('Autor')
+  await page.locator('.map-node input').press('Enter')
+
+  await page.locator('.map-node', { hasText: 'Quelle' }).click()
+  await page.getByRole('button', { name: 'Ast kopieren' }).click()
+  await page.locator('.map-node', { hasText: 'Thema' }).click()
+  await page.getByRole('button', { name: 'Ast einfügen' }).click()
+  await expect(page.locator('.map-node')).toHaveCount(5)
+  await expect.poll(async () => {
+    const saved = await (await request.get(`/api/plans/${plan.id}`)).json()
+    const nodes = saved.presentation?.slides?.[0]?.elements?.[0]?.content?.mindmap?.nodes as Array<{ id: string; parentId: string | null; text: string }> | undefined
+    if (!nodes) return undefined
+    const root = nodes.find((node) => node.parentId === null)!
+    return { unique: new Set(nodes.map((node) => node.id)).size === nodes.length, rootChildren: nodes.filter((node) => node.parentId === root.id).map((node) => node.text).sort(), nodeCount: nodes.length }
+  }).toEqual({ unique: true, rootChildren: ['Quelle', 'Quelle'], nodeCount: 5 })
+  await page.reload()
+  await expect(page.locator('.map-node')).toHaveCount(5)
+})
+
+test('exportiert eine Mindmap als SVG, PNG und PDF', async ({ page, request }) => {
+  const plan = createPlan('Mindmap Export Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+  await page.getByTitle('Mindmap').click()
+
+  const svgDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Mindmap als SVG exportieren' }).click()
+  const svg = await svgDownload
+  expect(svg.suggestedFilename()).toBe('Thema_Mindmap.svg')
+  expect((await readFile((await svg.path())!)).toString('utf8')).toContain('<svg')
+
+  const pngDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Mindmap als PNG exportieren' }).click()
+  expect((await pngDownload).suggestedFilename()).toBe('Thema_Mindmap.png')
+
+  const pdfDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Mindmap als PDF exportieren' }).click()
+  const pdf = await pdfDownload
+  expect(pdf.suggestedFilename()).toBe('Thema_Mindmap.pdf')
+  expect((await readFile((await pdf.path())!)).subarray(0, 5).toString()).toBe('%PDF-')
+})
+
+test('speichert Presenter-Zeichenpräferenzen im Präsentations-Payload', async ({ page, request, context }) => {
+  const plan = createPlan('Presenter Einstellungen Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+  const popupPromise = context.waitForEvent('page')
+  await page.getByRole('button', { name: 'Präsentieren' }).click()
+  await popupPromise
+
+  await page.locator('input[type="color"][aria-label="Stiftfarbe"]').evaluate((input, value) => { const color = input as HTMLInputElement; color.value = value as string; color.dispatchEvent(new Event('input', { bubbles: true })); color.dispatchEvent(new Event('change', { bubbles: true })) }, '#1769d2')
+  await page.getByLabel('Stiftbreite').evaluate((input, value) => { const width = input as HTMLInputElement; width.value = value as string; width.dispatchEvent(new Event('input', { bubbles: true })); width.dispatchEvent(new Event('change', { bubbles: true })) }, '11')
+  await page.getByRole('button', { name: 'Leuchtstift' }).click()
+  await page.getByLabel('Leuchtdauer in Sekunden').evaluate((input, value) => { const seconds = input as HTMLInputElement; seconds.value = value as string; seconds.dispatchEvent(new Event('input', { bubbles: true })); seconds.dispatchEvent(new Event('change', { bubbles: true })) }, '12')
+
+  await expect.poll(async () => (await (await request.get(`/api/plans/${plan.id}`)).json()).presentation?.settings).toEqual({ inkColor: '#1769d2', penWidth: 11, highlighterSeconds: 12 })
+})
+
+test('legt eine Präsentationsvorlage sicher an und speichert ihre Folienstruktur', async ({ page, request, context }) => {
+  const plan = createPlan('Vorlagen Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+
+  await page.locator('.properties nav').getByRole('button', { name: 'Design' }).click()
+  await page.getByRole('button', { name: 'Quellenarbeit starten' }).click()
+  await expect(page.getByText('Vorlagen sind gesperrt, damit vorhandene Folien und Einstiegspunkte unverändert bleiben.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Quellenarbeit starten' })).toBeDisabled()
+  await expect.poll(async () => {
+    const saved = await (await request.get(`/api/plans/${plan.id}`)).json()
+    return { templateId: saved.presentation?.templateId, themeId: saved.presentation?.themeId, titles: saved.presentation?.slides?.map((slide: { title: string }) => slide.title) }
+  }).toEqual({ templateId: 'quellenarbeit', themeId: 'arbeitsblatt', titles: ['Quellenarbeit', 'Quelle im Fokus', 'Auswertung', 'Ertrag sichern'] })
+
+  const popupPromise = context.waitForEvent('page')
+  await page.getByRole('button', { name: 'Präsentieren' }).click()
+  const audience = await popupPromise
+  await expect(audience.getByText('Quellenarbeit')).toBeVisible()
+})
+
 test('erstellt einen Zeitstrahl, bearbeitet Ereignisse und zeigt ihn im Präsentationsfenster', async ({ page, request, context }) => {
   const plan = createPlan('Zeitstrahl Browserprüfung')
   await request.put(`/api/plans/${plan.id}`, { data: plan })
@@ -292,6 +434,46 @@ test('erstellt einen Zeitstrahl, bearbeitet Ereignisse und zeigt ihn im Präsent
   await expect(audience.locator('.timeline-widget')).toContainText('476 v. Chr.')
   await page.locator('.live-timeline-panel .timeline-tools').getByRole('button', { name: '+ Ereignis' }).click()
   await expect(audience.locator('.timeline-entry')).toHaveCount(5)
+})
+
+test('speichert Widget-Vorlagen und Farbsets und rendert sie im Präsentationsfenster', async ({ page, request, context }) => {
+  const plan = createPlan('Widget-Design Browserprüfung')
+  await request.put(`/api/plans/${plan.id}`, { data: plan })
+  await page.goto(`/plan/${plan.id}/presentation`)
+
+  await page.getByTitle('Mindmap').click()
+  await page.locator('.mindmap-properties').getByRole('button', { name: 'Tafel', exact: true }).click()
+  await page.locator('.mindmap-properties').getByLabel('Farbset').selectOption('wald')
+  await page.locator('.mindmap-properties').getByRole('button', { name: 'Bearbeitung beenden' }).click()
+
+  await page.getByTitle('Zeitstrahl').click()
+  await page.locator('.timeline-composer').getByRole('button', { name: 'Museum', exact: true }).click()
+  await page.locator('.timeline-composer').getByLabel('Farbset Violett').click()
+  await page.locator('.timeline-tools').getByRole('button', { name: 'Bearbeitung beenden' }).click()
+
+  await page.getByTitle('Abstimmung').click()
+  await page.locator('.poll-composer').getByRole('button', { name: 'Podium', exact: true }).click()
+  await page.locator('.poll-composer').getByLabel('Farbset Sonnenuntergang').click()
+  await page.locator('.poll-tools').getByRole('button', { name: 'Bearbeitung beenden' }).click()
+
+  await expect.poll(async () => {
+    const saved = await (await request.get(`/api/plans/${plan.id}`)).json()
+    return saved.presentation.slides[0].elements.map((element: { type: string; content: { mindmap?: { settings: { design: string; colorSet: string } }; timeline?: { template: string; colorSet: string }; poll?: { template: string; colorSet: string } } }) => ({ type: element.type, settings: element.content.mindmap?.settings, template: element.content.timeline?.template ?? element.content.poll?.template, colorSet: element.content.timeline?.colorSet ?? element.content.poll?.colorSet }))
+  }).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'mindmap', settings: expect.objectContaining({ design: 'tafel', colorSet: 'wald' }) }),
+    { type: 'timeline', settings: undefined, template: 'museum', colorSet: 'violett' },
+    { type: 'poll', settings: undefined, template: 'podium', colorSet: 'sonnenuntergang' },
+  ]))
+
+  const popupPromise = context.waitForEvent('page')
+  await page.getByRole('button', { name: 'Präsentieren' }).click()
+  const audience = await popupPromise
+  await expect(audience.locator('.mindmap-widget.tafel')).toHaveCount(1)
+  await expect(audience.locator('.timeline-widget.template-museum')).toHaveCount(1)
+  await expect(audience.locator('.poll-widget.template-podium')).toHaveCount(1)
+  await expect(audience.locator('.mindmap-widget')).toHaveCSS('--widget-accent', '#4e9a6a')
+  await expect(audience.locator('.timeline-widget')).toHaveCSS('--widget-accent', '#8b6be8')
+  await expect(audience.locator('.poll-widget')).toHaveCSS('--widget-accent', '#f06b4f')
 })
 
 test('speichert lokale Bild- und Videokopien in SQLite und akzeptiert externe Medien-URLs', async ({ page, request }) => {

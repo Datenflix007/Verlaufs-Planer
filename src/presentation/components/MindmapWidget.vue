@@ -5,15 +5,20 @@ import {
   addMindmapChild,
   addMindmapSibling,
   branchIds,
+  copyMindmapBranch,
   deleteMindmapBranch,
   duplicateMindmapBranch,
   layoutMindmap,
   mindmapNode,
   moveMindmapNode,
+  pasteMindmapBranch,
   MINDMAP_HEIGHT,
   MINDMAP_WIDTH,
 } from "../mindmap";
+import type { MindmapBranchClipboard } from "../mindmap";
 import { widgetColorSet, widgetColorStyle } from '../widgetDesign';
+import { buildMindmapPdf, buildMindmapSvg, mindmapExportFilename, svgToPngDataUrl } from '../mindmapExport';
+import { downloadBlob } from '../../export/download';
 
 const props = withDefaults(
   defineProps<{
@@ -34,7 +39,11 @@ const emit = defineEmits<{
   undo: [];
   redo: [];
 }>();
+let branchClipboard: MindmapBranchClipboard | undefined;
 const host = ref<HTMLElement>();
+const hasBranchClipboard = ref(Boolean(branchClipboard));
+const exporting = ref<"svg" | "png" | "pdf">();
+const exportError = ref("");
 const layout = computed(() => layoutMindmap(props.mindmap));
 const editingNodeId = ref<string>();
 const draft = ref("");
@@ -158,6 +167,48 @@ function duplicate(nodeId = props.selectedNodeId): void {
     emit("changed");
   }
 }
+function copyBranch(nodeId = props.selectedNodeId): void {
+  if (!props.editing || !nodeId) return;
+  const copied = copyMindmapBranch(props.mindmap, nodeId);
+  if (!copied) return;
+  branchClipboard = copied;
+  hasBranchClipboard.value = true;
+  dropHint.value = `Ast „${mindmapNode(props.mindmap, nodeId)?.text ?? "Knoten"}“ kopiert.`;
+  host.value?.focus();
+}
+function pasteBranch(parentId = props.selectedNodeId ?? props.mindmap.rootNodeId): void {
+  if (!props.editing || !branchClipboard) return;
+  emit("beginChange");
+  const copy = pasteMindmapBranch(props.mindmap, parentId, branchClipboard);
+  if (!copy) return;
+  emit("select", copy.id);
+  dropHint.value = `Ast „${copy.text}“ eingefügt.`;
+  emit("changed");
+  host.value?.focus();
+}
+async function exportMindmap(format: "svg" | "png" | "pdf"): Promise<void> {
+  if (exporting.value) return;
+  exporting.value = format;
+  exportError.value = "";
+  try {
+    const svg = buildMindmapSvg(props.mindmap);
+    if (format === "svg") {
+      downloadBlob(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }), mindmapExportFilename(props.mindmap, "svg"));
+      return;
+    }
+    const png = await svgToPngDataUrl(svg);
+    if (format === "png") {
+      downloadBlob(await (await fetch(png)).blob(), mindmapExportFilename(props.mindmap, "png"));
+      return;
+    }
+    const bytes = await buildMindmapPdf(mindmapNode(props.mindmap, props.mindmap.rootNodeId)?.text ?? "Mindmap", png);
+    downloadBlob(new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), mindmapExportFilename(props.mindmap, "pdf"));
+  } catch (cause) {
+    exportError.value = cause instanceof Error ? cause.message : "Die Mindmap konnte nicht exportiert werden.";
+  } finally {
+    exporting.value = undefined;
+  }
+}
 function toggle(node: MindmapNode, event: MouseEvent): void {
   event.stopPropagation();
   emit("beginChange");
@@ -170,6 +221,16 @@ function key(event: KeyboardEvent): void {
   if (event.key === "Escape" && reconnectingNodeId.value) {
     event.preventDefault();
     cancelReconnect();
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+    event.preventDefault();
+    copyBranch();
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v") {
+    event.preventDefault();
+    pasteBranch();
     return;
   }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
@@ -528,6 +589,21 @@ onMounted(() => {
       ><button type="button" @click="addSibling()">+ Geschwister</button
       ><button
         type="button"
+        :disabled="!selectedNodeId"
+        aria-label="Ast kopieren"
+        @click="copyBranch()"
+      >Ast kopieren</button
+      ><button
+        type="button"
+        :disabled="!hasBranchClipboard"
+        aria-label="Ast einfügen"
+        @click="pasteBranch()"
+      >Ast einfügen</button
+      ><button type="button" :disabled="Boolean(exporting)" aria-label="Mindmap als SVG exportieren" @click="exportMindmap('svg')">SVG</button
+      ><button type="button" :disabled="Boolean(exporting)" aria-label="Mindmap als PNG exportieren" @click="exportMindmap('png')">PNG</button
+      ><button type="button" :disabled="Boolean(exporting)" aria-label="Mindmap als PDF exportieren" @click="exportMindmap('pdf')">PDF</button
+      ><button
+        type="button"
         :disabled="!selectedNodeId || selectedNodeId === mindmap.rootNodeId"
         :aria-pressed="Boolean(reconnectingNodeId)"
         @click="reconnectingNodeId ? cancelReconnect() : startReconnect()"
@@ -566,6 +642,8 @@ onMounted(() => {
       </button>
     </div>
     <p v-if="editing && dropHint" class="drop-hint">{{ dropHint }}</p>
+    <p v-if="editing && exporting" class="export-hint" role="status">{{ exporting.toUpperCase() }} wird erstellt …</p>
+    <p v-if="editing && exportError" class="export-hint error" role="alert">{{ exportError }}</p>
     <menu
       v-if="editing && context"
       class="map-context"
@@ -796,6 +874,19 @@ onMounted(() => {
   border-radius: 4px;
   font-size: 12px;
 }
+.export-hint {
+  position: absolute;
+  z-index: 9;
+  right: 10px;
+  bottom: 8px;
+  margin: 0;
+  padding: 4px 7px;
+  color: #dffffd;
+  background: #123036d9;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.export-hint.error { color: #ffcabd; }
 .map-context {
   position: absolute;
   z-index: 20;

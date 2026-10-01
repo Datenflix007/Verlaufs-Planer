@@ -44,6 +44,7 @@ describe('relationale Schuljahresplanung', () => {
     expect(snapshot.sequenceCompetencies).toMatchObject([{ teachingSequenceId: sequence.id, competencyId: 'th-gym-history-2021-comp-method', role: 'primary' }])
     expect(snapshot.sequenceLessons.filter((item) => item.teachingSequenceId === sequence.id)).toMatchObject([{ title: 'Historische Lieder', plannedDuration: 45, digitalTools: 'Quellenboard', fallbackPlan: 'Ausgedruckte Quellenauszüge' }])
     expect(snapshot.scheduledLessons).toMatchObject([{ date: '2026-09-05', startTime: '09:00', contextType: 'REGULAR_LESSON' }])
+    expect(snapshot.scheduledLessons[0]).not.toHaveProperty('planId')
     expect(snapshot.timetableVersions).toMatchObject([{ id: timetableVersion.id, validFrom: '2026-10-12', active: true }])
     expect(snapshot.timetableSlots).toMatchObject([{ timetableVersionId: timetableVersion.id, weekday: 2, room: 'R 204' }])
     expect(snapshot.calendarExceptions).toMatchObject([{ timetableSlotId: timetableSlot.id, date: '2026-10-20', type: 'CANCELLATION' }])

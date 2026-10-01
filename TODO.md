@@ -1,10 +1,61 @@
 # TODO
 
+## Aktuelle Iteration: Anpassbare Arbeitsbereich-Prioritäten
+
+- [ ] Bestehende Aufgaben-, Planungs- und Arbeitsbereichsdaten, Persistenzpfade sowie Dashboard-Widgets analysieren und die Typ-/Test-Baseline ausführen.
+- [ ] Rückwärtskompatibles Prioritätsmodell mit Gewichtung und gespeicherter Reihenfolge für Arbeitsbereich, Aufgaben und Planungen definieren.
+- [ ] Prioritäten im Arbeitsbereich per zugänglicher Drag-and-drop-Reihenfolge bearbeiten und im vorhandenen Autosave speichern.
+- [ ] Priorität bei Aufgaben und Planungen erfassen sowie die gewichtete Reihenfolge in den passenden Dashboard-Widgets anzeigen.
+- [ ] Prioritäts-Heap und Gewichtung unter `konzept/` dokumentieren und Domain-, Komponenten- sowie Browserprüfungen ergänzen.
+- [ ] Vollständige Typ-, Test-, Browser-, Build- und Diff-Prüfungen ausführen und die TODO-Punkte abschließen.
+
+## Aktuelle Iteration: Persistente Präsentationseinstellungen
+
+- [x] Temporäre Presenter-/Audience-Zustände, Persistenzmodell, Schema und bestehende Teststrecken analysieren; Typ- und Test-Baseline ausführen.
+- [x] Rückwärtskompatible planbezogene Einstellungen für Stiftfarbe, Strichbreite und Leuchtstiftdauer definieren und validieren.
+- [x] Die Presenter-Werkzeuge aus gespeicherten Einstellungen initialisieren und Änderungen sichtbar sowie über den vorhandenen Autosave persistieren; sitzungskritische Freigaben bewusst ausschließen.
+- [x] Unit-, Komponenten-, Browser-, Typ-, Gesamt- und Build-Prüfungen ausführen sowie Dokumentation und TODO aktualisieren.
+
+## Aktuelle Iteration: Eigenständiger Mindmap-Export
+
+- [x] Bestehende Mindmap-Geometrie, Präsentations-Exportstrecke und Download-Mechanik analysieren; Typ- und Test-Baseline ausführen.
+- [x] Deterministisches, eigenständiges SVG aus der gespeicherten Mindmap-Struktur erzeugen und daraus PNG/PDF ohne Änderung des Plan-Payloads ableiten.
+- [x] SVG-, PNG- und PDF-Export im Mindmap-Bearbeitungsmodus sichtbar anbieten sowie klare Fehlerzustände ergänzen.
+- [x] Unit-, Komponenten-, Browser-, Typ-, Gesamt- und Build-Prüfungen ausführen sowie Dokumentation und TODO aktualisieren.
+
+## Aktuelle Iteration: Mindmap-Ast kopieren und einfügen
+
+- [x] Mindmap-Modell, Ast-Duplikation, Editor-Interaktion und vorhandene Teststrecken analysieren; Typ- und Test-Baseline ausführen.
+- [x] Eine strukturierte, ID-freie Ast-Zwischenablage mit neuen IDs, Kanten, Stilen, Bildern und Collapse-Zuständen beim Einfügen modellieren.
+- [x] Sichtbare Kopieren-/Einfügen-Aktionen sowie Strg/Cmd+C und Strg/Cmd+V im Mindmap-Bearbeitungsmodus ergänzen, ohne Browserberechtigungen vorauszusetzen.
+- [x] Unit-, Komponenten-, Browser-, Typ-, Gesamt- und Build-Prüfungen ausführen sowie Dokumentation und TODO aktualisieren.
+
+## Aktuelle Iteration: Editor-Regressionen für Verlauf, Notizen und Übergänge
+
+- [x] Bestehende Undo-/Redo-History, Notizeditor, Übergangs-Inspector und Testinfrastruktur analysieren; aktuelle Typ- und Unit-Baseline ausführen.
+- [x] Komponentenregression für Rückgängig/Wiederholen einer sichtbaren Folienänderung ergänzen.
+- [x] Komponentenregressionen für Sprechernotizen und Übergangstyp/-dauer mit Änderungsereignis ergänzen.
+- [x] Vollständige Typ-, Unit-, Browser- und Build-Prüfungen durchführen und TODO-Status unmittelbar aktualisieren.
+
+## Aktuelle Iteration: Präsentationsvorlagen
+
+- [x] Bestehendes Präsentationsmodell, Folienlayouts, Themes, Persistenz und Editorablauf analysieren; Typ- und Test-Baseline ausführen.
+- [x] Didaktisch nutzbare, versionstabile Gesamtvorlagen definieren und ausschließlich auf eine leere Startpräsentation anwenden, ohne vorhandene Folien oder Einstiegspunkte zu überschreiben.
+- [x] Die Vorlagenauswahl mit verständlichem Sperrhinweis im Präsentationseditor zugänglich machen und die Auswahl im Plan-Payload persistieren.
+- [x] Unit-, Browser-, Typ-, Gesamt- und Build-Prüfungen ausführen sowie Präsentationsdokumentation und TODO aktualisieren.
+
+## Aktuelle Iteration: Interaktive Mindmap-Äste im Vortrag
+
+- [x] Bestehende Collapse-Daten, Presenter-/Audience-Interaktion und Broadcast-Vertrag analysieren; Ausgangsprüfungen ausführen.
+- [x] Eine klar erkennbare Auf-/Zuklapp-Aktion für Mindmap-Äste in der Referentenansicht ergänzen, ohne Knoten oder Verbindungen zu verändern.
+- [x] Den Collapse-Zustand über den vorhandenen Präsentationskanal live synchronisieren und im lokalen Plan speichern.
+- [x] Domain-, Komponenten-, Browser-, Typ-, Gesamt- und Build-Prüfungen ausführen sowie Dokumentation und TODO aktualisieren.
+
 ## Aktuelle Iteration: Abgeleiteter Lehrplanstatus
 
-- [ ] Reine, nachvollziehbare Statusableitung aus Reihenbezug, terminierten und durchgeführten Sequenzstunden modellieren.
-- [ ] Den abgeleiteten Status im Lehrplanviewer darstellen, ohne persönliche Lehrplanmarker stillschweigend umzuschreiben.
-- [ ] Die Durchführung auf Sequenzstunde und zugehörigen Termin konsistent fortschreiben sowie Domain-, Browser- und Build-Prüfungen ergänzen.
+- [x] Reine, nachvollziehbare Statusableitung aus Reihenbezug, terminierten und durchgeführten Sequenzstunden modellieren.
+- [x] Den abgeleiteten Status im Lehrplanviewer darstellen, ohne persönliche Lehrplanmarker stillschweigend umzuschreiben.
+- [x] Die Durchführung auf Sequenzstunde und zugehörigen Termin konsistent fortschreiben sowie Domain-, Browser- und Build-Prüfungen ergänzen.
 
 ## Aktuelle Iteration: Kalender-Navigation zur Reihe
 
@@ -174,11 +225,11 @@
 
 ## Widget-Vorlagen, Farbsets und elegante Zeitstrahlbearbeitung
 
-- [ ] Bestehende Widget-Datenmodelle, Editor- und Präsentationsrenderstrecken sowie Tests analysieren und Ausgangsprüfungen ausführen.
-- [ ] Wiederverwendbare Widget-Vorlagen und konfigurierbare Farbsets rückwärtskompatibel im Präsentationsmodell ergänzen.
-- [ ] Die Zeitstrahlbearbeitung als kompakte, klar gegliederte Inspector-Oberfläche mit schnell erreichbaren Vorlagen und Farbsets gestalten.
-- [ ] Vorlagen- und Farbset-Auswahl für alle unterstützten Widgets im Editor zugänglich machen und im Präsentationsfenster identisch rendern.
-- [ ] Unit-, Komponenten-, Typ-, Gesamt- und Build-Prüfungen ausführen und die TODO-Punkte nach erfolgreicher Prüfung abschließen.
+- [x] Bestehende Widget-Datenmodelle, Editor- und Präsentationsrenderstrecken sowie Tests analysieren und Ausgangsprüfungen ausführen.
+- [x] Wiederverwendbare Widget-Vorlagen und konfigurierbare Farbsets rückwärtskompatibel im Präsentationsmodell ergänzen.
+- [x] Die Zeitstrahlbearbeitung als kompakte, klar gegliederte Inspector-Oberfläche mit schnell erreichbaren Vorlagen und Farbsets gestalten.
+- [x] Vorlagen- und Farbset-Auswahl für alle unterstützten Widgets im Editor zugänglich machen und im Präsentationsfenster identisch rendern.
+- [x] Unit-, Komponenten-, Typ-, Gesamt- und Build-Prüfungen ausführen und die TODO-Punkte nach erfolgreicher Prüfung abschließen.
 
 ## Zeitstrahl-Design und Mausrad-Zoom
 
@@ -338,8 +389,10 @@
 - [x] Mindmap- und Mehrbildschirm-Tests einschließlich Speicherung/Reload und Fehlerszenarien ergänzen.
 - [x] Präsentationsdokumentation, Browsergrenzen und offene optionale Punkte aktualisieren.
 - [x] Typprüfung, vollständige Tests, Build und Edge-UI-Workflow prüfen.
-- [ ] Optional: Mindmap-Äste während des Vortrags interaktiv aufklappen und per BroadcastChannel synchronisieren.
-- [ ] Optional: Knoten-Copy/Paste, Mindmap-Export und persistente Präsentationseinstellungen ergänzen.
+- [x] Optional: Mindmap-Äste während des Vortrags interaktiv aufklappen und per BroadcastChannel synchronisieren.
+- [x] Optional: Knoten-Copy/Paste ergänzen.
+- [x] Optional: Mindmap-Export nach SVG/PNG/PDF ergänzen.
+- [x] Optional: Persistente Präsentationseinstellungen ergänzen.
 
 ## Regression: Präsentationseditor wieder bedienbar machen
 
@@ -347,7 +400,7 @@
 - [x] Kopieren für Undo/Redo, Folien und Elemente korrigieren.
 - [x] Regressionsfall mit reaktiven Daten testen.
 - [x] Typprüfung, Tests und Build ausführen.
-- [ ] Editorablauf im Browser prüfen (Fenstersteuerung derzeit nicht erreichbar).
+- [x] Editorablauf im Browser prüfen.
 
 ## Präsentationseditor – Ausbaustufe
 
@@ -360,11 +413,11 @@
 - [x] Formen, Bild-Fit/Deckkraft/Eckenradius, Layer-Reihenfolge, Ausrichtung und Kontextmenü implementieren.
 - [x] Nicht-destruktive Folienlayouts, Theme-Cards, Hintergrundfarbe/-bild und sichtbare Sprechernotizen implementieren.
 - [x] Lokale Undo-/Redo-History, Tastaturkürzel, Vorschau und Folienlisten-Einstiegspunktindikatoren implementieren.
-- [ ] Einfache Folienübergänge und Präsentationsvorlagen funktionsfähig machen (Übergänge fertig; Vorlagen bleiben offen).
-- [ ] Tests für Undo/Redo, Sprechernotizen und Übergänge auf Komponentenebene ergänzen.
+- [x] Einfache Folienübergänge und Präsentationsvorlagen funktionsfähig machen.
+- [x] Tests für Undo/Redo, Sprechernotizen und Übergänge auf Komponentenebene ergänzen.
 - [x] docs/PRESENTATION_MODE.md mit Editorarchitektur, Elementen, Layouts, History und Materialintegration ergänzen.
 - [x] Priorität-4-Themen (Grid, MultiSelect, Crop, Tabellen, volle Materialbibliothek) als offene Ausbauschritte dokumentieren.
-- [ ] Typprüfung, Tests, Produktions-Build und Browserprüfung durchführen.
+- [x] Typprüfung, Tests, Produktions-Build und Browserprüfung durchführen.
 
 ## Integrierter Präsentationsmodus
 
@@ -383,7 +436,7 @@
 - [x] Testfälle für stabile Folien-IDs, Einstiegspunkte, Löschverhalten und Präsentationskanal ergänzen.
 - [x] Architektur, Datenfluss, Browser-Fallbacks und Migration in docs/PRESENTATION_MODE.md dokumentieren.
 - [x] README um den Presentation-Mode-Überblick ergänzen.
-- [ ] Typprüfung, Tests, Produktions-Build und eine Browser-Prüfung des Kernworkflows durchführen.
+- [x] Typprüfung, Tests, Produktions-Build und eine Browser-Prüfung des Kernworkflows durchführen.
 
 - [x] Dashboard-Kopf analysieren und die zu entfernenden Texte lokalisieren.
 - [x] „Lokaler Arbeitsbereich“, „Mein Dashboard“ und die Beschreibung entfernen; Untertitel unter „Verlaufsplaner“ ergänzen.

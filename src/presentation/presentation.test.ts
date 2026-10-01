@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { reactive } from 'vue'
 import { createPlan } from '../domain/factories'
-import { applySlideLayout, clonePresentationData, createElement, createShape, createTextElement, deleteSlide, duplicateSlide, ensurePresentation, insertSlide, moveSlide, nextSlide, orderedSlides } from './presentation'
+import { applyPresentationTemplate, applySlideLayout, canApplyPresentationTemplate, clonePresentationData, createElement, createShape, createTextElement, defaultPresentationSettings, deleteSlide, duplicateSlide, ensurePresentation, insertSlide, moveSlide, nextSlide, orderedSlides, resolvedPresentationSettings } from './presentation'
 import { openPresentationChannel, type PresentationChannelEvent } from './presenterChannel'
 
 describe('Präsentations-Folien und Einstiegspunkte', () => {
@@ -76,5 +76,27 @@ describe('Präsentations-Folien und Einstiegspunkte', () => {
     const presentation = ensurePresentation(createPlan()); const element = createTextElement('body'); presentation.slides[0]!.elements.push(element)
     presentation.themeId = 'natur'
     expect(presentation.slides[0]!.elements[0]?.id).toBe(element.id); expect(presentation.slides[0]!.elements[0]?.content.text).toBe('Text hinzufügen')
+  })
+  it('legt eine didaktische Vorlage nur auf einer leeren Startpräsentation an', () => {
+    const presentation = ensurePresentation(createPlan('Quellen lesen'))
+    expect(canApplyPresentationTemplate(presentation)).toBe(true)
+    expect(applyPresentationTemplate(presentation, 'quellenarbeit')).toBe(true)
+    expect(presentation).toMatchObject({ templateId: 'quellenarbeit', themeId: 'arbeitsblatt' })
+    expect(presentation.slides.map((slide) => slide.title)).toEqual(['Quellenarbeit', 'Quelle im Fokus', 'Auswertung', 'Ertrag sichern'])
+    expect(presentation.slides[2]?.elements.filter((element) => element.type === 'text').map((element) => element.content.text)).toEqual(['Auswertung', 'Belege aus der Quelle', 'Einordnung und Urteil'])
+  })
+  it('bewahrt bearbeitete Präsentationen, wenn eine Vorlage nicht mehr anwendbar ist', () => {
+    const presentation = ensurePresentation(createPlan())
+    presentation.slides[0]!.elements.push(createTextElement('body'))
+    const before = clonePresentationData(presentation)
+    expect(canApplyPresentationTemplate(presentation)).toBe(false)
+    expect(applyPresentationTemplate(presentation, 'unterrichtseinstieg')).toBe(false)
+    expect(presentation).toEqual(before)
+  })
+  it('ergänzt fehlende Presenter-Einstellungen rückwärtskompatibel mit sicheren Standardwerten', () => {
+    const presentation = ensurePresentation(createPlan())
+    expect(resolvedPresentationSettings(presentation)).toEqual(defaultPresentationSettings)
+    presentation.settings = { inkColor: '#1769d2', penWidth: 9 }
+    expect(resolvedPresentationSettings(presentation)).toEqual({ inkColor: '#1769d2', penWidth: 9, highlighterSeconds: 3 })
   })
 })

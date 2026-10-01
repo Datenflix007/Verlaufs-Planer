@@ -112,8 +112,12 @@ export interface PresentationSlide {
   id: string; position: number; title?: string; layoutType: PresentationLayoutType; background: { color?: string; imageUrl?: string; imageFit?: PresentationImageFit }
   notes: string; transition: { type: PresentationTransition; duration: 200 | 400 | 700 }; elements: PresentationElement[]; createdAt: string; updatedAt: string
 }
+/** Plan-owned defaults for the next presenter session; live audience state is never stored here. */
+export interface PresentationSettings {
+  inkColor?: string; penWidth?: number; highlighterSeconds?: number
+}
 export interface Presentation {
-  id: string; planId: string; title: string; themeId: PresentationThemeId; templateId?: string; slides: PresentationSlide[]; recentColors?: string[]; createdAt: string; updatedAt: string
+  id: string; planId: string; title: string; themeId: PresentationThemeId; templateId?: string; settings?: PresentationSettings; slides: PresentationSlide[]; recentColors?: string[]; createdAt: string; updatedAt: string
 }
 export interface PresentationEntryPoint { id: string; slideId: string; label?: string; createdAt: string }
 export interface CompetencyItem { id: string; title: string; description?: string }

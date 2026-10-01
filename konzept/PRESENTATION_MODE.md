@@ -39,6 +39,10 @@ flowchart LR
 
 Der Kanalname ist `verlaufsplaner-presentation-<presentationId>`. Verwendete Events sind `PRESENTATION_START`, `PRESENTATION_REQUEST_STATE`, `PRESENTATION_STATE`, `SLIDE_CHANGE` und `PRESENTATION_END`. Der aktuelle `slideId` wird zusätzlich lokal vorgehalten, damit ein neu geladenes Audience Window sofort einen Zustand anzeigen und anschließend den Presenter um die aktuelle State-Nachricht bitten kann.
 
+## Persistente Präsentationseinstellungen
+
+Eine Präsentation kann optional `settings` für die Standard-Stiftfarbe, Strichbreite und Leuchtstiftdauer speichern. Der Presenter liest sie beim Start und schreibt Änderungen der sichtbaren Zeichenwerkzeuge über den normalen Plan-Autosave zurück in SQLite. Fehlende Einstellungen erhalten weiterhin die bisherigen Standardwerte. Aktuelle Folie, Timer, Zoom, Pan, Zeichnungen und die Freigabe zum Zeichnen im Audience-Fenster bleiben absichtlich nur für die laufende Sitzung gültig.
+
 ## Browser-Fallbacks
 
 Mehrschirm-Erkennung ist keine Voraussetzung. Wenn der Browser kein zweites Display verwalten kann, öffnet die Anwendung ein normales Präsentationsfenster, das Lehrkräfte selbst auf den Beamer verschieben. Blockiert der Browser Pop-ups, erscheint eine konkrete Freigabe-Meldung. BroadcastChannel ist der Synchronisationsweg moderner Browser; ohne einen geöffneten zweiten Tab bleibt die Presenter Console funktionsfähig.
@@ -63,6 +67,10 @@ Elemente sind Text, Bild, Form, Icon oder Mindmap. Text kann per Doppelklick inl
 
 Themes definieren Hintergrund, Primär-/Sekundärfarbe, Textfarbe sowie Überschriften- und Fließtextschrift, ohne bestehende Elemente zu löschen. Layouts fügen nur neue Platzhalter hinzu und sind daher nicht destruktiv. Der Eigenschaftenbereich bietet Ausrichtung, Ebenensteuerung über das Kontextmenü und Sperren einzelner Elemente.
 
+### Präsentationsvorlagen
+
+Die Vorlagen `Unterrichtseinstieg`, `Quellenarbeit` und `Impuls & Diskussion` sind didaktische Startstrukturen aus Titel-, Arbeits- und Sicherungsfolien. Ihre Kennung liegt in `presentation.templateId`; Theme, Folien, Texte und UUIDs gehören weiterhin ausschließlich zum bestehenden Plan-Payload. Eine Vorlage kann nur die unveränderte leere Startpräsentation ersetzen. Sobald Folien, Notizen, Hintergrund oder Elemente bearbeitet wurden, sperrt der Editor die Auswahl sichtbar. Damit bleiben vorhandene Folien und alle `presentationEntryPoint.slideId`-Verweise unverändert, statt sie stillschweigend umzubiegen.
+
 ### Undo / Redo and autosave
 
 Der Editor hält bis zu 60 lokale Präsentationszustände für Rückgängig/Wiederholen. Erfasst werden Element-, Stil-, Layout-, Folien- und Notizänderungen. Anschließend nutzt der Editor unverändert das bestehende entprellte SQLite-Autosave des Plans.
@@ -81,7 +89,19 @@ Knoten-Duplikate und Widget-Duplikate erhalten neue UUIDs; bei ganzen Widgets we
 
 Das automatische Baumlayout verwendet `d3-hierarchy` mit gespeicherten Geschwisterordnungen und Abständen. Horizontal werden die Knoten als Baum, radial auf Winkeln um die Wurzel positioniert. Verbindungslinien folgen den berechneten Positionen. Hauptäste erhalten unterschiedliche Farben, Unteräste erben ihre Astfarbe; die Farbautomatik kann abgeschaltet werden. Collapse blendet Nachfahren aus, ohne sie zu löschen. Der gespeicherte Zustand wird in Presenter, Vorschau und Audience mit derselben `SlideCanvas`/`MindmapWidget`-Darstellung ohne Edit-Werkzeuge gerendert.
 
-Shortcuts im Mindmap-Edit-Modus: `Insert` Unterast, `Enter` Geschwisterast (an der Wurzel: Unterast), `Delete` Ast löschen, `F2` oder Doppelklick Text bearbeiten, Pfeiltasten sichtbare Knoten durchlaufen, `Strg+Z` Rückgängig und `Strg+Umschalt+Z` Wiederholen. Während der Texteingabe gelten die Knoten-Shortcuts nicht; `Enter` bestätigt den Text und `Escape` verwirft die Texteingabe.
+Shortcuts im Mindmap-Edit-Modus: `Insert` Unterast, `Enter` Geschwisterast (an der Wurzel: Unterast), `Delete` Ast löschen, `F2` oder Doppelklick Text bearbeiten, Pfeiltasten sichtbare Knoten durchlaufen, `Strg/Cmd+C` Ast kopieren, `Strg/Cmd+V` unter dem ausgewählten Knoten einfügen, `Strg+Z` Rückgängig und `Strg+Umschalt+Z` Wiederholen. Die Zwischenablage ist bewusst nur innerhalb der geöffneten Anwendungssitzung verfügbar; sie benötigt keine Browserberechtigung und erstellt beim Einfügen neue Knoten- und Kanten-UUIDs. Während der Texteingabe gelten die Knoten-Shortcuts nicht; `Enter` bestätigt den Text und `Escape` verwirft die Texteingabe.
+
+Im Vortrag öffnet das sichtbare Stift-Symbol die Mindmap-Bearbeitung anstelle der Folienvorschau. Dort lassen sich Teiläste über den Pfeil am Knoten ein- und aufklappen. Der Zustand wird als reguläres Mindmap-Update gespeichert und über den vorhandenen BroadcastChannel unmittelbar an das Audience-Fenster übertragen.
+
+### Mindmap-Export
+
+Im Bearbeitungsmodus stehen `SVG`, `PNG` und `PDF` direkt an der Mindmap-Werkzeugleiste bereit. SVG wird aus derselben gespeicherten Baumstruktur, Kanten- und Knotenformatierung erzeugt und bleibt eigenständig editierbar. PNG und PDF werden lokal aus diesem SVG abgeleitet. Der Export ändert weder den Plan-Payload noch Mindmap-, Knoten- oder Kanten-UUIDs. Externe Knotenbilder können browserbedingt einen Canvas-Export verhindern; die Oberfläche zeigt dann eine konkrete Fehlermeldung statt eine unvollständige Datei herunterzuladen.
+
+## Widget-Vorlagen und Farbsets
+
+Mindmap, Zeitstrahl und Abstimmung speichern ihre Gestaltung direkt im jeweiligen Widget, ohne Folien- oder Element-IDs zu verändern. Alle Widgets verwenden dieselben fünf Farbsets (`Ozean`, `Sonnenuntergang`, `Wald`, `Violett`, `Monochrom`). Mindmaps bieten zusätzlich die Designs Schlicht, Organisch, Tafel, Neon und Pastell; Zeitstrahlen und Abstimmungen haben jeweils eigene kompakte Vorlagen.
+
+Die Auswahl erfolgt im Editor unmittelbar am Widget: Mindmaps über den Eigenschaftenbereich, Zeitstrahlen und Abstimmungen über ihre Composer-Leiste. Dieselben gespeicherten Werte werden in Vorschau, Referentenansicht und Audience-Fenster durch die gemeinsamen Widget-Komponenten gerendert. Die Composer-Leiste des Zeitstrahls liegt bewusst über der Ereignisliste, damit Vorlage und Farbset auch bei knapper Höhe jederzeit bedienbar bleiben.
 
 ## Multi-Screen Presentation
 
@@ -91,4 +111,4 @@ Das Audience-Fenster versucht beim Laden `requestFullscreen()`. Browser verlange
 
 Die Window Management API ist experimentell und nur in unterstützten sicheren Browserkontexten verfügbar; auch Popup-Positionierung und Vollbild unterliegen Browserregeln. Siehe [MDN getScreenDetails](https://developer.mozilla.org/en-US/docs/Web/API/Window/getScreenDetails), [MDN ScreenDetails screenschange](https://developer.mozilla.org/en-US/docs/Web/API/ScreenDetails/screenschange_event), [MDN requestFullscreen](https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen) und [MDN window.open](https://developer.mozilla.org/en-US/docs/Web/API/Window/open).
 
-Optionale nächste Schritte: interaktives Ein-/Ausklappen von Ästen während des Vortrags mit zusätzlichem `MINDMAP_STATE_CHANGE`-Event, Knoten-Copy/Paste, Mindmap-Export nach SVG/PNG/PDF sowie persistente Präsentationseinstellungen. Diese sind nicht Bestandteil des aktuellen Kernworkflows.
+Weitere mögliche Ausbauschritte betreffen zusätzliche, bewusst getrennte Moderations- und Audience-Ansichten. Die bestehenden Mindmap-Interaktionen sowie SVG-, PNG- und PDF-Export bleiben davon unabhängig.

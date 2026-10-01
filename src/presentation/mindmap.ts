@@ -128,6 +128,83 @@ export function branchIds(mindmap: MindmapWidget, nodeId: string): Set<string> {
   return ids;
 }
 
+/** A portable branch snapshot deliberately uses local numeric keys, never node UUIDs. */
+export interface MindmapBranchClipboard {
+  rootKey: number;
+  nodes: Array<{
+    key: number;
+    parentKey?: number;
+    text: string;
+    order: number;
+    x?: number;
+    y?: number;
+    collapsed?: boolean;
+    style: MindmapNode['style'];
+    image?: MindmapNode['image'];
+  }>;
+  edgeStyles: Array<{ targetKey: number; style: MindmapEdge['style'] }>;
+}
+
+export function copyMindmapBranch(
+  mindmap: MindmapWidget,
+  nodeId: string,
+): MindmapBranchClipboard | undefined {
+  const ids = branchIds(mindmap, nodeId);
+  if (!ids.size) return undefined;
+  const originals = mindmap.nodes
+    .filter((node) => ids.has(node.id))
+    .sort((left, right) => left.level - right.level || left.order - right.order);
+  const keys = new Map(originals.map((node, index) => [node.id, index]));
+  const rootKey = keys.get(nodeId);
+  if (rootKey === undefined) return undefined;
+  return {
+    rootKey,
+    nodes: originals.map((node) => ({
+      key: keys.get(node.id)!,
+      ...(node.id === nodeId ? {} : { parentKey: keys.get(node.parentId!)! }),
+      text: node.text,
+      order: node.order,
+      ...(node.x === undefined ? {} : { x: node.x }),
+      ...(node.y === undefined ? {} : { y: node.y }),
+      ...(node.collapsed ? { collapsed: true } : {}),
+      style: { ...node.style },
+      ...(node.image ? { image: { ...node.image } } : {}),
+    })),
+    edgeStyles: mindmap.edges
+      .filter((edge) => ids.has(edge.targetNodeId))
+      .map((edge) => ({ targetKey: keys.get(edge.targetNodeId)!, style: { ...edge.style } })),
+  };
+}
+
+export function pasteMindmapBranch(
+  mindmap: MindmapWidget,
+  parentId: string,
+  clipboard: MindmapBranchClipboard,
+): MindmapNode | undefined {
+  if (!mindmapNode(mindmap, parentId) || !clipboard.nodes.length) return undefined;
+  const copies = new Map<number, MindmapNode>();
+  for (const source of [...clipboard.nodes].sort((left, right) => left.key - right.key)) {
+    const targetParentId = source.parentKey === undefined
+      ? parentId
+      : copies.get(source.parentKey)?.id;
+    if (!targetParentId) return undefined;
+    const copy = addMindmapChild(mindmap, targetParentId, source.text);
+    if (!copy) return undefined;
+    copy.style = { ...source.style };
+    copy.image = source.image ? { ...source.image } : undefined;
+    copy.collapsed = source.collapsed;
+    if (!mindmap.settings.autoLayout) {
+      copy.x = source.x === undefined ? undefined : source.x + 24;
+      copy.y = source.y === undefined ? undefined : source.y + 24;
+    }
+    const edge = mindmap.edges.find((item) => item.targetNodeId === copy.id);
+    const edgeStyle = clipboard.edgeStyles.find((item) => item.targetKey === source.key);
+    if (edge && edgeStyle) edge.style = { ...edgeStyle.style };
+    copies.set(source.key, copy);
+  }
+  return copies.get(clipboard.rootKey);
+}
+
 export function deleteMindmapBranch(
   mindmap: MindmapWidget,
   nodeId: string,

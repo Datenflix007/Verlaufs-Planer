@@ -1,5 +1,5 @@
 import { createId } from '../domain/factories'
-import type { Presentation, PresentationElement, PresentationLayoutType, PresentationShapeType, PresentationSlide, PresentationThemeId, WorkshopPlan } from '../domain/types'
+import type { Presentation, PresentationElement, PresentationLayoutType, PresentationSettings, PresentationShapeType, PresentationSlide, PresentationThemeId, WorkshopPlan } from '../domain/types'
 import { duplicateMindmap } from './mindmap'
 import { duplicateTimeline } from './timeline'
 import { duplicatePoll } from './poll'
@@ -19,6 +19,50 @@ export const presentationThemes: Array<{ id: PresentationThemeId; label: string;
   { id: 'natur', label: 'Natur', background: '#e9f3e7', primary: '#34724c', secondary: '#98c78d', text: '#173b29', headingFont: 'Georgia, serif', bodyFont: 'Inter, sans-serif' },
 ]
 export const presentationTheme = (id: PresentationThemeId) => presentationThemes.find((theme) => theme.id === id) ?? presentationThemes[0]!
+export const defaultPresentationSettings: Required<PresentationSettings> = { inkColor: '#e53935', penWidth: 5, highlighterSeconds: 3 }
+export const resolvedPresentationSettings = (presentation: Presentation): Required<PresentationSettings> => ({ ...defaultPresentationSettings, ...presentation.settings })
+
+export interface PresentationTemplate {
+  id: string
+  label: string
+  description: string
+  themeId: PresentationThemeId
+  slides: Array<{ layout: PresentationLayoutType; title: string; detail?: string }>
+}
+
+/**
+ * Templates are deliberately small, plan-owned starting structures. They do not
+ * import external data and are only applicable before a teacher has begun editing.
+ */
+export const presentationTemplates: PresentationTemplate[] = [
+  {
+    id: 'unterrichtseinstieg', label: 'Unterrichtseinstieg', description: 'Einstieg, Leitfrage und Sicherung', themeId: 'schlicht',
+    slides: [
+      { layout: 'title', title: 'Thema der Stunde', detail: 'Lernziel und Einstieg' },
+      { layout: 'titleContent', title: 'Leitfrage', detail: 'Was wollen wir heute herausfinden?' },
+      { layout: 'closing', title: 'Sicherung', detail: 'Erkenntnisse festhalten und Ausblick geben' },
+    ],
+  },
+  {
+    id: 'quellenarbeit', label: 'Quellenarbeit', description: 'Quelle betrachten, auswerten und einordnen', themeId: 'arbeitsblatt',
+    slides: [
+      { layout: 'title', title: 'Quellenarbeit', detail: 'Fragestellung und Material' },
+      { layout: 'imageText', title: 'Quelle im Fokus', detail: 'Beobachtungen und erste Vermutungen' },
+      { layout: 'twoColumn', title: 'Auswertung', detail: 'Belege aus der Quelle|Einordnung und Urteil' },
+      { layout: 'closing', title: 'Ertrag sichern', detail: 'Antwort auf die Leitfrage' },
+    ],
+  },
+  {
+    id: 'impuls-diskussion', label: 'Impuls & Diskussion', description: 'Impuls, Positionierung und Transfer', themeId: 'natur',
+    slides: [
+      { layout: 'title', title: 'Impuls & Diskussion', detail: 'Thema und Gesprächsanlass' },
+      { layout: 'titleContent', title: 'Position beziehen', detail: 'Welche Sichtweisen sind möglich?' },
+      { layout: 'twoColumn', title: 'Argumente austauschen', detail: 'Dafür spricht|Dagegen spricht' },
+      { layout: 'closing', title: 'Transfer', detail: 'Was nehmen wir mit?' },
+    ],
+  },
+]
+export const presentationTemplate = (id: string) => presentationTemplates.find((template) => template.id === id)
 
 export function createSlide(position: number, title = ''): PresentationSlide {
   const timestamp = now()
@@ -29,6 +73,27 @@ export function ensurePresentation(plan: WorkshopPlan): Presentation {
   const timestamp = now()
   plan.presentation = { id: createId(), planId: plan.id, title: plan.metadata.title, themeId: 'schlicht', slides: [createSlide(0)], recentColors: [], createdAt: timestamp, updatedAt: timestamp }
   return plan.presentation
+}
+export function canApplyPresentationTemplate(presentation: Presentation): boolean {
+  const slides = orderedSlides(presentation)
+  return slides.length === 0 || (slides.length === 1 && slides[0]?.elements.length === 0 && !slides[0]?.title && !slides[0]?.notes && !slides[0]?.background.color && !slides[0]?.background.imageUrl)
+}
+export function applyPresentationTemplate(presentation: Presentation, templateId: string): boolean {
+  const template = presentationTemplate(templateId)
+  if (!template || !canApplyPresentationTemplate(presentation)) return false
+  presentation.templateId = template.id
+  presentation.themeId = template.themeId
+  presentation.slides = template.slides.map((definition, position) => {
+    const slide = createSlide(position, definition.title)
+    applySlideLayout(slide, definition.layout)
+    const textElements = slide.elements.filter((element) => element.type === 'text')
+    const details = definition.detail?.split('|') ?? []
+    if (textElements[0]) textElements[0].content.text = definition.title
+    textElements.slice(1).forEach((element, index) => { element.content.text = details[index] ?? details[0] ?? '' })
+    return slide
+  })
+  presentation.updatedAt = now()
+  return true
 }
 export function normaliseSlidePositions(presentation: Presentation): void {
   presentation.slides = orderedSlides(presentation).map((slide, position) => ({ ...slide, position }))

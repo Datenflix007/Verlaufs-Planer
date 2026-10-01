@@ -64,7 +64,16 @@ export class SqliteSchoolPlanning {
         const value = row as unknown as SequenceLesson
         return { ...value, scheduledLessonId: value.scheduledLessonId ?? undefined, planId: value.planId ?? undefined, plannedDate: value.plannedDate ?? undefined, plannedDuration: value.plannedDuration ?? undefined, guidingQuestion: value.guidingQuestion ?? undefined, lessonObjective: value.lessonObjective ?? undefined, contentSummary: value.contentSummary ?? undefined, competenceFocus: value.competenceFocus ?? undefined, curriculumNodeId: value.curriculumNodeId ?? undefined, methodsSummary: value.methodsSummary ?? undefined, materialsSummary: value.materialsSummary ?? undefined, didacticNote: value.didacticNote ?? undefined, differentiation: value.differentiation ?? undefined, digitalTools: value.digitalTools ?? undefined, technicalRequirements: value.technicalRequirements ?? undefined, fallbackPlan: value.fallbackPlan ?? undefined }
       }) as SequenceLesson[],
-      scheduledLessons: this.database.prepare('SELECT id, class_subject_assignment_id AS classSubjectAssignmentId, sequence_lesson_id AS sequenceLessonId, plan_id AS planId, date, start_time AS startTime, end_time AS endTime, status, context_type AS contextType, created_at AS createdAt, updated_at AS updatedAt FROM scheduled_lessons ORDER BY date, start_time').all() as unknown as ScheduledLesson[],
+      scheduledLessons: this.database.prepare('SELECT id, class_subject_assignment_id AS classSubjectAssignmentId, sequence_lesson_id AS sequenceLessonId, plan_id AS planId, date, start_time AS startTime, end_time AS endTime, status, context_type AS contextType, created_at AS createdAt, updated_at AS updatedAt FROM scheduled_lessons ORDER BY date, start_time').all().map((row) => {
+        const { sequenceLessonId, planId, startTime, endTime, ...scheduled } = row as unknown as ScheduledLesson
+        return {
+          ...scheduled,
+          ...(sequenceLessonId ? { sequenceLessonId } : {}),
+          ...(planId ? { planId } : {}),
+          ...(startTime ? { startTime } : {}),
+          ...(endTime ? { endTime } : {}),
+        }
+      }) as ScheduledLesson[],
       timetableVersions: this.database.prepare('SELECT id, school_year_id AS schoolYearId, name, valid_from AS validFrom, valid_until AS validUntil, active, created_at AS createdAt, updated_at AS updatedAt FROM timetable_versions ORDER BY valid_from DESC').all().map((row) => ({ ...(row as Omit<TimetableVersion, 'active'> & { active: number }), active: (row as { active: number }).active === 1 })) as TimetableVersion[],
       timetableSlots: this.database.prepare('SELECT id, timetable_version_id AS timetableVersionId, class_subject_assignment_id AS classSubjectAssignmentId, weekday, start_time AS startTime, end_time AS endTime, room, context_type AS contextType, created_at AS createdAt, updated_at AS updatedAt FROM timetable_slots ORDER BY weekday, start_time').all() as unknown as TimetableSlot[],
       calendarExceptions: this.database.prepare('SELECT id, school_year_id AS schoolYearId, class_subject_assignment_id AS classSubjectAssignmentId, timetable_slot_id AS timetableSlotId, date, type, title, replacement_start_time AS replacementStartTime, replacement_end_time AS replacementEndTime, note, created_at AS createdAt, updated_at AS updatedAt FROM calendar_exceptions ORDER BY date').all() as unknown as CalendarException[],

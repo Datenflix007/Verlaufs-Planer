@@ -45,14 +45,19 @@ const PresentationElementSchema = z.object({
 const PresentationSlideSchema = z.object({
   id: IdSchema, position: z.number().int().nonnegative(), title: z.string().optional(), layoutType: z.enum(['blank', 'title', 'titleContent', 'twoColumn', 'imageText', 'section', 'closing']), background: z.object({ color: z.string().optional(), imageUrl: z.string().optional(), imageFit: z.enum(['contain', 'cover', 'fill']).optional() }), notes: z.string(), transition: z.object({ type: z.enum(['none', 'fade', 'slide']), duration: z.union([z.literal(200), z.literal(400), z.literal(700)]) }), elements: z.array(PresentationElementSchema), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
 })
+const PresentationSettingsSchema = z.object({
+  inkColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  penWidth: z.number().int().min(2).max(18).optional(),
+  highlighterSeconds: z.number().int().min(1).max(60).optional(),
+})
 const PresentationSchema = z.object({
-  id: IdSchema, planId: IdSchema, title: z.string(), themeId: z.enum(['schlicht', 'tafelstil', 'neon', 'arbeitsblatt', 'natur']), templateId: z.string().optional(), slides: z.array(PresentationSlideSchema), recentColors: z.array(z.string()).max(12).optional(), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
+  id: IdSchema, planId: IdSchema, title: z.string(), themeId: z.enum(['schlicht', 'tafelstil', 'neon', 'arbeitsblatt', 'natur']), templateId: z.string().optional(), settings: PresentationSettingsSchema.optional(), slides: z.array(PresentationSlideSchema), recentColors: z.array(z.string()).max(12).optional(), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
 })
 const PresentationEntryPointSchema = z.object({ id: IdSchema, slideId: IdSchema, label: z.string().optional(), createdAt: z.string().datetime() })
 
 export const WorkshopPlanSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION), id: IdSchema,
-  metadata: z.object({ title: z.string().min(1), subtitle: z.string().optional(), subject: z.string().optional(), targetGroup: z.string().optional(), institution: z.string().optional(), location: z.string().optional(), buildingId: z.string().uuid().optional(), roomId: z.string().uuid().optional(), authors: z.array(z.string()), description: z.string().optional() }),
+  metadata: z.object({ title: z.string().min(1), subtitle: z.string().optional(), subject: z.string().optional(), targetGroup: z.string().optional(), institution: z.string().optional(), location: z.string().optional(), buildingId: z.string().uuid().optional(), roomId: z.string().uuid().optional(), priorityId: z.string().min(1).optional(), authors: z.array(z.string()), description: z.string().optional() }),
   days: z.array(z.object({ id: IdSchema, date: z.string().date(), title: z.string().optional(), startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(), endTime: z.string().regex(/^\d{2}:\d{2}$/).optional() })).min(1),
   learningObjectives: z.array(z.object({ id: IdSchema, text: z.string(), level: z.string().optional(), competencyIds: z.array(z.string()) })),
   competencies: z.array(z.object({ id: IdSchema, catalogId: z.string(), competencyId: z.string(), note: z.string().optional() })),

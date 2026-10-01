@@ -288,6 +288,30 @@ describe("Mindmap im Präsentationseditor", () => {
     wrapper.unmount();
   });
 
+  it("kopiert und fügt Äste über Werkzeugleiste und Tastatur ein", async () => {
+    const map = reactive(createMindmapElement().content.mindmap!);
+    const branch = addMindmapChild(map, map.rootNodeId, "Quelle")!;
+    addMindmapChild(map, branch.id, "Autor");
+    const wrapper = mount(MindmapWidget, {
+      props: { mindmap: map, editing: true, selectedNodeId: branch.id },
+    });
+
+    expect(wrapper.findAll('[aria-label^="Mindmap als "]')).toHaveLength(3);
+    await wrapper.find('[aria-label="Ast kopieren"]').trigger("click");
+    await wrapper.setProps({ selectedNodeId: map.rootNodeId });
+    await wrapper.find('[aria-label="Ast einfügen"]').trigger("click");
+    expect(map.nodes.filter((node) => node.text === "Quelle")).toHaveLength(2);
+    expect(new Set(map.nodes.map((node) => node.id)).size).toBe(map.nodes.length);
+
+    await wrapper.setProps({ selectedNodeId: branch.id });
+    await wrapper.find(".mindmap-widget").trigger("keydown", { key: "c", ctrlKey: true });
+    await wrapper.setProps({ selectedNodeId: map.rootNodeId });
+    await wrapper.find(".mindmap-widget").trigger("keydown", { key: "v", ctrlKey: true });
+    expect(map.nodes.filter((node) => node.text === "Quelle")).toHaveLength(3);
+    expect(wrapper.emitted("changed")?.length).toBeGreaterThanOrEqual(2);
+    wrapper.unmount();
+  });
+
   it("zoomt und verschiebt die Mindmap getrennt vom Folien-Canvas", async () => {
     const map = reactive(createMindmapElement().content.mindmap!);
     const wrapper = mount(MindmapWidget, {

@@ -9,7 +9,9 @@ import type {
 } from "../../domain/types";
 import {
   applySlideLayout,
+  applyPresentationTemplate,
   bringToFront,
+  canApplyPresentationTemplate,
   clonePresentationData,
   createElement,
   createShape,
@@ -21,6 +23,7 @@ import {
   moveSlide,
   orderedSlides,
   presentationLayouts,
+  presentationTemplates,
   presentationThemes,
   sendToBack,
 } from "../presentation";
@@ -39,6 +42,8 @@ const emit = defineEmits<{
   export: [format: 'pdf' | 'html'];
 }>();
 const presentation = computed(() => ensurePresentation(props.plan));
+const templateCanBeApplied = computed(() => canApplyPresentationTemplate(presentation.value));
+const templateNotice = ref("");
 const slides = computed(() => orderedSlides(presentation.value));
 const selectedSlideId = ref(props.initialSlideId ?? slides.value[0]?.id);
 const selectedElementId = ref<string>();
@@ -369,6 +374,15 @@ function applyLayout(
     return;
   remember();
   applySlideLayout(selectedSlide.value, layout);
+  changed();
+}
+function applyTemplate(templateId: string): void {
+  if (!templateCanBeApplied.value) return;
+  remember();
+  if (!applyPresentationTemplate(presentation.value, templateId)) return;
+  selectedSlideId.value = slides.value[0]?.id;
+  selectedElementId.value = undefined;
+  templateNotice.value = "Vorlage angelegt. Titel und Platzhalter können jetzt angepasst werden.";
   changed();
 }
 function context(id: string, event: MouseEvent): void {
@@ -980,6 +994,24 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
           </button>
         </div>
         <div v-else-if="tab === 'design'" class="panel">
+          <h2>Präsentationsvorlagen</h2>
+          <p class="template-note" :class="{ locked: !templateCanBeApplied }">
+            {{ templateCanBeApplied ? 'Vorlagen erzeugen eine Folienstruktur für diese leere Startpräsentation.' : 'Vorlagen sind gesperrt, damit vorhandene Folien und Einstiegspunkte unverändert bleiben.' }}
+          </p>
+          <div class="presentation-templates">
+            <button
+              v-for="template in presentationTemplates"
+              :key="template.id"
+              type="button"
+              class="presentation-template"
+              :aria-label="`${template.label} starten`"
+              :disabled="!templateCanBeApplied"
+              @click="applyTemplate(template.id)"
+            >
+              <strong>{{ template.label }}</strong><small>{{ template.description }}</small><span>{{ template.slides.length }} Folien · {{ template.themeId }}</span>
+            </button>
+          </div>
+          <p v-if="templateNotice" class="template-note" role="status">{{ templateNotice }}</p>
           <h2>Design</h2>
           <div class="themes">
             <button
@@ -1356,6 +1388,37 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keydown));
 }
 .layout small {
   color: #b1c9c9;
+}
+.template-note {
+  margin: -0.25rem 0 0;
+  color: #b1c9c9;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.template-note.locked {
+  color: #ffd48b;
+}
+.presentation-templates {
+  display: grid;
+  gap: 0.35rem;
+}
+.presentation-template {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.55rem;
+  color: #e0efee;
+  background: linear-gradient(135deg, #214249, #19363c);
+  border-color: #38626a;
+  text-align: left;
+}
+.presentation-template small,
+.presentation-template span {
+  color: #b1c9c9;
+  font-size: 0.72rem;
+}
+.presentation-template:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 .themes {
   display: grid;

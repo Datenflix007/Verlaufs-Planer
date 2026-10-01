@@ -229,6 +229,27 @@ describe("Presenter Console mit Zweitbildschirm", () => {
     wrapper.unmount();
   });
 
+  it("stellt persistierte Zeichenpräferenzen wieder her und speichert Änderungen", async () => {
+    const plan = createPlan();
+    const presentation = ensurePresentation(plan);
+    presentation.settings = { inkColor: '#1769d2', penWidth: 8, highlighterSeconds: 12 };
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/", component: { template: "<div />" } }] });
+    await router.push("/");
+    await router.isReady();
+    const wrapper = mount(PresenterConsole, { props: { plan, presentation }, global: { plugins: [router] } });
+    await flushPromises();
+
+    expect((wrapper.find('[aria-label="Stiftfarbe"]').element as HTMLInputElement).value).toBe('#1769d2');
+    expect((wrapper.find('[aria-label="Stiftbreite"]').element as HTMLInputElement).value).toBe('8');
+    await wrapper.find('[aria-label="Stiftfarbe Grün"]').trigger('click');
+    await wrapper.find('[aria-label="Stiftbreite"]').setValue('11');
+    await wrapper.find('[aria-label="Stiftbreite"]').trigger('change');
+
+    expect(presentation.settings).toEqual({ inkColor: '#16854a', penWidth: 11, highlighterSeconds: 12 });
+    expect(wrapper.emitted('changed')?.length).toBeGreaterThanOrEqual(2);
+    wrapper.unmount();
+  });
+
   it("öffnet das reservierte Fenster am externen Screen und zeigt Statusereignisse an", async () => {
     const plan = createPlan();
     const presentation = ensurePresentation(plan);

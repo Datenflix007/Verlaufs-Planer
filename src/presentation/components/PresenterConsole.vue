@@ -16,7 +16,7 @@ import {
   type PresentationScreen,
   type PresentationScreenDetails,
 } from "../audienceWindow";
-import { nextSlide, orderedSlides } from "../presentation";
+import { nextSlide, orderedSlides, resolvedPresentationSettings } from "../presentation";
 import { mindmapUpdate } from "../liveMindmap";
 import { timelineUpdate } from "../liveTimeline";
 import {
@@ -75,9 +75,10 @@ const pollVotes = ref<Record<string, Record<string, number>>>({});
 const pollResults = ref<Record<string, boolean>>({});
 const audienceInkEnabled = ref(false);
 const inkTool = ref<'off' | 'pen' | 'highlighter' | 'eraser'>('off');
-const inkColor = ref('#e53935');
-const penWidth = ref(5);
-const highlighterSeconds = ref(3);
+const persistedSettings = resolvedPresentationSettings(props.presentation);
+const inkColor = ref(persistedSettings.inkColor);
+const penWidth = ref(persistedSettings.penWidth);
+const highlighterSeconds = ref(persistedSettings.highlighterSeconds);
 const inkStrokes = ref<PresentationInkStroke[]>([]);
 const inkTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const currentInkStrokes = computed(() => inkStrokes.value.filter((stroke) => stroke.slideId === currentSlideId.value));
@@ -182,6 +183,19 @@ function publishInkPermission(): void {
 }
 function publishInkState(): void {
   send({ type: 'PRESENTATION_INK_STATE', strokes: inkStrokes.value.map(copyPresentationInkStroke) });
+}
+function savePresenterSettings(): void {
+  const settings = {
+    inkColor: /^#[0-9a-f]{6}$/i.test(inkColor.value) ? inkColor.value : '#e53935',
+    penWidth: Math.max(2, Math.min(18, Math.round(Number(penWidth.value) || 5))),
+    highlighterSeconds: Math.max(1, Math.min(60, Math.round(Number(highlighterSeconds.value) || 3))),
+  };
+  props.presentation.settings = settings;
+  inkColor.value = settings.inkColor;
+  penWidth.value = settings.penWidth;
+  highlighterSeconds.value = settings.highlighterSeconds;
+  props.presentation.updatedAt = new Date().toISOString();
+  emit('changed');
 }
 function adjustPresenterZoom(amount: number): void {
   presenterZoom.value = Math.max(1, Math.min(3, Number((presenterZoom.value + amount).toFixed(2))));
@@ -662,10 +676,10 @@ const time = computed(
           <button type="button" :class="{ active: inkTool === 'eraser' }" :aria-pressed="inkTool === 'eraser'" @click="inkTool = 'eraser'">Radiergummi</button>
           <button type="button" :disabled="!currentInkStrokes.length" @click="clearCurrentInk">Zeichnungen dieser Folie löschen</button>
           <button type="button" :class="{ active: audienceInkEnabled }" :aria-pressed="audienceInkEnabled" @click="toggleAudienceInk">Präsentationsfenster zeichnen: {{ audienceInkEnabled ? 'an' : 'aus' }}</button>
-          <label title="Stiftfarbe"><span>Farbe</span><input v-model="inkColor" type="color" aria-label="Stiftfarbe" /></label>
-          <button v-for="preset in inkPresets" :key="preset.name" type="button" :aria-label="`Stiftfarbe ${preset.name}`" :title="`Stiftfarbe ${preset.name}`" :style="{ width: '24px', height: '24px', padding: 0, background: preset.color, borderRadius: '50%' }" @click="inkColor = preset.color" />
-          <label title="Strichbreite"><span>Breite</span><input v-model.number="penWidth" type="range" min="2" max="18" aria-label="Stiftbreite" /></label>
-          <label v-if="inkTool === 'highlighter'" title="Leuchtdauer in Sekunden"><span>Sekunden</span><input v-model.number="highlighterSeconds" type="number" min="1" max="60" aria-label="Leuchtdauer in Sekunden" /></label>
+          <label title="Stiftfarbe"><span>Farbe</span><input v-model="inkColor" type="color" aria-label="Stiftfarbe" @change="savePresenterSettings" /></label>
+          <button v-for="preset in inkPresets" :key="preset.name" type="button" :aria-label="`Stiftfarbe ${preset.name}`" :title="`Stiftfarbe ${preset.name}`" :style="{ width: '24px', height: '24px', padding: 0, background: preset.color, borderRadius: '50%' }" @click="inkColor = preset.color; savePresenterSettings()" />
+          <label title="Strichbreite"><span>Breite</span><input v-model.number="penWidth" type="range" min="2" max="18" aria-label="Stiftbreite" @change="savePresenterSettings" /></label>
+          <label v-if="inkTool === 'highlighter'" title="Leuchtdauer in Sekunden"><span>Sekunden</span><input v-model.number="highlighterSeconds" type="number" min="1" max="60" aria-label="Leuchtdauer in Sekunden" @change="savePresenterSettings" /></label>
         </div>
         <div v-if="currentPolls.length && !liveMindmapEditing && !liveTimelineEditing" class="presenter-poll-controls" role="toolbar" aria-label="Abstimmung steuern">
           <section v-for="element in currentPolls" :key="element.id" class="presenter-poll-preview">

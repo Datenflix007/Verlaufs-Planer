@@ -22,7 +22,7 @@ export const useProjectStore = defineStore('projects', () => {
     }
   }
   async function open(id: string): Promise<void> { const plan = await repository.get(id); if (!plan) throw new Error('Planung wurde nicht gefunden.'); activePlan.value = plan }
-  async function create(title?: string, template?: PlanningTemplate, location?: { buildingId?: string; roomId?: string; label?: string }): Promise<WorkshopPlan> { const plan = createPlan(title, template, location); activePlan.value = plan; await save(); return plan }
+  async function create(title?: string, template?: PlanningTemplate, location?: { buildingId?: string; roomId?: string; label?: string; priorityId?: string }): Promise<WorkshopPlan> { const plan = createPlan(title, template, location); activePlan.value = plan; await save(); return plan }
   async function save(): Promise<void> { if (!activePlan.value) return; saveStatus.value = 'saving'; error.value = undefined; try { activePlan.value.updatedAt = new Date().toISOString(); await repository.save(activePlan.value); await refresh(); saveStatus.value = 'saved' } catch (cause) { error.value = cause instanceof Error ? cause.message : 'Speichern fehlgeschlagen.'; saveStatus.value = 'error' } }
   async function remove(id: string): Promise<void> { await repository.remove(id); if (activePlan.value?.id === id) activePlan.value = undefined; await refresh() }
   async function duplicate(id: string): Promise<WorkshopPlan> { await open(id); const clone = structuredClone(activePlan.value!); clone.id = crypto.randomUUID(); clone.metadata.title = `${clone.metadata.title} (Kopie)`; clone.createdAt = new Date().toISOString(); clone.updatedAt = clone.createdAt; activePlan.value = clone; await save(); return clone }
