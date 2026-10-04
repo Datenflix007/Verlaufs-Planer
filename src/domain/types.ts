@@ -129,7 +129,11 @@ export interface Building { id: string; name: string }
 export interface Room { id: string; buildingId: string; name: string }
 export type InventoryScope = 'personal' | 'building' | 'room'
 export interface InventoryMaterial extends Material { scope: InventoryScope; buildingId?: string; roomId?: string }
-export interface PriorityDefinition { id: string; label: string; order: number; icon: '⚡' | '↑' | '●' | '○' }
+/**
+ * Workspace-wide priority. `order` is the stable, persisted sequence shown in
+ * the UI; `weight` is the effective urgency used when upcoming items are ranked.
+ */
+export interface PriorityDefinition { id: string; label: string; order: number; weight: number; icon: '⚡' | '↑' | '●' | '○' }
 export interface PlannerTodo { id: string; title: string; dueDate?: string; planId?: string; priorityId?: string; completed: boolean; notes?: string }
 export type DashboardWidgetId = 'calendar' | 'upcoming-plans' | 'upcoming-todos' | 'next-day-materials' | 'today-schedule' | 'material-library'
 export type DashboardWidgetWidth = 'half' | 'wide' | 'full'

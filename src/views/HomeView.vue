@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { getPlanningTemplate, getPlanningTemplates } from '../data/templates/registry'
 import { createId } from '../domain/factories'
 import { aggregateMaterials } from '../domain/materials'
+import { prioritiseUpcoming } from '../domain/priorities'
 import type { DashboardBreakpoint, DashboardWidget, Room, WorkshopPlan, WorkspaceSettings } from '../domain/types'
 import { getWidgetLayout } from '../data/dashboardWidgets'
 import type { DigitalLearningMaterial } from '../domain/types'
@@ -22,6 +23,7 @@ type CalendarEvent = {
   title: string
   detail: string
   planId?: string
+  priorityId?: string
   completed?: boolean
   startTime?: string
   endTime?: string
@@ -40,6 +42,7 @@ const nextDay = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 
 const newTitle = ref('')
 const templateId = ref('')
+const newPlanPriorityId = ref('medium')
 const buildingId = ref('')
 const roomId = ref('')
 const importError = ref('')
@@ -58,6 +61,7 @@ const quickCreateDate = ref(today)
 const quickCreateTone = ref<'choice' | 'term' | 'todo'>('choice')
 const quickCreateTitle = ref('')
 const quickCreateDueDate = ref(today)
+const quickCreatePriorityId = ref('medium')
 const calendarAnchor = ref(today)
 const dashboardBreakpoint = ref<DashboardBreakpoint>('laptop')
 const timeSlots = Array.from({ length: 12 }, (_, index) => index + 7)
@@ -106,6 +110,7 @@ const allEvents = computed<CalendarEvent[]>(() => [
         title: plan.metadata.title,
         detail: [day.title, plan.metadata.location].filter(Boolean).join(' · '),
         planId: plan.id,
+        priorityId: plan.metadata.priorityId,
         startTime: day.startTime ?? starts[0],
         endTime: day.endTime ?? ends.at(-1),
       }
@@ -121,6 +126,7 @@ const allEvents = computed<CalendarEvent[]>(() => [
       title: todo.title,
       detail: '',
       completed: todo.completed,
+      priorityId: todo.priorityId,
     })),
 ])
 
@@ -180,9 +186,11 @@ const schoolCalendarEvents = computed<CalendarEvent[]>(() => {
 })
 
 const upcomingPlans = computed(() =>
-  allEvents.value
-    .filter((event) => (event.type === 'plan' || event.type === 'school') && event.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime ?? '').localeCompare(b.startTime ?? '')),
+  prioritiseUpcoming(
+    allEvents.value.filter((event) => (event.type === 'plan' || event.type === 'school') && event.date >= today),
+    workspace.value?.priorities ?? [],
+    today,
+  ),
 )
 const sequenceProgress = computed(() => {
   const snapshot = schoolPlanning.value
@@ -205,9 +213,11 @@ const sequenceProgress = computed(() => {
     .filter((sequence) => sequence.totalLessons > 0)
 })
 const upcomingTodos = computed(() =>
-  allEvents.value
-    .filter((event) => event.type === 'todo' && !event.completed && event.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date)),
+  prioritiseUpcoming(
+    allEvents.value.filter((event) => event.type === 'todo' && !event.completed && event.date >= today),
+    workspace.value?.priorities ?? [],
+    today,
+  ),
 )
 const todaySchedule = computed(() => allEvents.value.filter((event) => event.date === today).sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? '')))
 const nextDayMaterials = computed(() => {
@@ -300,6 +310,10 @@ function weekday(date: string): string {
 function subjectLabel(id?: string): string {
   return ({ 'subject-history': 'Geschichte', 'subject-informatics': 'Informatik', 'subject-media-informatics': 'Medienbildung und Informatik' } as Record<string, string>)[id ?? ''] ?? id ?? 'Fach'
 }
+function priorityLabel(id?: string): string {
+  const priority = workspace.value?.priorities.find((item) => item.id === (id ?? 'medium'))
+  return priority ? `${priority.icon} ${priority.label}` : '● Mittel'
+}
 function eventsFor(date: string): CalendarEvent[] {
   return allEvents.value.filter((event) => event.date === date)
 }
@@ -329,6 +343,7 @@ function openNewPlanningMenu(): void {
   workshopGroup.value = ''
   workshopParticipants.value = ''
   newTitle.value = ''
+  newPlanPriorityId.value = 'medium'
   newPlanningMenuOpen.value = true
 }
 
@@ -345,6 +360,7 @@ function openQuickCreate(date: string = today, tone: 'choice' | 'term' | 'todo' 
   quickCreateDueDate.value = date
   quickCreateTone.value = tone
   quickCreateTitle.value = ''
+  quickCreatePriorityId.value = 'medium'
   quickCreateOpen.value = true
 }
 
@@ -352,6 +368,7 @@ function closeQuickCreate(): void {
   quickCreateOpen.value = false
   quickCreateTone.value = 'choice'
   quickCreateTitle.value = ''
+  quickCreatePriorityId.value = 'medium'
 }
 
 function chooseQuickCreate(kind: 'term' | 'todo' | 'plan'): void {
@@ -364,6 +381,7 @@ function chooseQuickCreate(kind: 'term' | 'todo' | 'plan'): void {
   quickCreateTone.value = kind
   quickCreateTitle.value = ''
   quickCreateDueDate.value = quickCreateDate.value
+  quickCreatePriorityId.value = 'medium'
 }
 
 async function saveQuickTodo(kind: 'term' | 'todo' = 'todo'): Promise<void> {
@@ -376,6 +394,7 @@ async function saveQuickTodo(kind: 'term' | 'todo' = 'todo'): Promise<void> {
     id: createId(),
     title,
     dueDate: quickCreateDueDate.value || undefined,
+    priorityId: quickCreatePriorityId.value || undefined,
     completed: false,
     kind,
   }
@@ -449,6 +468,7 @@ async function createPlanning(): Promise<void> {
   try {
     const plan = await store.create(newTitle.value.trim() || (planningStep.value === 'workshop' ? 'Neuer Workshop' : 'Neue Unterrichtsstunde'), getPlanningTemplate(templateId.value), selectedLocation())
     plan.days[0]!.date = planningDate.value || today
+    plan.metadata.priorityId = newPlanPriorityId.value || undefined
     if (planningStep.value === 'school' && selectedAssignment.value) {
       plan.metadata.planningContext = 'school'
       plan.metadata.classSubjectAssignmentId = selectedAssignment.value.id
@@ -577,7 +597,7 @@ async function open(id: string): Promise<void> {
             <li v-for="event in upcomingPlans.slice(0, widget.limit ?? 5)" :key="event.id">
               <button type="button" @click="openEvent(event)">
                 <strong>{{ event.title }}</strong>
-                <small>{{ formatDate(event.date) }}{{ event.detail ? ` · ${event.detail}` : '' }}</small>
+                <small>{{ formatDate(event.date) }} · {{ priorityLabel(event.priorityId) }}{{ event.detail ? ` · ${event.detail}` : '' }}</small>
               </button>
             </li>
             <li v-if="!upcomingPlans.length" class="empty-state">Keine kommenden Unterrichtsstunden oder Planungen.</li>
@@ -593,7 +613,7 @@ async function open(id: string): Promise<void> {
             <li v-for="event in upcomingTodos.slice(0, widget.limit ?? 5)" :key="event.id">
               <button type="button" @click="router.push({ name: 'workspace-settings' })">
                 <strong>{{ event.title }}</strong>
-                <small>{{ formatDate(event.date) }}</small>
+                <small>{{ formatDate(event.date) }} · {{ priorityLabel(event.priorityId) }}</small>
               </button>
             </li>
             <li v-if="!upcomingTodos.length" class="empty-state">Keine offenen Aufgaben mit Termin.</li>
@@ -704,6 +724,12 @@ async function open(id: string): Promise<void> {
               <option v-for="template in templates" :key="template.id" :value="template.id">{{ template.name.de }}</option>
             </select>
           </label>
+          <label>
+            Priorität
+            <select v-model="newPlanPriorityId">
+              <option v-for="priority in workspace?.priorities" :key="priority.id" :value="priority.id">{{ priority.icon }} {{ priority.label }}</option>
+            </select>
+          </label>
           <div class="planning-location">
             <label>
               Gebäude
@@ -769,6 +795,12 @@ async function open(id: string): Promise<void> {
           <label>
             Datum
             <input v-model="quickCreateDueDate" type="date" />
+          </label>
+          <label v-if="quickCreateTone === 'todo'">
+            Priorität
+            <select v-model="quickCreatePriorityId">
+              <option v-for="priority in workspace?.priorities" :key="priority.id" :value="priority.id">{{ priority.icon }} {{ priority.label }}</option>
+            </select>
           </label>
           <div class="planning-menu-actions">
             <button type="button" class="secondary" @click="closeQuickCreate">Abbrechen</button>

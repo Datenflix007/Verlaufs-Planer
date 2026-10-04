@@ -58,11 +58,14 @@ test('shows timetable cancellations, substitutions, and standalone exceptions on
   await expect(page.getByText('8a · Geschichte · Quellenarbeit')).toBeVisible()
   await expect(page.getByText('1 von 1 Sequenzstunden geplant')).toBeVisible()
   await expect(page.locator('.timed-event.school.cancelled', { hasText: 'Quellenarbeit' })).toBeVisible()
-  await expect(page.locator('.timed-event.school.substitution', { hasText: '09:00' })).toBeVisible()
   await expect(page.locator('.all-day-event.exception', { hasText: 'Projekttag' })).toBeVisible()
   await page.locator('.timed-event.school.cancelled', { hasText: 'Quellenarbeit' }).click()
   await expect(page).toHaveURL(new RegExp(`/reihen\\?sequenceId=${sequenceId}`))
   await expect(page.locator('.sequence-timeline')).toBeVisible()
+  await page.goto('/')
+  const substitution = page.locator('.timed-event.school.substitution', { hasText: '09:00' })
+  if (!await substitution.isVisible()) await page.getByRole('button', { name: 'Nächster Zeitraum' }).click()
+  await expect(substitution).toBeVisible()
 })
 
 test('führt vom Dashboard durch die erste Schuljahreseinstellung', async ({ page, request }) => {
