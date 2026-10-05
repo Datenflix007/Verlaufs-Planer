@@ -41,7 +41,9 @@ if not exist "node_modules\.bin\vite.cmd" (
 )
 
 echo [2/2] Starte Verlaufsplaner mit lokaler SQLite-Datenbank ...
-echo Die Anwendung ist anschliessend unter http://127.0.0.1:5173 erreichbar.
+if "%HOST%"=="" (set APP_HOST=127.0.0.1) else (set APP_HOST=%HOST%)
+if "%PORT%"=="" (set APP_PORT=5173) else (set APP_PORT=%PORT%)
+echo Die Anwendung ist anschliessend unter http://%APP_HOST%:%APP_PORT% erreichbar.
 echo Mit Strg+C beenden.
-call npm.cmd run dev -- --host 127.0.0.1
+call npm.cmd run dev
 exit /b %errorlevel%

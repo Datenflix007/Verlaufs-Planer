@@ -74,6 +74,27 @@ Version 1 erzeugt eine vollstaendige, druckoptimierte HTML-Vorschau und oeffnet 
 
 Die frueher konzipierte SvelteKit-Anwendung, Klassenuebersichten, Authentifizierung, Lehrplan-Review-Workflow und LLM-Anbindung sind im vorliegenden Branch nicht als laufender Code vorhanden. Sie werden nicht als toter Legacy-Code in die neue App kopiert. Eine spaetere Cloud-Schicht ersetzt ausschliesslich das Repository, nicht das Planmodell oder die Exporter.
 
+## Betriebsarchitektur und geplanter Mehrbenutzer-Ausbau
+
+Die Anwendung bleibt ein modularer Monolith. Lokale Datenzugriffe und fachliche Repository-Verträge werden nicht durch separate Anwendungen dupliziert. Der gemeinsame API-Router wird im Entwicklungsmodus von Vite und nach `npm run build` von `npm run start` ohne HMR verwendet.
+
+```text
+Browser
+  -> Web-App / API-Adapter
+    -> Authentication + Authorization (geplant)
+      -> fachliche Repositories
+        -> SQLite (lokal/Raspberry Pi) oder später Datenbankadapter
+        -> lokaler Storage-Service oder später Objekt-Storage-Adapter
+```
+
+Es sind drei klar getrennte Betriebsarten vorgesehen:
+
+- **LOCAL:** Standard ist `127.0.0.1`; eine einzelne Person arbeitet mit einer lokalen SQLite-Datei. Ein späteres lokales Initialkonto verwendet dasselbe User-Modell wie der Serverbetrieb, blendet aber unnötige Teamfunktionen aus.
+- **NETWORK:** Ein Raspberry Pi oder ein anderer LAN-Rechner bindet nach ausdrücklicher Konfiguration an `0.0.0.0`. Mehrere Browser greifen über die gleiche API zu; Authentifizierung, Eigentum und Freigaben werden dann zwingend serverseitig durchgesetzt.
+- **SERVER:** Ein Reverse Proxy terminiert HTTPS und leitet an den modularen Anwendungsserver weiter. Base-URL, Sessions, Datenbank und Storage sind konfigurierbar, damit keine Fachlogik Hostnamen oder lokale Pfade kennt.
+
+Der Übergang beginnt mit der zentralen Laufzeitkonfiguration (`APP_MODE`, `HOST`, `PORT`, `DATABASE_URL`, `STORAGE_PATH`, optional `BASE_URL`) und der additiven `users`-Tabelle. Sie enthält normalisierten Login-Identifier, Anzeigename, USER/ADMIN-Rolle, Aktivstatus und Zeitstempel; Passworthashes, Sessions und Ressourceneigentum folgen in getrennten Migrationen. Bestehende lokale Planungen werden hierbei erst im späteren Ownership-Schritt einem lokalen Default-User zugeordnet, nie still gelöscht.
+
 ## Curriculum Tracking
 
 Offizielle Curriculumdaten sind stabil und versioniert. Lehrplanwechsel erzeugen neue Curriculum-IDs; bestehende Versionen bleiben fuer gespeicherte Planungen verfuegbar. Die Registry loest die passende Fassung nur aus `CurriculumApplicability` auf, nicht aus Fach-Sonderfaellen.

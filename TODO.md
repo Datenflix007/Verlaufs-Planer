@@ -1,5 +1,122 @@
 # TODO
 
+## Server-, Benutzer-, Team- und Sharing-Architektur
+
+Die bestehende Anwendung bleibt ein modularer Monolith. Die folgenden Aufgaben ersetzen weder den lokalen SQLite-Standard noch die vorhandenen Repository-Verträge. Jede Freigabe wird serverseitig geprüft; Client-Sichtbarkeit ist keine Berechtigung.
+
+- [x] SERVER-01 Bestehende Infrastruktur und Verträge für Local-, Netzwerk- und Serverbetrieb erfassen.
+  - Ziel: Eine belastbare, additive Migrationsreihenfolge festlegen.
+  - Betroffene Bereiche: Vite-API, Repository-Adapter, SQLite-Schema, Uploads, Routen und Startskripte.
+  - Akzeptanzkriterien: Abhängigkeiten, Vertrauensgrenzen und Eigentumsbeziehungen sind dokumentiert; keine bestehende lokale Planung wird verworfen.
+  - Tests: Bestehende Repository- und API-Tests bleiben grün.
+  - Technische Notiz: Der Bestand und die klaren Vertrauensgrenzen sind in `docs/architecture/SERVER_DEPLOYMENT.md` festgehalten; die aktuelle Vite-API ist ausdrücklich noch kein produktiver Mehrbenutzer-Server.
+
+- [x] SERVER-02 Zentrale, umgebungsbasierte Laufzeitkonfiguration einführen.
+  - Ziel: Host, Port, Bind-Adresse, Datenbank- und Speicherpfad sowie optionale Base-URL ohne Hardcoding steuern.
+  - Betroffene Bereiche: Vite-Konfiguration, Servermodule, Startskripte, `.env.example` und Dokumentation.
+  - Akzeptanzkriterien: Lokaler Betrieb bleibt standardmäßig loopback-sicher; LAN-Betrieb über explizite Konfiguration möglich; ungültige Konfiguration wird verständlich abgelehnt.
+  - Tests: Konfigurations-Unit-Tests und Start-/Build-Prüfung.
+  - Technische Notiz: `server/config.ts` zentralisiert validierte Einstellungen und hält lokale Bindung standardmäßig auf `127.0.0.1`; 13 Konfigurations-/SQLite-Tests sowie `npm run check` bestanden.
+
+- [x] SERVER-03 HTTP-API aus dem Vite-Entwicklungsserver in einen produktionsfähigen modularen Serveradapter überführen.
+  - Ziel: Dieselben API-Routen im Development- und Startbetrieb betreiben können.
+  - Betroffene Bereiche: Server-Bootstrap, API-Router, `npm run start`, Vite-Plugin.
+  - Akzeptanzkriterien: Kein Produktionsbetrieb hängt an Entwicklungs-HMR; Reverse-Proxy-fähige Bindung ist dokumentiert.
+  - Tests: API-Integrationstest und lokaler Starttest.
+  - Technische Notiz: `server/api.ts` wird von Vite und `server/index.ts` genutzt; `npm run start` liefert nach dem Build SPA und API ohne HMR aus. Der isolierte API-Integrationstest sowie der lokale Start mit HTTP-Prüfung bestanden.
+
+- [x] AUTH-01 Versioniertes User- und Rollenmodell mit deterministischer SQLite-Migration ergänzen.
+  - Ziel: Lokale und spätere Serverkonten über dieselben Modelle abbilden.
+  - Betroffene Bereiche: SQLite-Schema, Datenzugriff, Migrationen, Domänentypen.
+  - Akzeptanzkriterien: Eindeutiger Login-Identifier, Anzeigename, aktiver Status, USER/ADMIN-Rolle sowie Zeitstempel; vorhandene Daten bleiben lesbar.
+  - Tests: Migration gegen bestehende Datenbank und Repository-Tests.
+  - Technische Notiz: `users` wird additiv mit eindeutiger, normalisierter Login-ID, Anzeigename, USER/ADMIN, Aktivstatus und Zeitstempeln angelegt. Eine befüllte Planungsdatenbank blieb im Migrationstest lesbar; 16 Server-/Konfigurationsfälle und der Typecheck bestanden.
+
+- [x] AUTH-02 Sichere Passwortspeicherung mit Argon2id einführen.
+  - Ziel: Keine Klartextpasswörter und keine selbst entworfene Kryptografie.
+  - Betroffene Bereiche: Auth-Service, Umgebungsvariablen, SQLite.
+  - Akzeptanzkriterien: Ausschließlich Argon2id-Hashes werden gespeichert; Verifikation und Passwortwechsel funktionieren; Geheimnisse stehen nicht im Repository.
+  - Tests: Hash-/Verifikations- und Passwortwechseltests.
+  - Technische Notiz: `PasswordService` verwendet die etablierte `argon2`-Bibliothek mit Argon2id, 19 MiB Arbeitsspeicher, zwei Iterationen und einem Parallelitätsgrad. Hash, Verifikation und Passwortwechsel wurden geprüft; 17 Server-/Konfigurationsfälle, Typecheck und Build bestanden.
+
+- [ ] AUTH-03 Login, Logout und serverseitige Sessionverwaltung implementieren.
+  - Ziel: Sicherer Sitzungslebenszyklus für Browserzugriffe.
+  - Betroffene Bereiche: API, Session-Speicher, Cookie-Helfer, Client-Bootstrap.
+  - Akzeptanzkriterien: Rotation beim Login, Ablauf, HTTP-only/SameSite-Cookies, HTTPS-Secure-Flag und Logout-Invalidierung sind umgesetzt.
+  - Tests: Login, Fehlversuch, Ablauf, Logout und Session-Fixation als API-Tests.
+
+- [ ] AUTH-04 Initialen lokalen Setup- und Admin-Flow bereitstellen.
+  - Ziel: Einzelplatzbetrieb ohne unnötige Multi-User-Oberfläche starten können.
+  - Betroffene Bereiche: Setup-Status, Auth-Routen, Einstiegssicht.
+  - Akzeptanzkriterien: Erster lokaler Admin wird einmalig erstellt; Netzwerkmodus startet nicht still mit Standardkennwort.
+  - Tests: Setup- und Wiederholungsfall im Browser/API-Test.
+
+- [ ] AUTH-05 Zentrale Autorisierungsrichtlinien und Ressourcenbesitz einführen.
+  - Ziel: Jede geschützte Ressource serverseitig gegen Nutzer und Rechte prüfen.
+  - Betroffene Bereiche: Policy-Service, Plan-, Material-, Präsentations- und Schulplan-Repositories.
+  - Akzeptanzkriterien: Manipulierte IDs liefern keine fremden Daten und erlauben keine fremden Änderungen.
+  - Tests: Zwei-Nutzer-Positiv- und Negativtests pro Ressourcentyp.
+
+- [ ] OWNERSHIP-01 Bestehende Planungen, Materialien, Muster und Präsentationsmedien mit Eigentümern migrieren.
+  - Ziel: Lokale Bestandsdaten deterministisch dem lokalen Standardkonto zuordnen.
+  - Betroffene Bereiche: SQLite-Migrationen und bestehende Tabellen.
+  - Akzeptanzkriterien: Wiederholbare Migration ohne Datenverlust; neue Objekte erhalten `owner_id`, `created_by` und `updated_by` wo fachlich passend.
+  - Tests: Migration einer befüllten Testdatenbank und Rückwärtskompatibilität.
+
+- [ ] TEAM-01 Team- und Mitgliedschaftsmodell mit OWNER, ADMIN und MEMBER ergänzen.
+  - Ziel: Gemeinsame Arbeitsräume minimal und erweiterbar abbilden.
+  - Betroffene Bereiche: Schema, Team-Service, Policies.
+  - Akzeptanzkriterien: Mitgliedschaften sind eindeutig, Rollen werden serverseitig geprüft, Teamlöschung ist geschützt.
+  - Tests: Mitgliedschafts- und Rollenmatrix.
+
+- [ ] SHARE-01 Allgemeines, referenzbasiertes VIEW/EDIT-Sharing-Modell implementieren.
+  - Ziel: Freigaben kopieren keine Ressourcen und lassen sich auf Nutzer und Teams anwenden.
+  - Betroffene Bereiche: Share-Tabelle, Policy-Service, Audit-Felder.
+  - Akzeptanzkriterien: Private, Nutzer- und Teamfreigaben sind abbildbar; Entzug wirkt sofort.
+  - Tests: Freigabe, Entzug, VIEW-vs-EDIT und unberechtigter Direktzugriff.
+
+- [ ] SHARE-02 Planungen und Präsentationen in das Sharing-Modell einbinden.
+  - Ziel: Stunden, Reihen, Workshops und Präsentationen sicher teilen.
+  - Betroffene Bereiche: Plan-, Schulplan- und Präsentationszugriffe.
+  - Akzeptanzkriterien: Bestehende Präsentationsarchitektur bleibt erhalten; editierbare Freigaben werden serverseitig erzwungen.
+  - Tests: End-to-End-Freigabefälle mit zwei Nutzern.
+
+- [ ] SHARE-03 Digitale Materialien und Uploads in das Sharing-Modell einbinden.
+  - Ziel: Material-Metadaten und Binärinhalte nach denselben Rechteentscheidungen ausliefern.
+  - Betroffene Bereiche: Material-Repository, Medienroute, Download-Antworten.
+  - Akzeptanzkriterien: Kein Zugriff allein über erratene URL/ID; Datei-Metadaten werden nicht unnötig offengelegt.
+  - Tests: Zugriffs- und Download-Autorisierungstests.
+
+- [ ] LIBRARY-01 Bibliotheksansicht aus Eigentum und Freigaben ableiten.
+  - Ziel: „Meine“, „mit mir geteilt“ und „Team“-Ressourcen ohne Duplikate darstellen.
+  - Betroffene Bereiche: Abfrage-Service und Frontend-Navigation.
+  - Akzeptanzkriterien: Jede Ressource erscheint über Referenzen nur einmal je sinnvoller Ansicht.
+  - Tests: Repository- und Komponentenprüfung.
+
+- [ ] STORAGE-01 Zentralen Storage-Service für hochgeladene Dateien einführen.
+  - Ziel: Lokales Storage-Backend hinter einer austauschbaren Schnittstelle kapseln.
+  - Betroffene Bereiche: Uploads, Medien, Pfadvalidierung und Konfiguration.
+  - Akzeptanzkriterien: Kein Clientpfad wird übernommen; Namen werden normalisiert; Path Traversal ist ausgeschlossen; zukünftiger S3-Adapter ist ohne Fachlogikänderung möglich.
+  - Tests: Dateinamen-, Größen-, MIME- und Traversal-Tests.
+
+- [ ] DEPLOY-01 Raspberry-Pi-/LAN-Start und persistente Datenhaltung absichern.
+  - Ziel: Linux/ARM64-kompatibler Betrieb mit konfigurierbarem Host, Port und persistenten Pfaden.
+  - Betroffene Bereiche: Startskripte, Konfiguration, Node-Version, SQLite und Dokumentation.
+  - Akzeptanzkriterien: `npm run start` ist dokumentiert; `0.0.0.0` ist opt-in; Datenbank und Storage liegen außerhalb von Build-Artefakten.
+  - Tests: Konfigurations- und Startprüfung auf unterstützter Node-Version.
+
+- [ ] DEPLOY-02 Backup-, Reverse-Proxy- und HTTPS-Betrieb dokumentieren.
+  - Ziel: Spätere Servermigration ohne Umgestaltung der Kernlogik vorbereiten.
+  - Betroffene Bereiche: README, Architektur- und Betriebsdokumentation.
+  - Akzeptanzkriterien: Backup-Ziele, Base-URL, Cookie-HTTPS-Verhalten und Proxy-Header sind klar beschrieben.
+  - Tests: Dokumentationsreview gegen die tatsächliche Konfiguration.
+
+- [ ] SECURITY-01 Multi-User-Sicherheitsreview und Gesamtprüfung ausführen.
+  - Ziel: Eigentum, Freigaben, Sessions, Uploads und Secrets gegen typische Umgehungen absichern.
+  - Betroffene Bereiche: Gesamte Server-API und Deployment-Konfiguration.
+  - Akzeptanzkriterien: Keine bekannten IDOR-, Session-, Path-Traversal- oder Klartextsecret-Probleme; offene externe Voraussetzungen sind explizit dokumentiert.
+  - Tests: Typprüfung, Unit-, API-, Browser-, Migration-, Build- und Diff-Prüfung.
+
 ## Aktuelle Iteration: Durchscrollbares Planungsdokument
 
 - [X] Bestehenden Planeditor, Abschnittsnavigation, Vorlagenfilter und automatisches Speichern für einen rückwärtskompatiblen Dokumentfluss erfassen; Typ- und Test-Baseline ausführen.
@@ -48,7 +165,8 @@
 - [X] Prioritäten im Arbeitsbereich per zugänglicher Drag-and-drop-Reihenfolge bearbeiten und im vorhandenen Autosave speichern.
 - [X] Priorität bei Aufgaben und Planungen erfassen sowie die gewichtete Reihenfolge in den passenden Dashboard-Widgets anzeigen.
 - [X] Prioritäts-Heap und Gewichtung unter `konzept/` dokumentieren und Domain-, Komponenten- sowie Browserprüfungen ergänzen.
-- [ ] Vollständige Typ-, Test-, Browser-, Build- und Diff-Prüfungen ausführen und die TODO-Punkte abschließen.
+- [X] Vollständige Typ-, Test-, Browser-, Build- und Diff-Prüfungen ausführen und die TODO-Punkte abschließen.
+  - Technische Notiz: `npm run check`, 132 Unit-/Komponententests, 24 Playwright-E2E-Tests, `npm run build` und `git diff --check` bestanden. Der Kalender-E2E-Fall wartet nun korrekt auf die substituierte Stunde statt bei noch ladendem Dashboard in den Folgeraum zu wechseln.
 
 ## Aktuelle Iteration: Persistente Präsentationseinstellungen
 

@@ -1,15 +1,15 @@
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname } from 'node:path'
+import { appConfig } from './config'
 import type { CalendarException, ClassGroup, ClassSubjectAssignment, CurriculumAnnotation, CurriculumComment, ExistingPlanContext, LessonReflection, ScheduledLesson, SchoolPlanningSnapshot, SchoolYear, SequenceCompetency, SequenceCurriculumReference, SequenceLesson, SequenceReflection, TeachingSequence, TimetableSlot, TimetableVersion } from '../src/domain/schoolPlanning'
 
-const databasePath = resolve(process.cwd(), 'data', 'verlaufsplaner.sqlite')
 const now = () => new Date().toISOString()
 
 /** Relational personal planning layer. It deliberately never stores curriculum reference data or plans as blobs. */
 export class SqliteSchoolPlanning {
   private readonly database: DatabaseSync
-  constructor(path = databasePath) {
+  constructor(path = appConfig().databasePath) {
     mkdirSync(dirname(path), { recursive: true })
     this.database = new DatabaseSync(path)
     this.database.exec(`PRAGMA foreign_keys = ON;

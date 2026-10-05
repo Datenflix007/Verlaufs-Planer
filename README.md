@@ -52,6 +52,15 @@ Alternativ starten `quickstart.bat` unter Windows oder `bash quickstart.sh` unte
 
 Öffne anschließend die von Vite angezeigte lokale Adresse. `npm run dev` startet Oberfläche und SQLite-Schnittstelle; beim ersten Start wird `data/verlaufsplaner.sqlite` angelegt.
 
+Für den produktionsnahen lokalen oder Raspberry-Pi-Betrieb wird einmal gebaut und anschließend der schlanke Node-Server gestartet:
+
+```powershell
+npm run build
+npm run start
+```
+
+`npm run start` liefert die erzeugten Dateien aus `dist/` und dieselben API-Routen ohne Vite-HMR aus.
+
 
 ## Entwicklung und Qualität
 
@@ -71,6 +80,24 @@ Texte werden UTF-8-kodiert gespeichert. Umlaute bleiben in SQLite sowie in JSON-
 Planungen, Verlaufsplan-Muster und Arbeitsbereichseinstellungen liegen lokal in `data/verlaufsplaner.sqlite`. Der Ordner `data/` ist absichtlich von Git ausgeschlossen und kann persönliche Beispiele enthalten. Beim ersten Öffnen überträgt die Anwendung vorhandene Browser-Planungen einmalig und nicht destruktiv nach SQLite. Exportiere regelmäßig JSON-Backups.
 
 Normale Texte werden im LaTeX-Export escaped. Nur der bewusst über **LaTeX** im Rich-Text-Editor eingefügte Knoten wird unverändert in die `.tex`-Datei übernommen.
+
+## Betrieb und Konfiguration
+
+Ohne Konfiguration läuft der Verlaufsplaner als lokaler Einzelplatzdienst unter `http://127.0.0.1:5173`. Die zentrale Konfiguration liegt in Umgebungsvariablen; kopiere bei Bedarf `.env.example` nach `.env`. Diese Datei enthält Geheimnisse und wird nicht eingecheckt.
+
+| Variable | Standard | Zweck |
+| --- | --- | --- |
+| `APP_MODE` | `local` | `local`, `network` oder `server`; Netzwerk- und Serverbetrieb sind bewusst opt-in. |
+| `HOST` | `127.0.0.1` | Bind-Adresse; `0.0.0.0` ist nur mit `APP_MODE=network` oder `server` erlaubt. |
+| `PORT` | `5173` | HTTP-Port zwischen 1 und 65535. |
+| `DATABASE_URL` | `data/verlaufsplaner.sqlite` | Pfad zur persistenten SQLite-Datenbank. |
+| `STORAGE_PATH` | `data/storage` | Vorgesehener Pfad für ein künftiges lokales Storage-Backend. |
+| `BASE_URL` | – | Öffentliche http(s)-Basisadresse, später für Reverse Proxy und sichere Session-Cookies. |
+| `SESSION_SECRET` | – | Vorgesehener geheimer Session-Schlüssel; erst mit der noch ausstehenden Authentifizierung erforderlich. |
+
+Für einen Raspberry Pi oder das LAN setzen Sie explizit `APP_MODE=network` und `HOST=0.0.0.0`; der Rechner muss zusätzlich über seine LAN-Adresse oder seinen lokalen Hostnamen erreichbar sein. `npm run start` liefert die gebaute Anwendung mit derselben API ohne Vite-HMR aus. Benutzerkonten sind als Datenmodell vorbereitet, aber Login, Passwort-Hashing und serverseitige Berechtigungen folgen erst in den nächsten Schritten; veröffentlichen Sie diese Zwischenversion deshalb nicht im Internet.
+
+Sichern Sie mindestens die unter `DATABASE_URL` liegende SQLite-Datei sowie künftig das Verzeichnis unter `STORAGE_PATH`, während die Anwendung beendet ist. Für späteren HTTPS-Betrieb hinter nginx, Caddy oder Traefik wird `BASE_URL=https://…` gesetzt; die geplante Session-Schicht erkennt daran sichere Cookies. Weitere Details: [Betriebsarchitektur](docs/architecture/SERVER_DEPLOYMENT.md).
 
 ## Projektstruktur
 

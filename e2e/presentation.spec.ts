@@ -64,7 +64,6 @@ test('shows timetable cancellations, substitutions, and standalone exceptions on
   await expect(page.locator('.sequence-timeline')).toBeVisible()
   await page.goto('/')
   const substitution = page.locator('.timed-event.school.substitution', { hasText: '09:00' })
-  if (!await substitution.isVisible()) await page.getByRole('button', { name: 'Nächster Zeitraum' }).click()
   await expect(substitution).toBeVisible()
 })
 

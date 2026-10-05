@@ -1,7 +1,8 @@
 import { DatabaseSync } from 'node:sqlite'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname } from 'node:path'
+import { appConfig } from './config'
 import { builtInSchedulePatternSeeds } from '../src/data/schedulePatterns'
 import { createWorkspaceSettings, normaliseWorkspaceSettings } from '../src/data/workspaceDefaults'
 import type { DigitalLearningMaterial, SchedulePattern } from '../src/domain/types'
@@ -15,11 +16,9 @@ export interface StoredPresentationMedia {
 export interface PresentationMediaInput {
   planId: string; name: string; mimeType: string; content: Buffer
 }
-const databasePath = resolve(process.cwd(), 'data', 'verlaufsplaner.sqlite')
-
 export class SqlitePlans {
   private readonly database: DatabaseSync
-  constructor(path = databasePath) {
+  constructor(path = appConfig().databasePath) {
     mkdirSync(dirname(path), { recursive: true })
     this.database = new DatabaseSync(path)
     this.database.exec('CREATE TABLE IF NOT EXISTS plans (id TEXT PRIMARY KEY, title TEXT NOT NULL, updated_at TEXT NOT NULL, date_range TEXT NOT NULL, payload TEXT NOT NULL) STRICT;')
@@ -37,7 +36,7 @@ export class SqlitePlans {
 /** Stores plan-owned media as BLOBs, while the plan JSON keeps only the stable API URL. */
 export class SqlitePresentationMedia {
   private readonly database: DatabaseSync
-  constructor(path = databasePath) {
+  constructor(path = appConfig().databasePath) {
     mkdirSync(dirname(path), { recursive: true })
     this.database = new DatabaseSync(path)
     this.database.exec('CREATE TABLE IF NOT EXISTS presentation_media (id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, name TEXT NOT NULL, mime_type TEXT NOT NULL, content BLOB NOT NULL, created_at TEXT NOT NULL) STRICT; CREATE INDEX IF NOT EXISTS presentation_media_plan_id ON presentation_media(plan_id);')
@@ -60,7 +59,7 @@ export class SqlitePresentationMedia {
 
 export class SqliteDigitalLearningMaterials {
   private readonly database: DatabaseSync
-  constructor(path = databasePath) {
+  constructor(path = appConfig().databasePath) {
     mkdirSync(dirname(path), { recursive: true })
     this.database = new DatabaseSync(path)
     this.database.exec('CREATE TABLE IF NOT EXISTS digital_learning_materials (id TEXT PRIMARY KEY, title TEXT NOT NULL, kind TEXT NOT NULL, updated_at TEXT NOT NULL, payload TEXT NOT NULL) STRICT;')
@@ -89,7 +88,7 @@ type StoredSchedulePattern = {
 /** Stores user-defined schedule layouts separately from individual plans. */
 export class SqliteSchedulePatterns {
   private readonly database: DatabaseSync
-  constructor(path = databasePath) {
+  constructor(path = appConfig().databasePath) {
     mkdirSync(dirname(path), { recursive: true })
     this.database = new DatabaseSync(path)
     this.database.exec('CREATE TABLE IF NOT EXISTS schedule_patterns (id TEXT PRIMARY KEY, name TEXT NOT NULL, markdown TEXT NOT NULL, columns_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_builtin INTEGER NOT NULL DEFAULT 0 CHECK(is_builtin IN (0, 1))) STRICT;')
@@ -128,7 +127,7 @@ export class SqliteSchedulePatterns {
 /** One local workspace contains dashboard configuration, rooms, stock and tasks. */
 export class SqliteWorkspaceSettings {
   private readonly database: DatabaseSync
-  constructor(path = databasePath) {
+  constructor(path = appConfig().databasePath) {
     mkdirSync(dirname(path), { recursive: true })
     this.database = new DatabaseSync(path)
     this.database.exec('CREATE TABLE IF NOT EXISTS workspace_settings (id TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at TEXT NOT NULL) STRICT;')

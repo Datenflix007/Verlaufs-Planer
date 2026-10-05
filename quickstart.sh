@@ -26,7 +26,8 @@ else
 fi
 
 host="${HOST:-127.0.0.1}"
+port="${PORT:-5173}"
 echo "[2/2] Starte Verlaufsplaner mit lokaler SQLite-Datenbank ..."
-echo "Die Anwendung ist anschließend unter http://${host}:5173 erreichbar."
+echo "Die Anwendung ist anschließend unter http://${host}:${port} erreichbar."
 echo "Mit Strg+C beenden."
-exec npm run dev -- --host "$host"
+exec npm run dev
